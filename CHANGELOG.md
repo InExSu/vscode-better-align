@@ -1,3 +1,7 @@
+# v1.4.6 [#](https://github.com/chouzz/vscode-better-align/releases/tag/v1.4.6)
+
+- Fix "Invalid array length" error on large files
+
 # v1.4.5 [#](https://github.com/chouzz/vscode-better-align/releases/tag/v1.4.5)
 
 - Add support for 'from' keyword vertical alignment in TypeScript, TypeScript React, and JavaScript files
