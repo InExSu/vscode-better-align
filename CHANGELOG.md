@@ -1,3 +1,7 @@
+# v1.6.4 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.6.4)
+
+- Fixed typo in format.test.ts (>=)
+
 # v1.6.3 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.6.3)
 
 - Added VS Code reload instructions to AGENTS.md
