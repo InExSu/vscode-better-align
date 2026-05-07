@@ -16,7 +16,7 @@
   },
   "bugs": {
     "url": "https://github.com/InExSu/vscode-better-align/issues",
-    "email": "zhouhua25@qq.com"
+    "email": "inexsu@bk.ru"
   },
   "repository": {
     "type": "git",
@@ -167,7 +167,8 @@
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js"
+    "test": "mocha --ui tdd out/test/suite/unit.test.js",
+    "test:win": "node ./out/test/runTestWin.js"
   },
   "devDependencies": {
     "@types/glob": "^8.0.0",

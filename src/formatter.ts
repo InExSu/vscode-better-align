@@ -1,15 +1,10 @@
 import * as vscode from 'vscode'
-import { Token, TokenType, LineInfo, LineRange } from './types'
 import { tokenizeLine } from './tokenizer'
 import { getLanguageSyntaxConfig } from './languageConfig'
+import { whitespace } from './utils'
+import { LineRange, LineInfo, TokenType, Token } from './types'
 
-const REG_WS = /\s/
-
-export function whitespace(count: number): string {
-    if(count <= 0) { return '' }
-    if(!isFinite(count) || count > 1e6) { count = 1e6 }
-    return ' '.repeat(count)
-}
+const REG_WS = /\s/;
 
 export class Formatter {
     public process(editor: vscode.TextEditor): void {
@@ -364,8 +359,8 @@ export class Formatter {
 
         const rangeSize = range.infos.length
 
-        const column: number[] = new Array(rangeSize).fill(0)
-        const result: string[]  = new Array(rangeSize).fill(indentation)
+        const column: number[] =  new Array(rangeSize).fill(0)
+        const result: string[] = new Array(rangeSize).fill(indentation)
 
         let exceed     = 0
         let resultSize = 0
