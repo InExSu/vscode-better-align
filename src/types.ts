@@ -37,7 +37,7 @@ export interface LanguageSyntaxConfig {
 }
 
 export interface LineInfo {
-    line          : vscode.TextLine | number
+    line          : vscode.TextLine
     sgfntTokenType: TokenType
     sgfntTokens   : TokenType[]
     tokens        : Token[]

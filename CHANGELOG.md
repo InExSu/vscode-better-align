@@ -1,3 +1,7 @@
+# v1.4.9 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.4.9)
+
+- Fix "Illegal value for `line`" error on large selections
+
 # v1.4.8 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.4.8)
 
 - Remove telemetry dependency

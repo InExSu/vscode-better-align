@@ -107,7 +107,7 @@ export class Formatter {
         const { tokens, sgfntTokens } = tokenizeLine(textLine, config, this.editor.document.languageId)
 
         return {
-            line,
+            line: textLine,
             sgfntTokenType: TokenType.Invalid,
             sgfntTokens,
             tokens,

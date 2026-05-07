@@ -283,4 +283,17 @@ suite('Formatter Test Suite', () => {
         const result = formatter.format(ranges[0]);
         assert.ok(result.length > 0, 'Should return results without throwing');
     });
+
+    test('Formatter::should not throw Illegal value for line on 500+ line selection', () => {
+        const lineCount = editor.document.lineCount;
+        const startLine = Math.max(0, lineCount - 50);
+        editor.selection = new vscode.Selection(startLine, 0, lineCount - 1, 0);
+        const formatter = new FakeFormatter();
+        const ranges = formatter.getLineRanges(editor);
+        assert.ok(ranges.length > 0, 'Should find ranges');
+        for(const range of ranges) {
+            const result = formatter.format(range);
+            assert.ok(result.length > 0, 'Should format without throwing');
+        }
+    });
 });
