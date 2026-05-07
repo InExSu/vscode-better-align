@@ -123,6 +123,12 @@ function classifyAtDefault(
     if(ch === '<' && nx === '=' && rd === '>') { return { type: TokenType.Spaceship, advance: 3 } }
     if(ch === '<' && nx === '?' && rd === '=') { return { type: TokenType.PHPShortEcho, advance: 3 } }
     if(ch === '=' && nx === '>') { return { type: TokenType.Arrow, advance: 2 } }
+    if(ch === '>' && nx === '=') { return { type: TokenType.Assignment, advance: 2 } }
+    if(ch === '<' && nx === '=') { return { type: TokenType.Assignment, advance: 2 } }
+    if(ch === '!' && nx === '=') { return { type: TokenType.Assignment, advance: 2 } }
+    if(ch === '<' && nx !== '=' && nx !== '?') { return { type: TokenType.Assignment, advance: 1 } }
+    if(ch === '>' && nx !== '=') { return { type: TokenType.Assignment, advance: 1 } }
+    if(ch === '!' && nx !== '=') { return { type: TokenType.Assignment, advance: 1 } }
 
     const ASSIGN_OPS = new Set(['+', '-', '*', '/', '%', '~', '|', '^', '.', '!', '&', '=', ':'])
     if(ASSIGN_OPS.has(ch) && nx === '=') { return { type: TokenType.Assignment, advance: rd === '=' ? 3 : 2 } }
