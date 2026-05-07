@@ -1,3 +1,7 @@
+# v1.6.3 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.6.3)
+
+- Added VS Code reload instructions to AGENTS.md
+
 # v1.6.2 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.6.2)
 
 - Added AGENTS.md development instructions
