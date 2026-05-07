@@ -107,7 +107,7 @@ const FALLBACK_CONFIG: LanguageSyntaxConfig = {
 };
 
 function whitespace(count: number) {
-    if (count <= 0) return '';
+    if (count <= 0) { return ''; }
     return new Array(count + 1).join(' ');
 }
 
@@ -598,6 +598,14 @@ export class Formatter {
     }
 
     protected format(range: LineRange): string[] {
+        const onlyComments = range.infos.every(info => {
+            const nonWhitespace = info.tokens.filter(t => t.type !== TokenType.Whitespace);
+            return nonWhitespace.length === 1 && nonWhitespace[0].type === TokenType.Comment;
+        });
+        if (onlyComments) {
+            return range.infos.map(info => info.line.text);
+        }
+
           // 0. Remove indentatioin, and trailing whitespace
         let   indentation = '';
         let   anchorLine  = range.infos[0];
