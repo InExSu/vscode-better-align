@@ -1,24 +1,24 @@
 import * as vscode from 'vscode';
 
 enum TokenType {
-    Invalid = 'Invalid',
-    Word = 'Word',
-    Assignment = 'Assignment', // = += -= *= /= %= ~= |= ^= .= :=
-    Arrow = 'Arrow', // =>
-    Block = 'Block', // {} [] ()
-    PartialBlock = 'PartialBlock', // { [ (
-    EndOfBlock = 'EndOfBlock', // } ] )
-    String = 'String',
+    Invalid       = 'Invalid',
+    Word          = 'Word',
+    Assignment    = 'Assignment',      // = += -= *= /= %= ~= |= ^= .= :=
+    Arrow         = 'Arrow',           // =>
+    Block         = 'Block',           // {} [] ()
+    PartialBlock  = 'PartialBlock',    // { [ (
+    EndOfBlock    = 'EndOfBlock',      // } ] )
+    String        = 'String',
     PartialString = 'PartialString',
-    Comment = 'Comment',
-    Whitespace = 'Whitespace',
-    Colon = 'Colon',
-    Comma = 'Comma',
-    CommaAsWord = 'CommaAsWord',
-    Insertion = 'Insertion',
-    Spaceship = 'Spaceship', // <=>
-    PHPShortEcho = 'PHPShortEcho', // <?=
-    From = 'From', // from (import keyword)
+    Comment       = 'Comment',
+    Whitespace    = 'Whitespace',
+    Colon         = 'Colon',
+    Comma         = 'Comma',
+    CommaAsWord   = 'CommaAsWord',
+    Insertion     = 'Insertion',
+    Spaceship     = 'Spaceship',       // <=>
+    PHPShortEcho  = 'PHPShortEcho',    // <?=
+    From          = 'From',            // from (import keyword)
 }
 
 interface Token {
@@ -28,91 +28,92 @@ interface Token {
 
 interface BlockComment {
     start: string;
-    end: string;
+    end  : string;
 }
 
 interface LanguageSyntaxConfig {
-    lineComments: string[];
+    lineComments : string[];
     blockComments: BlockComment[];
 }
 
 export interface LineInfo {
-    line: vscode.TextLine;
+    line          : vscode.TextLine;
     sgfntTokenType: TokenType;
-    sgfntTokens: TokenType[];
-    tokens: Token[];
+    sgfntTokens   : TokenType[];
+    tokens        : Token[];
 }
 
 export interface LineRange {
     anchor: number;
-    infos: LineInfo[];
+    infos : LineInfo[];
 }
 
-const REG_WS = /\s/;
+const REG_WS            = /\s/;
 const BRACKET_PAIR: any = {
     '{': '}',
     '[': ']',
     '(': ')',
 };
 
-// Default language syntax configurations
+  // Default language syntax configurations
 const DEFAULT_LANGUAGE_CONFIGS: { [languageId: string]: LanguageSyntaxConfig } = {
-    bash: { lineComments: ['#'], blockComments: [] },
-    c: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
-    clojure: { lineComments: [';'], blockComments: [] },
-    cpp: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
-    csharp: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
-    css: { lineComments: [], blockComments: [{ start: '/*', end: '*/' }] },
-    dockerfile: { lineComments: ['#'], blockComments: [] },
-    elm: { lineComments: ['--'], blockComments: [{ start: '{-', end: '-}' }] },
-    fish: { lineComments: ['#'], blockComments: [] },
-    go: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
-    haskell: { lineComments: ['--'], blockComments: [{ start: '{-', end: '-}' }] },
-    html: { lineComments: [], blockComments: [{ start: '<!--', end: '-->' }] },
-    ini: { lineComments: ['#', ';'], blockComments: [] },
-    java: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
-    javascript: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
-    julia: { lineComments: ['#'], blockComments: [{ start: '#=', end: '=#' }] },
-    kotlin: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
-    less: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
-    lisp: { lineComments: [';'], blockComments: [] },
-    lua: { lineComments: ['--'], blockComments: [{ start: '--[[', end: ']]' }] },
-    makefile: { lineComments: ['#'], blockComments: [] },
-    matlab: { lineComments: ['%'], blockComments: [{ start: '%{', end: '%}' }] },
-    perl: { lineComments: ['#'], blockComments: [] },
-    php: { lineComments: ['//', '#'], blockComments: [{ start: '/*', end: '*/' }] },
-    powershell: { lineComments: ['#'], blockComments: [] },
-    python: { lineComments: ['#'], blockComments: [] },
-    r: { lineComments: ['#'], blockComments: [] },
-    ruby: { lineComments: ['#'], blockComments: [] },
-    rust: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
-    scala: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
-    scheme: { lineComments: [';'], blockComments: [] },
-    scss: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
+    bash       : { lineComments: ['#'], blockComments: [] },
+    c          : { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
+    clojure    : { lineComments: [';'], blockComments: [] },
+    cpp        : { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
+    csharp     : { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
+    css        : { lineComments: [], blockComments: [{ start: '/*', end: '*/' }] },
+    dockerfile : { lineComments: ['#'], blockComments: [] },
+    elm        : { lineComments: ['--'], blockComments: [{ start: '{-', end: '-}' }] },
+    fish       : { lineComments: ['#'], blockComments: [] },
+    go         : { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
+    haskell    : { lineComments: ['--'], blockComments: [{ start: '{-', end: '-}' }] },
+    html       : { lineComments: [], blockComments: [{ start: '<!--', end: '-->' }] },
+    ini        : { lineComments: ['#', ';'], blockComments: [] },
+    java       : { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
+    javascript : { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
+    julia      : { lineComments: ['#'], blockComments: [{ start: '#=', end: '=#' }] },
+    kotlin     : { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
+    less       : { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
+    lisp       : { lineComments: [';'], blockComments: [] },
+    lua        : { lineComments: ['--'], blockComments: [{ start: '--[[', end: ']]' }] },
+    makefile   : { lineComments: ['#'], blockComments: [] },
+    matlab     : { lineComments: ['%'], blockComments: [{ start: '%{', end: '%}' }] },
+    perl       : { lineComments: ['#'], blockComments: [] },
+    php        : { lineComments: ['//', '#'], blockComments: [{ start: '/*', end: '*/' }] },
+    powershell : { lineComments: ['#'], blockComments: [] },
+    python     : { lineComments: ['#'], blockComments: [] },
+    r          : { lineComments: ['#'], blockComments: [] },
+    ruby       : { lineComments: ['#'], blockComments: [] },
+    rust       : { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
+    scala      : { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
+    scheme     : { lineComments: [';'], blockComments: [] },
+    scss       : { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
     shellscript: { lineComments: ['#'], blockComments: [] },
-    sql: { lineComments: ['--'], blockComments: [{ start: '/*', end: '*/' }] },
-    swift: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
-    toml: { lineComments: ['#'], blockComments: [] },
-    typescript: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
-    vim: { lineComments: ['"'], blockComments: [] },
-    xml: { lineComments: [], blockComments: [{ start: '<!--', end: '-->' }] },
-    yaml: { lineComments: ['#'], blockComments: [] },
-    zsh: { lineComments: ['#'], blockComments: [] },
+    sql        : { lineComments: ['--'], blockComments: [{ start: '/*', end: '*/' }] },
+    swift      : { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
+    toml       : { lineComments: ['#'], blockComments: [] },
+    typescript : { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
+    vim        : { lineComments: ['"'], blockComments: [] },
+    xml        : { lineComments: [], blockComments: [{ start: '<!--', end: '-->' }] },
+    yaml       : { lineComments: ['#'], blockComments: [] },
+    zsh        : { lineComments: ['#'], blockComments: [] },
 };
 
-// Fallback configuration for unknown languages
+  // Fallback configuration for unknown languages
 const FALLBACK_CONFIG: LanguageSyntaxConfig = {
-    lineComments: ['//'],
+    lineComments : ['//'],
     blockComments: [{ start: '/*', end: '*/' }]
 };
 
 function whitespace(count: number) {
+    if (count <= 0) return '';
     return new Array(count + 1).join(' ');
 }
 
 export class Formatter {
-    /* Align:
-     *   operators = += -= *= /= :
+      /* Align:
+     * operators =  +=  -=  *=  /= :
      *   trailling comment
      *   preceding comma
      * Ignore anything inside a quote, comment, or block
@@ -120,22 +121,22 @@ export class Formatter {
     public process(editor: vscode.TextEditor): void {
         this.editor = editor;
 
-        // Get line ranges
+          // Get line ranges
         const ranges = this.getLineRanges(editor);
 
-        // Format
+          // Format
         let formatted: string[][] = [];
         for (let range of ranges) {
             formatted.push(this.format(range));
         }
 
-        // Apply
+          // Apply
         editor.edit((editBuilder) => {
             for (let i = 0; i < ranges.length; ++i) {
-                var infos = ranges[i].infos;
-                var lastline = infos[infos.length - 1].line;
-                var location = new vscode.Range(infos[0].line.lineNumber, 0, lastline.lineNumber, lastline.text.length);
-                const eol = editor.document.eol === vscode.EndOfLine.LF ? '\n' : '\r\n';
+                var   infos    = ranges[i].infos;
+                var   lastline = infos[infos.length - 1].line;
+                var   location = new vscode.Range(infos[0].line.lineNumber, 0, lastline.lineNumber, lastline.text.length);
+                const eol      = editor.document.eol === vscode.EndOfLine.LF ? '\n' : '\r\n';
                 const replaced = formatted[i].join(eol);
                 if (editor.document.getText(location) === replaced) {
                     continue;
@@ -150,20 +151,20 @@ export class Formatter {
     protected getLineRanges(editor: vscode.TextEditor): LineRange[] {
         var ranges: LineRange[] = [];
         editor.selections.forEach((sel) => {
-            const indentBase = this.getConfig().get('indentBase', 'firstline') as string;
+            const indentBase               = this.getConfig().get('indentBase', 'firstline') as string;
             const importantIndent: boolean = indentBase === 'dontchange';
 
             let res: LineRange;
             if (sel.isSingleLine) {
-                // If this selection is single line. Look up and down to search for the similar neighbour
+                  // If this selection is single line. Look up and down to search for the similar neighbour
                 ranges.push(this.narrow(0, editor.document.lineCount - 1, sel.active.line, importantIndent));
             } else {
-                // Otherwise, narrow down the range where to align
+                  // Otherwise, narrow down the range where to align
                 let start = sel.start.line;
-                let end = sel.end.line;
+                let end   = sel.end.line;
 
                 while (true) {
-                    res = this.narrow(start, end, start, importantIndent);
+                        res      = this.narrow(start, end, start, importantIndent);
                     let lastLine = res.infos[res.infos.length - 1];
 
                     if (lastLine.line.lineNumber > end) {
@@ -186,7 +187,7 @@ export class Formatter {
     }
 
     protected getConfig() {
-        let defaultConfig = vscode.workspace.getConfiguration('betterAlign');
+        let defaultConfig   = vscode.workspace.getConfiguration('betterAlign');
         let langConfig: any = null;
 
         try {
@@ -208,48 +209,48 @@ export class Formatter {
     }
 
     protected getLanguageConfig(): LanguageSyntaxConfig {
-        const languageId = this.editor.document.languageId;
-        const config = this.getConfig();
+        const languageId          = this.editor.document.languageId;
+        const config              = this.getConfig();
         const userLanguageConfigs = config.get('languageConfigs', {}) as { [key: string]: LanguageSyntaxConfig };
 
-        // User override takes priority
+          // User override takes priority
         if (userLanguageConfigs[languageId]) {
             return userLanguageConfigs[languageId];
         }
 
-        // Use default config for known languages
+          // Use default config for known languages
         if (DEFAULT_LANGUAGE_CONFIGS[languageId]) {
             return DEFAULT_LANGUAGE_CONFIGS[languageId];
         }
 
-        // Fallback for unknown languages
+          // Fallback for unknown languages
         return FALLBACK_CONFIG;
     }
 
     protected tokenize(line: number): LineInfo {
-        let textline = this.editor.document.lineAt(line);
-        let text = textline.text;
-        let pos = 0;
+        let textline     = this.editor.document.lineAt(line);
+        let text         = textline.text;
+        let pos          = 0;
         let lt: LineInfo = {
-            line: textline,
+            line          : textline,
             sgfntTokenType: TokenType.Invalid,
-            sgfntTokens: [],
-            tokens: [],
+            sgfntTokens   : [],
+            tokens        : [],
         };
 
         let lastTokenType = TokenType.Invalid;
         let tokenStartPos = -1;
 
         while (pos < text.length) {
-            let char = text.charAt(pos);
-            let next = text.charAt(pos + 1);
+            let char  = text.charAt(pos);
+            let next  = text.charAt(pos + 1);
             let third = text.charAt(pos + 2);
 
             let currTokenType: TokenType;
 
             let nextSeek = 1;
 
-            // Tokens order are important
+              // Tokens order are important
             if (char.match(REG_WS)) {
                 currTokenType = TokenType.Whitespace;
             } else if (char === '"' || char === "'" || char === '`') {
@@ -262,33 +263,33 @@ export class Formatter {
                 currTokenType = TokenType.Comment;
             } else if (char === ',') {
                 if (lt.tokens.length === 0 || (lt.tokens.length === 1 && lt.tokens[0].type === TokenType.Whitespace)) {
-                    currTokenType = TokenType.CommaAsWord; // Comma-first style
+                    currTokenType = TokenType.CommaAsWord;  // Comma-first style
                 } else {
                     currTokenType = TokenType.Comma;
                 }
             } else if (char === '<' && next === '=' && third === '>') {
                 currTokenType = TokenType.Spaceship;
-                nextSeek = 3;
+                nextSeek      = 3;
             } else if (char === '<' && next === '?' && third === '=') {
                 currTokenType = TokenType.PHPShortEcho;
-                nextSeek = 3;
+                nextSeek      = 3;
             } else if (char === '=' && next === '>') {
                 currTokenType = TokenType.Arrow;
-                nextSeek = 2;
+                nextSeek      = 2;
             } else if (
-                // Currently we support only known operators,
-                // formatters will not work for unknown operators, we should find a way to support all operators.
-                // Math operators
+                  // Currently we support only known operators,
+                  // formatters will not work for unknown operators, we should find a way to support all operators.
+                  // Math operators
                 (char === '+' ||
                     char === '-' ||
                     char === '*' ||
                     char === '/' ||
-                    char === '%' || // FIXME: Find a way to work with the `**` operator
-                    // Bitwise operators
+                    char === '%' ||  // FIXME: Find a way to work with the `**` operator
+                      // Bitwise operators
                     char === '~' ||
                     char === '|' ||
-                    char === '^' || // FIXME: Find a way to work with the `<<` and `>>` bitwise operators
-                    // Other operators
+                    char === '^' ||  // FIXME: Find a way to work with the `<<` and `>>` bitwise operators
+                      // Other operators
                     char === '.' ||
                     char === ':' ||
                     char === '!' ||
@@ -297,12 +298,12 @@ export class Formatter {
                 next === '='
             ) {
                 currTokenType = TokenType.Assignment;
-                nextSeek = third === '=' ? 3 : 2;
+                nextSeek      = third === '=' ? 3 : 2;
             } else if (char === '=' && next !== '=') {
                 currTokenType = TokenType.Assignment;
             } else if (char === ':' && next === ':') {
                 currTokenType = TokenType.Word;
-                nextSeek = 2;
+                nextSeek      = 2;
             } else if (char === ':' && next !== ':' || (char === '?' && next === ':')) {
                 currTokenType = TokenType.Colon;
             } else {
@@ -332,7 +333,7 @@ export class Formatter {
                 }
             }
 
-            // Skip to end of string
+              // Skip to end of string
             if (currTokenType === TokenType.String) {
                 ++pos;
                 while (pos < text.length) {
@@ -347,7 +348,7 @@ export class Formatter {
                 }
             }
 
-            // Skip to end of block
+              // Skip to end of block
             if (currTokenType === TokenType.Block) {
                 ++pos;
                 let bracketCount = 1;
@@ -367,18 +368,18 @@ export class Formatter {
                 if (pos >= text.length) {
                     lastTokenType = TokenType.PartialBlock;
                 }
-                // -1 then + nextSeek so keep pos not change in next loop
-                // or we will lost symbols like "] } )"
+                  // -1 then + nextSeek so keep pos not change in next loop
+                  // or we will lost symbols like "] } )"
             }
 
-            // Handle comment consumption
+              // Handle comment consumption
             if (currTokenType === TokenType.Comment) {
                 const commentResult = this.consumeComment(text, pos);
-                pos = commentResult.endPos;
+                      pos           = commentResult.endPos;
                 if (commentResult.isPartial) {
                     lastTokenType = TokenType.Comment;
                 } else if (commentResult.isBlock && commentResult.endPos < text.length) {
-                    // Block comment ended, continue tokenizing
+                      // Block comment ended, continue tokenizing
                     currTokenType = TokenType.Word;
                 }
                 continue;
@@ -394,7 +395,7 @@ export class Formatter {
             });
         }
 
-        // Post-process: detect `from` keyword and reclassify as From token (JS/TS only)
+          // Post-process: detect `from` keyword and reclassify as From token (JS/TS only)
         const langId = this.editor.document.languageId;
         if (langId === 'javascript' || langId === 'javascriptreact' || langId === 'typescript' || langId === 'typescriptreact') {
             for (let token of lt.tokens) {
@@ -413,11 +414,11 @@ export class Formatter {
     protected isCommentStart(text: string, pos: number): boolean {
         const langConfig = this.getLanguageConfig();
 
-        // Check line comments (sorted by length descending for longest match first)
+          // Check line comments (sorted by length descending for longest match first)
         const sortedLineComments = [...langConfig.lineComments].sort((a, b) => b.length - a.length);
         for (const comment of sortedLineComments) {
             if (text.substring(pos, pos + comment.length) === comment) {
-                // Special case: don't treat '//' in '://' as comment (preserve existing behavior)
+                  // Special case: don't treat '//' in '://' as comment (preserve existing behavior)
                 if (comment === '//' && pos > 0 && text.charAt(pos - 1) === ':') {
                     continue;
                 }
@@ -425,7 +426,7 @@ export class Formatter {
             }
         }
 
-        // Check block comments (sorted by length descending for longest match first)
+          // Check block comments (sorted by length descending for longest match first)
         const sortedBlockComments = [...langConfig.blockComments].sort((a, b) => b.start.length - a.start.length);
         for (const comment of sortedBlockComments) {
             if (text.substring(pos, pos + comment.start.length) === comment.start) {
@@ -439,24 +440,24 @@ export class Formatter {
     protected consumeComment(text: string, pos: number): { endPos: number; isPartial: boolean; isBlock: boolean } {
         const langConfig = this.getLanguageConfig();
 
-        // Check line comments first (sorted by length descending)
+          // Check line comments first (sorted by length descending)
         const sortedLineComments = [...langConfig.lineComments].sort((a, b) => b.length - a.length);
         for (const comment of sortedLineComments) {
             if (text.substring(pos, pos + comment.length) === comment) {
-                // Special case: don't treat '//' in '://' as comment
+                  // Special case: don't treat '//' in '://' as comment
                 if (comment === '//' && pos > 0 && text.charAt(pos - 1) === ':') {
                     continue;
                 }
-                // Line comment: consume to end of line
+                  // Line comment: consume to end of line
                 return { endPos: text.length, isPartial: false, isBlock: false };
             }
         }
 
-        // Check block comments (sorted by length descending)
+          // Check block comments (sorted by length descending)
         const sortedBlockComments = [...langConfig.blockComments].sort((a, b) => b.start.length - a.start.length);
         for (const comment of sortedBlockComments) {
             if (text.substring(pos, pos + comment.start.length) === comment.start) {
-                // Block comment: find the end
+                  // Block comment: find the end
                 let searchPos = pos + comment.start.length;
                 while (searchPos < text.length) {
                     if (text.substring(searchPos, searchPos + comment.end.length) === comment.end) {
@@ -464,12 +465,12 @@ export class Formatter {
                     }
                     searchPos++;
                 }
-                // Didn't find end - partial block comment
+                  // Didn't find end - partial block comment
                 return { endPos: text.length, isPartial: true, isBlock: true };
             }
         }
 
-        // Shouldn't reach here if isCommentStart was called first
+          // Shouldn't reach here if isCommentStart was called first
         return { endPos: pos, isPartial: false, isBlock: false };
     }
 
@@ -504,7 +505,7 @@ export class Formatter {
 
     protected arrayAnd(array1: TokenType[], array2: TokenType[]): TokenType[] {
         var res: TokenType[] = [];
-        var map: any = {};
+        var map: any         = {};
         for (var i = 0; i < array1.length; ++i) {
             map[array1[i]] = true;
         }
@@ -516,7 +517,7 @@ export class Formatter {
         return res;
     }
 
-    /*
+      /*
      * Determine which blocks of code needs to be align.
      * 1. Empty lines is the boundary of a block.
      * 2. If user selects something, blocks are always within selection,
@@ -526,7 +527,7 @@ export class Formatter {
      */
     protected narrow(start: number, end: number, anchor: number, importantIndent: boolean): LineRange {
         let anchorToken = this.tokenize(anchor);
-        let range = { anchor, infos: [anchorToken] };
+        let range       = { anchor, infos: [anchorToken] };
 
         let tokenTypes = anchorToken.sgfntTokens;
 
@@ -597,10 +598,10 @@ export class Formatter {
     }
 
     protected format(range: LineRange): string[] {
-        // 0. Remove indentatioin, and trailing whitespace
-        let indentation = '';
-        let anchorLine = range.infos[0];
-        const config = this.getConfig();
+          // 0. Remove indentatioin, and trailing whitespace
+        let   indentation = '';
+        let   anchorLine  = range.infos[0];
+        const config      = this.getConfig();
 
         if ((config.get('indentBase', 'firstline') as string) === 'activeline') {
             for (let info of range.infos) {
@@ -614,21 +615,21 @@ export class Formatter {
             return [];
         }
 
-        // Get indentation from multiple lines
-        /*
-            fasdf   !== 1231321;    => indentation = 0
+          // Get indentation from multiple lines
+          /*
+            fasdf !== 1231321;    => indentation = 0
         var abc   === 123;
 
-            test := 1               => indentation = 4
+            test    := 1               => indentation = 4
             teastas := 2
 
         */
         let firstNonSpaceCharIndex = 0;
-        let min = Infinity;
-        let whiteSpaceType = ' ';
+        let min                    = Infinity;
+        let whiteSpaceType         = ' ';
         for (let info of range.infos) {
             firstNonSpaceCharIndex = info.line.text.search(/\S/);
-            min = Math.min(min, firstNonSpaceCharIndex);
+            min                    = Math.min(min, firstNonSpaceCharIndex);
             if (info.tokens[0].type === TokenType.Whitespace) {
                 whiteSpaceType = info.tokens[0].text[0] ?? ' ';
                 info.tokens.shift();
@@ -638,21 +639,21 @@ export class Formatter {
             }
         }
         indentation = whiteSpaceType.repeat(min);
-        /* 1. Special treatment for Word-Word-Operator ( e.g. var abc = )
-        For example, without:
+          /* 1. Special treatment for Word-Word-Operator ( e.g. var abc = )
+        For example, without: 
 
-        var abc === 123;                var abc     === 123;
-        var fsdafsf === 32423,  =>      var fsdafsf === 32423,
-        fasdf !== 1231321;              fasdf       !== 1231321;
+        var abc     === 123;                var abc === 123;
+        var fsdafsf === 32423  ,                       =>      var fsdafsf === 32423,
+            fasdf   !== 1231321;              fasdf !== 1231321;
 
-        with this :
+        with this: 
 
-        var abc === 123;                var abc     === 123;
-        var fsdafsf === 32423,  =>      var fsdafsf === 32423,
-        fasdf !== 1231321;                  fasdf   !== 1231321;
+        var abc     === 123;                var abc     === 123;
+        var fsdafsf === 32423  ,                           =>      var fsdafsf === 32423,
+            fasdf   !== 1231321;                  fasdf !== 1231321;
         */
 
-        // Calculate first word's length
+          // Calculate first word's length
         let firstWordLength = 0;
         for (let info of range.infos) {
             let count = 0;
@@ -661,7 +662,7 @@ export class Formatter {
                     count = -count;
                     break;
                 }
-                // Skip calculate word length before block, See https://github.com/chouzz/vscode-better-align/issues/57
+                  // Skip calculate word length before block, See https://github.com/chouzz/vscode-better-align/issues/57
                 if (token.type === TokenType.Block) {
                     continue;
                 }
@@ -675,7 +676,7 @@ export class Formatter {
             }
         }
 
-        // Add white space after the first word
+          // Add white space after the first word
         if (firstWordLength > 0) {
             let wordSpace: Token = {
                 type: TokenType.Insertion,
@@ -718,7 +719,7 @@ export class Formatter {
             }
         }
 
-        // 2. Remove whitespace surrounding operator ( comma in the middle of the line is also consider an operator ).
+          // 2. Remove whitespace surrounding operator ( comma in the middle of the line is also consider an operator ).
         for (let info of range.infos) {
             let i = 1;
             while (i < info.tokens.length) {
@@ -735,18 +736,18 @@ export class Formatter {
             }
         }
 
-        // 3. Align
-        const configOP = config.get('operatorPadding') as string;
-        const configWS = config.get('surroundSpace');
-        const stt = TokenType[range.infos[0].sgfntTokenType].toLowerCase();
+          // 3. Align
+        const configOP       = config.get('operatorPadding') as string;
+        const configWS       = config.get('surroundSpace');
+        const stt            = TokenType[range.infos[0].sgfntTokenType].toLowerCase();
         const configDef: any = {
-            colon: [0, 1],
+            colon     : [0, 1],
             assignment: [1, 1],
-            comment: 2,
-            arrow: [1, 1],
-            from: [1, 1],
+            comment   : 2,
+            arrow     : [1, 1],
+            from      : [1, 1],
         };
-        const configSTT = configWS[stt] || configDef[stt];
+        const configSTT     = configWS[stt] || configDef[stt];
         const configComment = configWS['comment'] || configDef['comment'];
 
         const rangeSize = range.infos.length;
@@ -758,17 +759,17 @@ export class Formatter {
         let result = new Array<string>(rangeSize);
         result.fill(indentation);
 
-        let exceed = 0; // Tracks how many line have reached to the end.
+        let exceed             = 0;      // Tracks how many line have reached to the end.
         let hasTrallingComment = false;
-        let resultSize = 0;
+        let resultSize         = 0;
 
         while (exceed < rangeSize) {
             let operatorSize = 0;
 
-            // First pass: for each line, scan until we reach to the next operator
+              // First pass: for each line, scan until we reach to the next operator
             for (let l = 0; l < rangeSize; ++l) {
-                let i = column[l];
-                let info = range.infos[l];
+                let i         = column[l];
+                let info      = range.infos[l];
                 let tokenSize = info.tokens.length;
 
                 if (i === -1) {
@@ -778,7 +779,7 @@ export class Formatter {
                 let end = tokenSize;
                 let res = result[l];
 
-                // Bail out if we reach to the trailing comment
+                  // Bail out if we reach to the trailing comment
                 if (tokenSize > 1 && info.tokens[tokenSize - 1].type === TokenType.Comment) {
                     hasTrallingComment = true;
                     if (tokenSize > 2 && info.tokens[tokenSize - 2].type === TokenType.Whitespace) {
@@ -790,7 +791,7 @@ export class Formatter {
 
                 for (; i < end; ++i) {
                     let token = info.tokens[i];
-                    // Vertical align will occur at significant operator or subsequent comma
+                      // Vertical align will occur at significant operator or subsequent comma
                     if (token.type === info.sgfntTokenType || (token.type === TokenType.Comma && i !== 0)) {
                         operatorSize = Math.max(operatorSize, token.text.length);
                         break;
@@ -813,7 +814,7 @@ export class Formatter {
                 }
             }
 
-            // Second pass: align
+              // Second pass: align
             for (let l = 0; l < rangeSize; ++l) {
                 let i = column[l];
                 if (i === -1) {
@@ -821,7 +822,7 @@ export class Formatter {
                 }
 
                 let info = range.infos[l];
-                let res = result[l];
+                let res  = result[l];
 
                 let op = info.tokens[i].text;
                 if (op.length < operatorSize) {
@@ -840,17 +841,17 @@ export class Formatter {
                 if (info.tokens[i].type === TokenType.Comma) {
                     res += op;
                     if (i < info.tokens.length - 1) {
-                        res += padding + ' '; // Ensure there's one space after comma.
+                        res += padding + ' ';  // Ensure there's one space after comma.
                     }
-                    // Skip if there is only comment type without any operators.
+                      // Skip if there is only comment type without any operators.
                 } else if (info.tokens.length === 1 && info.tokens[0].type === TokenType.Comment) {
                     exceed++;
                     break;
                 } else {
                     if (configSTT[0] < 0) {
-                        // operator will stick with the leftside word
+                          // operator will stick with the leftside word
                         if (configSTT[1] < 0) {
-                            // operator will be aligned, and the sibling token will be connected with the operator
+                              // operator will be aligned, and the sibling token will be connected with the operator
                             let z = res.length - 1;
                             while (z >= 0) {
                                 let ch = res.charAt(z);
@@ -879,9 +880,9 @@ export class Formatter {
             }
         }
 
-        // 4. Align trailing comment
+          // 4. Align trailing comment
         if (configComment < 0) {
-            // It means user don't want to align trailing comment.
+              // It means user don't want to align trailing comment.
             for (let l = 0; l < rangeSize; ++l) {
                 let info = range.infos[l];
                 for (let token of info.tokens) {
@@ -896,7 +897,7 @@ export class Formatter {
             for (let l = 0; l < rangeSize; ++l) {
                 let info = range.infos[l];
                 if (info.tokens.length) {
-                    let res = result[l];
+                    let res   = result[l];
                     result[l] = res + whitespace(resultSize - res.length + configComment) + info.tokens.pop()?.text;
                 }
             }
