@@ -1,3 +1,8 @@
+# v1.6.6 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.6.6)
+
+- Added Comparison token type (>=, <=, !=, ==)
+- Switch-based classifier replaces nested ifs
+
 # v1.6.5 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.6.5)
 
 - Fixed comparison operators >=, <=, != being split by alignment
