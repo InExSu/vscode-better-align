@@ -331,7 +331,7 @@ export class Formatter {
         for(const info of range.infos) {
             let i = 1
             while(i < info.tokens.length) {
-                if(info.tokens[i].type === info.sgfntTokenType || info.tokens[i].type === TokenType.Comma) {
+                if(info.tokens[i].type === info.sgfntTokenType) {
                     if(info.tokens[i - 1].type === TokenType.Whitespace) {
                         info.tokens.splice(i - 1, 1)
                         --i
@@ -436,7 +436,7 @@ export class Formatter {
                 if(info.tokens[i].type === TokenType.Comma) {
                     res += op
                     if(i < info.tokens.length - 1) {
-                        res += padding + ' '
+                        res += ' '
                     }
                 } else if(info.tokens.length === 1 && info.tokens[0].type === TokenType.Comment) {
                     exceed++

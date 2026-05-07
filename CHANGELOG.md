@@ -1,3 +1,7 @@
+# v1.5.1 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.5.1)
+
+- Fix comma alignment issue (no extra spaces before commas on repeated format)
+
 # v1.5.0 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.5.0)
 
 - Fix colon alignment (all `:` now align to same column)

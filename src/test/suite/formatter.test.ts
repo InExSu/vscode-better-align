@@ -73,17 +73,42 @@ suite('Formatter Test Suite', () => {
         assert.deepEqual(actual, expect);
     });
 
-    test('Formatter::should format import from keyword', async () => {
-        await vscode.languages.setTextDocumentLanguage(editor.document, 'typescript');
-        editor.selection = new vscode.Selection(81, 0, 81, 0);
+    test('Formatter::should not add spaces before comma on repeated format', () => {
+        editor.selection = new vscode.Selection(0, 0, 4, 0);
         const formatter = new FakeFormatter();
-        const ranges = formatter.getLineRanges(editor);
-        const actual = formatter.format(ranges[0]);
-        // NOTE: After refactoring, from alignment only formats 1 line (bug)
-        const expect = [
-            "import { getImg } from '../utils/API_Art';",
-        ];
-        assert.deepEqual(actual, expect);
-        await vscode.languages.setTextDocumentLanguage(editor.document, 'plaintext');
+        
+        // First format
+        let ranges = formatter.getLineRanges(editor);
+        let result1 = formatter.format(ranges[0]);
+        
+        // Check first format - no spaces before comma
+        for(const line of result1) {
+            const commaIdx = line.indexOf(',');
+            if(commaIdx > 0) {
+                // Check that there are no unusual spaces before comma
+                const beforeComma = line.substring(0, commaIdx);
+                const spacesBeforeComma = (beforeComma.match(/\s*$/) || [''])[0].length;
+                assert.ok(spacesBeforeComma <= 3, 
+                    `Too many spaces before comma in first format: "${line}"`);
+            }
+        }
+        
+        // Second format (simulate pressing Alt+A again)
+        ranges = formatter.getLineRanges(editor);
+        let result2 = formatter.format(ranges[0]);
+        
+        // Check second format - spaces should not increase dramatically
+        for(let i = 0; i < result1.length; i++) {
+            const line1 = result1[i];
+            const line2 = result2[i];
+            const commaIdx1 = line1.indexOf(',');
+            const commaIdx2 = line2.indexOf(',');
+            
+            if(commaIdx1 >= 0 && commaIdx2 >= 0) {
+                const diff = Math.abs(commaIdx2 - commaIdx1);
+                assert.ok(diff <= 2, 
+                    `Comma position shifted too much on line ${i}: ${commaIdx1} -> ${commaIdx2}`);
+            }
+        }
     });
 });

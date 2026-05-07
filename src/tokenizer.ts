@@ -14,22 +14,22 @@ import * as vscode from 'vscode'
 // ---------------------------------------------------------------------------
 
 const enum TokenizerState {
-    Default,        // Обычный текст — смотрим на следующий символ
-    InString,       // Внутри строки (', ", `)
-    InBlock,        // Внутри блока ({}, [], ())
-    InLineComment,  // После маркера строкового комментария
-    InBlockComment, // Внутри блочного комментария
+    Default        ,   // Обычный текст — смотрим на следующий символ
+    InString       ,   // Внутри строки (', ", `)
+    InBlock        ,   // Внутри блока ({}, [], ())
+    InLineComment  ,   // После маркера строкового комментария
+    InBlockComment,    // Внутри блочного комментария
 }
 
 interface ScanState {
-    state       : TokenizerState
-    quoteChar   : string   // для InString: начальный символ кавычки
-    blockOpen   : string   // для InBlock: открывающий символ
-    blockDepth  : number   // глубина вложенных блоков
-    blockEnd    : string   // для InBlockComment: закрывающая последовательность
-    tokenStart  : number   // позиция начала текущего токена
-    lastType    : TokenType
-    partial     : boolean  // незакрытый блок или строка
+    state: TokenizerState
+    quoteChar: string          // для InString: начальный символ кавычки
+    blockOpen: string          // для InBlock: открывающий символ
+    blockDepth: number          // глубина вложенных блоков
+    blockEnd: string          // для InBlockComment: закрывающая последовательность
+    tokenStart: number          // позиция начала текущего токена
+    lastType: TokenType
+    partial: boolean         // незакрытый блок или строка
 }
 
 // ---------------------------------------------------------------------------
@@ -56,7 +56,7 @@ function matchLineComment(
     for(const marker of sortedByLengthDesc(config.lineComments)) {
         if(text.startsWith(marker, pos)) {
             // Не трактуем '//' в '://' как комментарий
-            if(marker === '//' && pos > 0 && text[pos - 1] === ':') {continue}
+            if(marker === '//' && pos > 0 && text[pos - 1] === ':') { continue }
             return marker
         }
     }
@@ -69,7 +69,7 @@ function matchBlockComment(
     config: LanguageSyntaxConfig,
 ): string | null {
     for(const bc of sortedByLengthDesc(config.blockComments)) {
-        if(text.startsWith(bc.start, pos)) {return bc.end}
+        if(text.startsWith(bc.start, pos)) { return bc.end }
     }
     return null
 }
@@ -79,28 +79,23 @@ function matchBlockComment(
 function classifyChar(
     text: string, pos: number,
     config: LanguageSyntaxConfig,
-    leadingTokenCount: number, // кол-во токенов до этой позиции (для CommaAsWord)
+    leadingTokenCount: number,                              // кол-во токенов до этой позиции (для CommaAsWord)
 ): { type: TokenType; seek: number } {
-    const char  = text[pos]     ?? ''
-    const next  = text[pos + 1] ?? ''
+    const char = text[pos] ?? ''
+    const next = text[pos + 1] ?? ''
     const third = text[pos + 2] ?? ''
 
-    if(/\s/.test(char)) {return { type: TokenType.Whitespace, seek: 1 }}
+    if(/\s/.test(char)) { return { type: TokenType.Whitespace, seek: 1 } }
 
-    if(char === '"' || char === "'" || char === '`')
-        {return { type: TokenType.String, seek: 1 }}
+    if(char === '"' || char === "'" || char === '`') { return { type: TokenType.String, seek: 1 } }
 
-    if(char === '{' || char === '(' || char === '[')
-        {return { type: TokenType.Block, seek: 1 }}
+    if(char === '{' || char === '(' || char === '[') { return { type: TokenType.Block, seek: 1 } }
 
-    if(char === '}' || char === ')' || char === ']')
-        {return { type: TokenType.EndOfBlock, seek: 1 }}
+    if(char === '}' || char === ')' || char === ']') { return { type: TokenType.EndOfBlock, seek: 1 } }
 
-    if(matchLineComment(text, pos, config) !== null)
-        {return { type: TokenType.Comment, seek: 1 }}
+    if(matchLineComment(text, pos, config) !== null) { return { type: TokenType.Comment, seek: 1 } }
 
-    if(matchBlockComment(text, pos, config) !== null)
-        {return { type: TokenType.Comment, seek: 1 }}
+    if(matchBlockComment(text, pos, config) !== null) { return { type: TokenType.Comment, seek: 1 } }
 
     if(char === ',') {
         const isCommaFirst = leadingTokenCount === 0
@@ -108,22 +103,22 @@ function classifyChar(
         return { type: isCommaFirst ? TokenType.CommaAsWord : TokenType.Comma, seek: 1 }
     }
 
-    if(char === '<' && next === '=' && third === '>') {return { type: TokenType.Spaceship,   seek: 3 }}
-    if(char === '<' && next === '?' && third === '=') {return { type: TokenType.PHPShortEcho, seek: 3 }}
-    if(char === '=' && next === '>')                  {return { type: TokenType.Arrow,        seek: 2 }}
+    if(char === '<' && next === '=' && third === '>') { return { type: TokenType.Spaceship, seek: 3 } }
+    if(char === '<' && next === '?' && third === '=') { return { type: TokenType.PHPShortEcho, seek: 3 } }
+    if(char === '=' && next === '>') { return { type: TokenType.Arrow, seek: 2 } }
 
     // Операторы присваивания: +=, -=, *=, /=, %=, ~=, |=, ^=, .=, :=, !=, &=, ==, ===
-    const assignOps = new Set(['+','-','*','/','%','~','|','^','.','!','&','=',':'])
+    const assignOps = new Set(['+', '-', '*', '/', '%', '~', '|', '^', '.', '!', '&', '=', ':'])
     if(assignOps.has(char) && next === '=') {
         const seek = third === '=' ? 3 : 2
         return { type: TokenType.Assignment, seek }
     }
 
-    if(char === '=' && next !== '=') {return { type: TokenType.Assignment, seek: 1 }}
+    if(char === '=' && next !== '=') { return { type: TokenType.Assignment, seek: 1 } }
 
-    if(char === ':' && next === ':') {return { type: TokenType.Word,  seek: 2 }}
-    if(char === ':' && next !== ':') {return { type: TokenType.Colon, seek: 1 }}
-    if(char === '?' && next === ':') {return { type: TokenType.Colon, seek: 1 }}
+    if(char === ':' && next === ':') { return { type: TokenType.Word, seek: 2 } }
+    if(char === ':' && next !== ':') { return { type: TokenType.Colon, seek: 1 } }
+    if(char === '?' && next === ':') { return { type: TokenType.Colon, seek: 1 } }
 
     return { type: TokenType.Word, seek: 1 }
 }
@@ -134,156 +129,156 @@ function classifyChar(
 
 /** Одна итерация автомата. Возвращает новое состояние и, если токен завершён, токен. */
 function transition(
-    text    : string,
-    pos     : number,
-    scan    : ScanState,
-    config  : LanguageSyntaxConfig,
-    tokens  : Token[], // нужен для определения CommaAsWord
+    text: string,
+    pos: number,
+    scan: ScanState,
+    config: LanguageSyntaxConfig,
+    tokens: Token[], // нужен для определения CommaAsWord
 ): { nextPos: number; nextScan: ScanState; emitToken?: Token } {
-    const char  = text[pos]     ?? ''
-    const next  = text[pos + 1] ?? ''
+    const char = text[pos] ?? ''
+    const next = text[pos + 1] ?? ''
 
     switch(scan.state) {
 
-    // -----------------------------------------------------------------------
-    case TokenizerState.InString: {
-        if(char === scan.quoteChar && text[pos - 1] !== '\\') {
-            // Строка закрыта
-            return {
-                nextPos : pos + 1,
-                nextScan: { ...scan, state: TokenizerState.Default, partial: false },
-            }
-        }
-        return { nextPos: pos + 1, nextScan: scan }
-    }
-
-    // -----------------------------------------------------------------------
-    case TokenizerState.InBlock: {
-        const closeChar = BRACKET_PAIR[scan.blockOpen]
-        if(char === scan.blockOpen) {
-            return { nextPos: pos + 1, nextScan: { ...scan, blockDepth: scan.blockDepth + 1 } }
-        }
-        if(char === closeChar && text[pos - 1] !== '\\') {
-            if(scan.blockDepth === 1) {
+        // -----------------------------------------------------------------------
+        case TokenizerState.InString: {
+            if(char === scan.quoteChar && text[pos - 1] !== '\\') {
+                // Строка закрыта
                 return {
-                    nextPos : pos + 1,
-                    nextScan: { ...scan, state: TokenizerState.Default, blockDepth: 0, partial: false },
+                    nextPos: pos + 1,
+                    nextScan: { ...scan, state: TokenizerState.Default, partial: false },
                 }
             }
-            return { nextPos: pos + 1, nextScan: { ...scan, blockDepth: scan.blockDepth - 1 } }
+            return { nextPos: pos + 1, nextScan: scan }
         }
-        return { nextPos: pos + 1, nextScan: scan }
-    }
 
-    // -----------------------------------------------------------------------
-    case TokenizerState.InLineComment: {
-        // Строковый комментарий поглощает всё до конца строки
-        return { nextPos: text.length, nextScan: scan }
-    }
-
-    // -----------------------------------------------------------------------
-    case TokenizerState.InBlockComment: {
-        if(text.startsWith(scan.blockEnd, pos)) {
-            return {
-                nextPos : pos + scan.blockEnd.length,
-                nextScan: { ...scan, state: TokenizerState.Default, partial: false },
+        // -----------------------------------------------------------------------
+        case TokenizerState.InBlock: {
+            const closeChar = BRACKET_PAIR[scan.blockOpen]
+            if(char === scan.blockOpen) {
+                return { nextPos: pos + 1, nextScan: { ...scan, blockDepth: scan.blockDepth + 1 } }
             }
+            if(char === closeChar && text[pos - 1] !== '\\') {
+                if(scan.blockDepth === 1) {
+                    return {
+                        nextPos: pos + 1,
+                        nextScan: { ...scan, state: TokenizerState.Default, blockDepth: 0, partial: false },
+                    }
+                }
+                return { nextPos: pos + 1, nextScan: { ...scan, blockDepth: scan.blockDepth - 1 } }
+            }
+            return { nextPos: pos + 1, nextScan: scan }
         }
-        return { nextPos: pos + 1, nextScan: scan }
-    }
 
-    // -----------------------------------------------------------------------
-    case TokenizerState.Default: {
-        // Определяем тип следующего символа
-        const nonWsTokensBefore = tokens.filter(t => t.type !== TokenType.Whitespace).length
-        const classified        = classifyChar(text, pos, config, nonWsTokensBefore)
+        // -----------------------------------------------------------------------
+        case TokenizerState.InLineComment: {
+            // Строковый комментарий поглощает всё до конца строки
+            return { nextPos: text.length, nextScan: scan }
+        }
 
-        // Если тип сменился — эмитируем накопленный токен, переключаем тип
-        if(classified.type !== scan.lastType && scan.tokenStart !== -1) {
-            const emitToken: Token = {
-                type: scan.lastType,
-                text: text.substring(scan.tokenStart, pos),
-            }
-
-            let nextState = TokenizerState.Default
-            let quoteChar = ''
-            let blockOpen = ''
-            let blockEnd  = ''
-            let partial   = false
-
-            if(classified.type === TokenType.String) {
-                nextState = TokenizerState.InString
-                quoteChar = text[pos]
-            } else if(classified.type === TokenType.Block) {
-                nextState = TokenizerState.InBlock
-                blockOpen = text[pos]
-            } else if(classified.type === TokenType.Comment) {
-                const lineMarker  = matchLineComment(text, pos, config)
-                const blockEndSeq = matchBlockComment(text, pos, config)
-                if(lineMarker !== null) {
-                    nextState = TokenizerState.InLineComment
-                } else if(blockEndSeq !== null) {
-                    nextState = TokenizerState.InBlockComment
-                    blockEnd  = blockEndSeq
+        // -----------------------------------------------------------------------
+        case TokenizerState.InBlockComment: {
+            if(text.startsWith(scan.blockEnd, pos)) {
+                return {
+                    nextPos: pos + scan.blockEnd.length,
+                    nextScan: { ...scan, state: TokenizerState.Default, partial: false },
                 }
             }
-
-            return {
-                nextPos : pos + classified.seek,
-                emitToken,
-                nextScan: {
-                    ...scan,
-                    state     : nextState,
-                    lastType  : classified.type,
-                    tokenStart: pos,
-                    quoteChar,
-                    blockOpen,
-                    blockEnd,
-                    partial,
-                },
-            }
+            return { nextPos: pos + 1, nextScan: scan }
         }
 
-        // Тот же тип или первый токен — просто входим в нужное подсостояние
-        if(scan.tokenStart === -1) {
-            let nextState = TokenizerState.Default
-            let quoteChar = ''
-            let blockOpen = ''
-            let blockEnd  = ''
+        // -----------------------------------------------------------------------
+        case TokenizerState.Default: {
+            // Определяем тип следующего символа
+            const nonWsTokensBefore = tokens.filter(t => t.type !== TokenType.Whitespace).length
+            const classified = classifyChar(text, pos, config, nonWsTokensBefore)
 
-            if(classified.type === TokenType.String) {
-                nextState = TokenizerState.InString
-                quoteChar = text[pos]
-            } else if(classified.type === TokenType.Block) {
-                nextState = TokenizerState.InBlock
-                blockOpen = text[pos]
-            } else if(classified.type === TokenType.Comment) {
-                const lineMarker  = matchLineComment(text, pos, config)
-                const blockEndSeq = matchBlockComment(text, pos, config)
-                if(lineMarker !== null) {
-                    nextState = TokenizerState.InLineComment
-                } else if(blockEndSeq !== null) {
-                    nextState = TokenizerState.InBlockComment
-                    blockEnd  = blockEndSeq
+            // Если тип сменился — эмитируем накопленный токен, переключаем тип
+            if(classified.type !== scan.lastType && scan.tokenStart !== -1) {
+                const emitToken: Token = {
+                    type: scan.lastType,
+                    text: text.substring(scan.tokenStart, pos),
+                }
+
+                let nextState = TokenizerState.Default
+                let quoteChar = ''
+                let blockOpen = ''
+                let blockEnd = ''
+                let partial = false
+
+                if(classified.type === TokenType.String) {
+                    nextState = TokenizerState.InString
+                    quoteChar = text[pos]
+                } else if(classified.type === TokenType.Block) {
+                    nextState = TokenizerState.InBlock
+                    blockOpen = text[pos]
+                } else if(classified.type === TokenType.Comment) {
+                    const lineMarker = matchLineComment(text, pos, config)
+                    const blockEndSeq = matchBlockComment(text, pos, config)
+                    if(lineMarker !== null) {
+                        nextState = TokenizerState.InLineComment
+                    } else if(blockEndSeq !== null) {
+                        nextState = TokenizerState.InBlockComment
+                        blockEnd = blockEndSeq
+                    }
+                }
+
+                return {
+                    nextPos: pos + classified.seek,
+                    emitToken,
+                    nextScan: {
+                        ...scan,
+                        state: nextState,
+                        lastType: classified.type,
+                        tokenStart: pos,
+                        quoteChar,
+                        blockOpen,
+                        blockEnd,
+                        partial,
+                    },
                 }
             }
 
-            return {
-                nextPos : pos + classified.seek,
-                nextScan: {
-                    ...scan,
-                    state     : nextState,
-                    lastType  : classified.type,
-                    tokenStart: pos,
-                    quoteChar,
-                    blockOpen,
-                    blockEnd,
-                },
-            }
-        }
+            // Тот же тип или первый токен — просто входим в нужное подсостояние
+            if(scan.tokenStart === -1) {
+                let nextState = TokenizerState.Default
+                let quoteChar = ''
+                let blockOpen = ''
+                let blockEnd = ''
 
-        return { nextPos: pos + classified.seek, nextScan: scan }
-    }
+                if(classified.type === TokenType.String) {
+                    nextState = TokenizerState.InString
+                    quoteChar = text[pos]
+                } else if(classified.type === TokenType.Block) {
+                    nextState = TokenizerState.InBlock
+                    blockOpen = text[pos]
+                } else if(classified.type === TokenType.Comment) {
+                    const lineMarker = matchLineComment(text, pos, config)
+                    const blockEndSeq = matchBlockComment(text, pos, config)
+                    if(lineMarker !== null) {
+                        nextState = TokenizerState.InLineComment
+                    } else if(blockEndSeq !== null) {
+                        nextState = TokenizerState.InBlockComment
+                        blockEnd = blockEndSeq
+                    }
+                }
+
+                return {
+                    nextPos: pos + classified.seek,
+                    nextScan: {
+                        ...scan,
+                        state: nextState,
+                        lastType: classified.type,
+                        tokenStart: pos,
+                        quoteChar,
+                        blockOpen,
+                        blockEnd,
+                    },
+                }
+            }
+
+            return { nextPos: pos + classified.seek, nextScan: scan }
+        }
 
     } // switch
 }
@@ -305,23 +300,23 @@ const SIGNIFICANT_TYPES = new Set([
 
 /** Токенизирует одну строку текстового редактора. */
 export function tokenizeLine(
-    textLine : vscode.TextLine,
-    config   : LanguageSyntaxConfig,
-    langId   : string,
+    textLine: vscode.TextLine,
+    config: LanguageSyntaxConfig,
+    langId: string,
 ): { tokens: Token[]; sgfntTokens: TokenType[] } {
-    const text   = textLine.text
-    const tokens : Token[] = []
+    const text = textLine.text
+    const tokens: Token[] = []
 
-    let pos  = 0
-    let scan : ScanState = {
-        state     : TokenizerState.Default,
-        quoteChar : '',
-        blockOpen : '',
+    let pos = 0
+    let scan: ScanState = {
+        state: TokenizerState.Default,
+        quoteChar: '',
+        blockOpen: '',
         blockDepth: 0,
-        blockEnd  : '',
+        blockEnd: '',
         tokenStart: -1,
-        lastType  : TokenType.Invalid,
-        partial   : false,
+        lastType: TokenType.Invalid,
+        partial: false,
     }
 
     while(pos < text.length) {
@@ -333,14 +328,14 @@ export function tokenizeLine(
             if(emitted.type === TokenType.Comma) {
                 const nonWs = tokens.filter(t => t.type !== TokenType.Whitespace)
                 if(nonWs.length === 0
-                || (nonWs.length === 1 && nonWs[0].type === TokenType.Whitespace)) {
+                    || (nonWs.length === 1 && nonWs[0].type === TokenType.Whitespace)) {
                     emitted = { ...emitted, type: TokenType.CommaAsWord }
                 }
             }
             tokens.push(emitted)
         }
 
-        pos  = result.nextPos
+        pos = result.nextPos
         scan = result.nextScan
     }
 
@@ -348,9 +343,9 @@ export function tokenizeLine(
     if(scan.tokenStart !== -1) {
         let finalType = scan.lastType
 
-        if(scan.state === TokenizerState.InString)       {finalType = TokenType.PartialString}
-        if(scan.state === TokenizerState.InBlock)        {finalType = TokenType.PartialBlock}
-        if(scan.state === TokenizerState.InBlockComment) {finalType = TokenType.Comment}
+        if(scan.state === TokenizerState.InString) { finalType = TokenType.PartialString }
+        if(scan.state === TokenizerState.InBlock) { finalType = TokenType.PartialBlock }
+        if(scan.state === TokenizerState.InBlockComment) { finalType = TokenType.Comment }
 
         tokens.push({
             type: finalType,
