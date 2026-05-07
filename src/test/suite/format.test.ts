@@ -8,7 +8,7 @@ const formatLine = (line: string, maxLeftLen: number, operator: string): string 
     const trimmed = line.trimStart()
     const originalIndent = line.slice(0, line.length - trimmed.length)
     const opIdx = trimmed.indexOf(operator)
-    if (opIdx === -1) { return trimmed }
+    if(opIdx === -1) { return trimmed }
     const left = trimmed.slice(0, opIdx).trim()
     const right = trimmed.slice(opIdx + operator.length)
     return originalIndent + ws(maxLeftLen - left.length) + left + ' ' + operator + right
