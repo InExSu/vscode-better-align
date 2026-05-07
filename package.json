@@ -2,7 +2,7 @@
   "name": "vscode-better-align",
   "displayName": "Better Align",
   "description": "Better vertical alignment with/without selection in any language for any characters or words.",
-  "version": "1.4.5",
+  "version": "1.4.6",
   "icon": "images/icon.png",
   "publisher": "chouzz",
   "license": "SEE LICENSE IN LICENSE",
@@ -118,7 +118,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["start", "end"]
+                  "required": [
+                    "start",
+                    "end"
+                  ]
                 },
                 "description": "Array of block comment definitions (e.g., [{'start': '/*', 'end': '*/'}])"
               }
@@ -174,6 +177,7 @@
     "@typescript-eslint/eslint-plugin": "^5.48.1",
     "@typescript-eslint/parser": "^5.45.0",
     "@vscode/test-electron": "^2.2.2",
+    "@vscode/vsce": "^3.9.1",
     "esbuild-loader": "^2.20.0",
     "eslint": "^8.31.0",
     "glob": "^8.0.3",
