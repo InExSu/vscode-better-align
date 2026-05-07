@@ -1,32 +1,41 @@
-# v1.4.6 [#](https://github.com/chouzz/vscode-better-align/releases/tag/v1.4.6)
+# v1.4.8 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.4.8)
 
-- Fix "Invalid array length" error on large files
+- Remove telemetry dependency
+- Refactor formatter.ts to use separate modules (tokenizer, languageConfig, types)
+- Fix "Invalid array length" error on large alignments
+
+# v1.4.7 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.4.7)
+
 - Fix extra spaces being added to single-line comments
 
-# v1.4.5 [#](https://github.com/chouzz/vscode-better-align/releases/tag/v1.4.5)
+# v1.4.6 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.4.6)
+
+- Fix "Invalid array length" error on large files
+
+# v1.4.5 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.4.5)
 
 - Add support for 'from' keyword vertical alignment in TypeScript, TypeScript React, and JavaScript files
 
-# v1.4.4 [#](https://github.com/chouzz/vscode-better-align/releases/tag/v1.4.4)
+# v1.4.4 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.4.4)
 
 - Fix error in PHP
 
-# v1.4.3 [#](https://github.com/chouzz/vscode-better-align/releases/tag/v1.4.3)
+# v1.4.3 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.4.3)
 
 - CI: Update publishing workflow to use `HaaLeo/publish-vscode-extension@v2`, chain VSIX from Open VSX output, and remove redundant artifact download in release job
 - Add language-aware comment support for multi-language alignment
 
 
-# v1.4.2 [#](https://github.com/chouzz/vscode-better-align/releases/tag/v1.4.2)
+# v1.4.2 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.4.2)
 
 - Fix assignment like C style
 
-# v1.4.1 [#](https://github.com/chouzz/vscode-better-align/releases/tag/v1.4.1)
+# v1.4.1 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.4.1)
 
 - Fix tab indentation replaced by space indentation
 - Align command support `?:` operator
 
-# v1.4.0 [#](https://github.com/chouzz/vscode-better-align/releases/tag/v1.4.0)
+# v1.4.0 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.4.0)
 
 - Fix errors align with empty line
 - Fix format with double colon
@@ -37,21 +46,21 @@
 - Fix alignment with double slash comment
 - Fix add spaces if double align codes
 
-# v1.3.2 [#](https://github.com/chouzz/vscode-better-align/releases/tag/v1.3.2)
+# v1.3.2 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.3.2)
 
 - Add support autohotkey syntax `:=`
 - Update badges for vscode marketplace in readme
 
-# v1.3.1 [#](https://github.com/chouzz/vscode-better-align/releases/tag/v1.3.1)
+# v1.3.1 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.3.1)
 
 - Improve extension stability and quality
 - Update Dependencies
 
-# v1.3.0 [#](https://github.com/chouzz/vscode-better-align/releases/tag/v1.3.0)
+# v1.3.0 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.3.0)
 
 - Fix commands broken if cursor in empty line
 - Add web extension support
 
-# v1.2.0 [#](https://github.com/chouzz/vscode-better-align/releases/tag/v1.2.0)
+# v1.2.0 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.2.0)
 
 - Initial release

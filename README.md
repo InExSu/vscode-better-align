@@ -1,9 +1,9 @@
 # Better Align for Visual Studio Code
 
 [![The MIT License](https://badgen.net/github/license/cerner/terra-framework)](https://badgen.net/github/license/cerner/terra-framework)
-[![GitHub Release](https://flat.badgen.net/github/release/chouzz/vscode-better-align)](https://github.com/chouzz/vscode-better-align/releases)
+[![GitHub Release](https://flat.badgen.net/github/release/chouzz/vscode-better-align)](https://github.com/InExSu/vscode-better-align/releases)
 [![Visual Studio Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/chouzz.vscode-better-align)](https://marketplace.visualstudio.com/items?itemName=Chouzz.vscode-better-align)
-[![GitHub Actions Workflow](https://github.com/chouzz/vscode-better-align/actions/workflows/CI.yaml/badge.svg)](https://github.com/chouzz/vscode-better-align/actions/workflows/CI.yaml)
+[![GitHub Actions Workflow](https://github.com/InExSu/vscode-better-align/actions/workflows/CI.yaml/badge.svg)](https://github.com/InExSu/vscode-better-align/actions/workflows/CI.yaml)
 
 > **Better vertical alignment with or without selection in any language, for any characters or words.**
 
@@ -28,7 +28,7 @@ Place your cursor at the position where you want alignment, then:
 
 ## 📸 Demo
 
-![Auto-align Characters](https://github.com/chouzz/vscode-better-align/blob/main/images/auto-align-characters.gif)
+![Auto-align Characters](https://github.com/InExSu/vscode-better-align/blob/main/images/auto-align-characters.gif)
 
 ---
 
@@ -51,12 +51,12 @@ Control the spacing around alignment characters.
 
 **Configuration Options:**
 
-| Key | Type | Description |
-|-----|------|-------------|
-| `colon` | `[number, number]` | Spacing around `:` (e.g., in objects/maps) |
-| `assignment` | `[number, number]` | Spacing around `=` |
-| `arrow` | `[number, number]` | Spacing around `=>` or `->` |
-| `comment` | `number` | Space before trailing comments (negative = no alignment) |
+| Key          | Type               | Description                                              |
+| ------------ | ------------------ | -------------------------------------------------------- |
+| `colon`      | `[number, number]` | Spacing around `:` (e.g., in objects/maps)               |
+| `assignment` | `[number, number]` | Spacing around `=`                                       |
+| `arrow`      | `[number, number]` | Spacing around `=>` or `->`                              |
+| `comment`    | `number`           | Space before trailing comments (negative = no alignment) |
 
 ---
 
@@ -122,8 +122,8 @@ $data = array(
 
 ## 🐛 Issues & Contribution
 
-- **Found a bug?** [Open an issue](https://github.com/chouzz/vscode-better-align/issues)
-- **Want to contribute?** [Fork the repo](https://github.com/chouzz/vscode-better-align) and submit a pull request
+- **Found a bug?** [Open an issue](https://github.com/InExSu/vscode-better-align/issues)
+- **Want to contribute?** [Fork the repo](https://github.com/InExSu/vscode-better-align) and submit a pull request
 
 ---
 

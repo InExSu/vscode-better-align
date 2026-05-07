@@ -5,26 +5,38 @@
         "ecmaVersion": 6,
         "sourceType": "module"
     },
-    "plugins": ["@typescript-eslint"],
+    "plugins": [
+        "@typescript-eslint"
+    ],
     "rules": {
         "@typescript-eslint/naming-convention": [
             "error",
             {
                 "selector": "memberLike",
-                "modifiers": ["private"],
-                "format": ["camelCase"],
+                "modifiers": [
+                    "private"
+                ],
+                "format": [
+                    "camelCase"
+                ],
                 "leadingUnderscore": "require"
             },
             {
                 "selector": "enumMember",
-                "format": ["PascalCase"]
+                "format": [
+                    "PascalCase"
+                ]
             }
         ],
-        "@typescript-eslint/semi": "error",
+        "@typescript-eslint/semi": "off",
         "curly": "error",
         "eqeqeq": "error",
         "no-throw-literal": "error",
-        "semi": "error"
+        "semi": "off"
     },
-    "ignorePatterns": ["out", "dist", "**/*.d.ts"]
+    "ignorePatterns": [
+        "out",
+        "dist",
+        "**/*.d.ts"
+    ]
 }

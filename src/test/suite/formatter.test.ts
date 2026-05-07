@@ -34,6 +34,8 @@ suite('Formatter Test Suite', () => {
         assert.deepEqual(actual, expect);
     });
 
+    
+
     test('Formatter::should format assignment like =', () => {
         editor.selection = new vscode.Selection(6, 0, 6, 0);
         const formatter = new FakeFormatter();
@@ -263,5 +265,22 @@ suite('Formatter Test Suite', () => {
         ];
         assert.deepEqual(actual, expect);
         await vscode.languages.setTextDocumentLanguage(editor.document, 'plaintext');
+    });
+
+    test('Formatter::whitespace should handle large counts without throwing', () => {
+        const formatter = new FakeFormatter() as any;
+        assert.strictEqual(formatter['whitespace'](0), '');
+        assert.strictEqual(formatter['whitespace'](1), ' ');
+        assert.strictEqual(formatter['whitespace'](100), ' '.repeat(100));
+        assert.strictEqual(formatter['whitespace'](1e7), ' '.repeat(1e6));
+        assert.strictEqual(formatter['whitespace'](-1), '');
+    });
+
+    test('Formatter::should not throw Invalid array length on large alignments', () => {
+        editor.selection = new vscode.Selection(0, 0, 5, 0);
+        const formatter = new FakeFormatter();
+        const ranges = formatter.getLineRanges(editor);
+        const result = formatter.format(ranges[0]);
+        assert.ok(result.length > 0, 'Should return results without throwing');
     });
 });
