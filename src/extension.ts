@@ -129,21 +129,29 @@ function classifyAtDefault(
             return { type: TokenType.Comma, advance: 1 }
 
         case '<':
+            // FIX: Check 3-char operators BEFORE 2-char operators
             if(nx === '=' && rd === '>') { return { type: TokenType.Spaceship, advance: 3 } }
             if(nx === '?' && rd === '=') { return { type: TokenType.PHPShortEcho, advance: 3 } }
+            if(nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } }
             if(nx === '=') { return { type: TokenType.Comparison, advance: 2 } }
             return { type: TokenType.Comparison, advance: 1 }
 
         case '>':
+            // FIX: Check 3-char operators BEFORE 2-char operators
+            if(nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } }
             if(nx === '=') { return { type: TokenType.Comparison, advance: 2 } }
             return { type: TokenType.Comparison, advance: 1 }
 
         case '!':
+            // FIX: Check !== before !=
+            if(nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } }
             if(nx === '=') { return { type: TokenType.Comparison, advance: 2 } }
             return { type: TokenType.Comparison, advance: 1 }
 
         case '=':
+            // FIX: Check === before == and =>
             if(nx === '>') { return { type: TokenType.Arrow, advance: 2 } }
+            if(nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } }
             if(nx === '=') { return { type: TokenType.Comparison, advance: 2 } }
             return { type: TokenType.Assignment, advance: 1 }
 
@@ -157,7 +165,8 @@ function classifyAtDefault(
         case '^':
         case '.':
         case '&':
-            if(nx === '=') { return { type: TokenType.Assignment, advance: rd === '=' ? 3 : 2 } }
+            // FIX: Compound assignments are always 2 chars, not 3
+            if(nx === '=') { return { type: TokenType.Assignment, advance: 2 } }
             return { type: TokenType.Word, advance: 1 }
 
         case ':':
@@ -282,7 +291,6 @@ function tokenizeLine(ln: { text: string }, cfg: LanguageSyntaxConfig, lang: str
         }
     }
 
-    // ✅ ИСПРАВЛЕНО: было `state == =`, стало `state ===`
     if(tokenStart !== -1) {
         const partialType =
             state === State.InString ? TokenType.PartialString :
