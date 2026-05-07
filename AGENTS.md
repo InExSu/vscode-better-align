@@ -43,9 +43,9 @@ Or use vsce:
 npx vsce package
 ```
 
-4. Install and Reload VS Code
+4. **Verify Release by Installing and Reloading VS Code**
 
-Install the new extension and reload:
+To ensure the new version is working correctly as part of the release process, install the newly packaged extension and reload VS Code:
 ```bash
 code --uninstall-extension inexsu.vscode-better-align 2>/dev/null || true
 code --install-extension vscode-better-align-X.Y.Z.vsix --force
