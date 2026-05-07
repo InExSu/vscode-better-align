@@ -10,6 +10,7 @@ const enum TokenType {
     Comment = 'Comment', Whitespace = 'Whitespace', Colon = 'Colon',
     Comma = 'Comma', CommaAsWord = 'CommaAsWord', Insertion = 'Insertion',
     Spaceship = 'Spaceship', PHPShortEcho = 'PHPShortEcho', From = 'From',
+    Comparison = 'Comparison',
 }
 
 interface Token { type: TokenType; text: string }
@@ -105,6 +106,18 @@ const enum State { Default, InString, InBlock, InLineComment, InBlockComment }
 
 const BRACKET_PAIR: Record<string, string> = { '{': '}', '[': ']', '(': ')' }
 
+// Multi-character operators to check BEFORE single-char classification.
+const MULTI_CHAR_OPS: Record<string, TokenType> = {
+    '<=>': TokenType.Spaceship,
+    '<?=': TokenType.PHPShortEcho,
+    '=>': TokenType.Arrow,
+    '>=': TokenType.Comparison,
+    '<=': TokenType.Comparison,
+    '!=': TokenType.Comparison,
+    '==': TokenType.Comparison,
+    '!': TokenType.Comparison,
+}
+
 // Raw character classification — only called from Default state.
 // Returns the token type the character *starts*, and how many chars to advance.
 // CommaAsWord detection is finalised after flush (see tokenizeLine).
@@ -113,28 +126,73 @@ function classifyAtDefault(
 ): { type: TokenType; advance: number } {
     const ch = text[pos] ?? '', nx = text[pos + 1] ?? '', rd = text[pos + 2] ?? ''
 
-    if(REG_WS.test(ch)) { return { type: TokenType.Whitespace, advance: 1 } }
-    if('"\'`'.includes(ch)) { return { type: TokenType.String, advance: 1 } }
-    if(ch === '{' || ch === '(' || ch === '[') { return { type: TokenType.Block, advance: 1 } }
-    if(ch === '}' || ch === ')' || ch === ']') { return { type: TokenType.EndOfBlock, advance: 1 } }
-    if(findLineComment(text, pos, cfg)) { return { type: TokenType.Comment, advance: 1 } }
-    if(findBlockCommentEnd(text, pos, cfg)) { return { type: TokenType.Comment, advance: 1 } }
-    if(ch === ',') { return { type: TokenType.Comma, advance: 1 } }  // refined later
-    if(ch === '<' && nx === '=' && rd === '>') { return { type: TokenType.Spaceship, advance: 3 } }
-    if(ch === '<' && nx === '?' && rd === '=') { return { type: TokenType.PHPShortEcho, advance: 3 } }
-    if(ch === '=' && nx === '>') { return { type: TokenType.Arrow, advance: 2 } }
-    if(ch === '>' && nx === '=') { return { type: TokenType.Assignment, advance: 2 } }
-    if(ch === '<' && nx === '=') { return { type: TokenType.Assignment, advance: 2 } }
-    if(ch === '!' && nx === '=') { return { type: TokenType.Assignment, advance: 2 } }
-    if(ch === '<' && nx !== '=' && nx !== '?') { return { type: TokenType.Assignment, advance: 1 } }
-    if(ch === '>' && nx !== '=') { return { type: TokenType.Assignment, advance: 1 } }
-    if(ch === '!' && nx !== '=') { return { type: TokenType.Assignment, advance: 1 } }
+    switch (ch) {
+        case ' ':
+        case '\t':
+        case '\n':
+        case '\r':
+            return { type: TokenType.Whitespace, advance: 1 }
 
-    const ASSIGN_OPS = new Set(['+', '-', '*', '/', '%', '~', '|', '^', '.', '!', '&', '=', ':'])
-    if(ASSIGN_OPS.has(ch) && nx === '=') { return { type: TokenType.Assignment, advance: rd === '=' ? 3 : 2 } }
-    if(ch === '=' && nx !== '=') { return { type: TokenType.Assignment, advance: 1 } }
-    if(ch === ':' && nx === ':') { return { type: TokenType.Word, advance: 2 } }
-    if(ch === ':' && nx !== ':') { return { type: TokenType.Colon, advance: 1 } }
+        case '"':
+        case "'":
+        case '`':
+            return { type: TokenType.String, advance: 1 }
+
+        case '{':
+        case '(':
+        case '[':
+            return { type: TokenType.Block, advance: 1 }
+
+        case '}':
+        case ')':
+        case ']':
+            return { type: TokenType.EndOfBlock, advance: 1 }
+
+        case ',':
+            return { type: TokenType.Comma, advance: 1 }
+
+        case '<':
+            if (nx === '=' && rd === '>') { return { type: TokenType.Spaceship, advance: 3 } }
+            if (nx === '?' && rd === '=') { return { type: TokenType.PHPShortEcho, advance: 3 } }
+            if (nx === '=') { return { type: TokenType.Comparison, advance: 2 } }
+            return { type: TokenType.Comparison, advance: 1 }
+
+        case '>':
+            if (nx === '=') { return { type: TokenType.Comparison, advance: 2 } }
+            return { type: TokenType.Comparison, advance: 1 }
+
+        case '!':
+            if (nx === '=') { return { type: TokenType.Comparison, advance: 2 } }
+            return { type: TokenType.Comparison, advance: 1 }
+
+        case '=':
+            if (nx === '>') { return { type: TokenType.Arrow, advance: 2 } }
+            if (nx === '=') { return { type: TokenType.Comparison, advance: 2 } }
+            return { type: TokenType.Assignment, advance: 1 }
+
+        case '+':
+        case '-':
+        case '*':
+        case '/':
+        case '%':
+        case '~':
+        case '|':
+        case '^':
+        case '.':
+        case '!':
+        case '&':
+            if (nx === '=') { return { type: TokenType.Assignment, advance: rd === '=' ? 3 : 2 } }
+            return { type: TokenType.Word, advance: 1 }
+
+        case ':':
+            if (nx === ':') { return { type: TokenType.Word, advance: 2 } }
+            if (nx === '=') { return { type: TokenType.Assignment, advance: 2 } }
+            return { type: TokenType.Colon, advance: 1 }
+    }
+
+    // Check for line comment at current position.
+    if (findLineComment(text, pos, cfg)) { return { type: TokenType.Comment, advance: 1 } }
+    if (findBlockCommentEnd(text, pos, cfg)) { return { type: TokenType.Comment, advance: 1 } }
 
     return { type: TokenType.Word, advance: 1 }
 }
@@ -284,7 +342,7 @@ function tokenizeLine(ln: { text: string }, cfg: LanguageSyntaxConfig, lang: str
     }
 
     // Collect significant token types (used by range-builder).
-    const SIG = new Set([TokenType.Assignment, TokenType.Colon, TokenType.Arrow, TokenType.Comment, TokenType.From])
+    const SIG = new Set([TokenType.Assignment, TokenType.Colon, TokenType.Arrow, TokenType.Comment, TokenType.From, TokenType.Comparison])
     const sgfntTokens: TokenType[] = []
     for(const t of tokens) {
         if(SIG.has(t.type) && !sgfntTokens.includes(t.type)) { sgfntTokens.push(t.type) }
@@ -432,6 +490,7 @@ function stripOperatorWhitespace(infos: LineInfo[]): void {
 
 const DEFAULT_SURROUND: Record<string, number | number[]> = {
     colon: [0, 1], assignment: [1, 1], comment: 2, arrow: [1, 1], from: [1, 1],
+    comparison: [1, 1],
 }
 
 // Build the final string for one operator cell given padding config.

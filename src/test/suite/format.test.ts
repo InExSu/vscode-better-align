@@ -31,18 +31,39 @@ const show = (desc: string, input: string, output: string, op = '='): void => {
 }
 
 suite('Format multiline', () => {
-    test('x = 1 и y = 2 stay equal', () => {
+    test('x = 1 and y = 2 stay equal', () => {
         const input = 'x = 1\ny = 2'
         const output = alignCode(input)
         assert.strictEqual(output, 'x = 1\ny = 2')
         show('x=y', input, output)
     })
 
-    test('x = 1 и xxx = 2 align', () => {
+    test('x = 1 and xxx = 2 align', () => {
         const input = 'x = 1\nxxx = 2'
         const output = alignCode(input)
         assert.strictEqual(output, '  x = 1\nxxx = 2')
         show('x=xxx', input, output)
+    })
+
+    test('>= comparison operators stay intact', () => {
+        const input = 'a >= b\nc >= d'
+        const output = alignCode(input, '>=')
+        assert.strictEqual(output, 'a >= b\nc >= d')
+        show('>=', input, output, '>=')
+    })
+
+    test('<= comparison operators stay intact', () => {
+        const input = 'x <= 100\nxxx <= 200'
+        const output = alignCode(input, '<=')
+        assert.strictEqual(output, '  x <= 100\nxxx <= 200')
+        show('<=', input, output, '<=')
+    })
+
+    test('!= comparison operators stay intact', () => {
+        const input = 'x != null\nxxx != null'
+        const output = alignCode(input, '!=')
+        assert.strictEqual(output, '  x != null\nxxx != null')
+        show('!=', input, output, '!=')
     })
 })
 
