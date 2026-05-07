@@ -34,7 +34,7 @@ Or use vsce:
 npx vsce package
 ```
 
-## 4. Install and Reload VS Code
+4. Install and Reload VS Code
 
 Install the new extension and reload:
 ```bash
@@ -43,7 +43,19 @@ code --install-extension vscode-better-align-X.Y.Z.vsix --force
 code --reload-window
 ```
 
-## 5. Create Git Commit
+## 5. Verify Extension
+
+After installation, verify the extension details in VS Code:
+- Open Extensions panel (Ctrl+Shift+X)
+- Search for "Better Align"
+- Check that version shows X.Y.Z and description is correct
+
+If description shows outdated info, rebuild with:
+```bash
+npx vsce package
+```
+
+## 6. Create Git Commit
 
 Create a commit with all changes:
 ```bash
@@ -61,6 +73,7 @@ For a fix improving the "Invalid array length" error handling:
 
    - Fix "Invalid array length" error on large alignments
    ```
-3. Run: `rm -f vscode-better-align-X.Y.Z.vsix && npx vsce package`
+3. Run: `npx vsce package`
 4. Install: `code --uninstall-extension inexsu.vscode-better-align 2>/dev/null || true && code --install-extension vscode-better-align-X.Y.Z.vsix --force && code --reload-window`
-5. Commit: `git add -A && git commit -m "vX.Y.Z: Fix Invalid array length on large alignments"`
+5. Verify extension details in VS Code Extensions panel
+6. Commit: `git add -A && git commit -m "vX.Y.Z: Fix Invalid array length on large alignments"`
