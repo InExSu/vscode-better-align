@@ -52,6 +52,11 @@ code --install-extension vscode-better-align-X.Y.Z.vsix --force
 code --reload-window
 ```
 
+Reload VS Code after install (if auto-reload doesn't work):
+```bash
+osascript -e 'tell app "Code" to quit' && open -a "Visual Studio Code"
+```
+
 ## 5. Verify Extension
 
 After installation, verify the extension details in VS Code:
