@@ -1,3 +1,7 @@
+# v1.6.5 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.6.5)
+
+- Fixed comparison operators >=, <=, != being split by alignment
+
 # v1.6.4 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.6.4)
 
 - Fixed typo in format.test.ts (>=)
