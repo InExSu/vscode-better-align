@@ -38,7 +38,7 @@ npx vsce package
 
 Install the new extension and reload:
 ```bash
-code --uninstall-extension chouzz.vscode-better-align 2>/dev/null || true
+code --uninstall-extension inexsu.vscode-better-align 2>/dev/null || true
 code --install-extension vscode-better-align-X.Y.Z.vsix --force
 code --reload-window
 ```
@@ -62,5 +62,5 @@ For a fix improving the "Invalid array length" error handling:
    - Fix "Invalid array length" error on large alignments
    ```
 3. Run: `rm -f vscode-better-align-X.Y.Z.vsix && npx vsce package`
-4. Install: `code --uninstall-extension chouzz.vscode-better-align 2>/dev/null || true && code --install-extension vscode-better-align-X.Y.Z.vsix --force && code --reload-window`
+4. Install: `code --uninstall-extension inexsu.vscode-better-align 2>/dev/null || true && code --install-extension vscode-better-align-X.Y.Z.vsix --force && code --reload-window`
 5. Commit: `git add -A && git commit -m "vX.Y.Z: Fix Invalid array length on large alignments"`

@@ -2,13 +2,13 @@
   "name": "vscode-better-align",
   "displayName": "Better Align",
   "description": "Better vertical alignment with/without selection in any language for any characters or words.",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "icon": "images/icon.png",
-  "publisher": "chouzz",
+  "publisher": "inexsu",
   "license": "SEE LICENSE IN LICENSE",
   "author": {
-    "name": "Chouzz",
-    "url": "https://github.com/chouzz"
+    "name": "inexsu",
+    "url": "https://github.com/inexsu"
   },
   "galleryBanner": {
     "color": "#272729",
@@ -167,7 +167,7 @@
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "mocha --ui tdd out/test/suite/unit.test.js",
+    "test": "mocha --ui tdd out/test/suite/*.test.js",
     "test:win": "node ./out/test/runTestWin.js"
   },
   "devDependencies": {

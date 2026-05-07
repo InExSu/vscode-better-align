@@ -1,8 +1,8 @@
 # Better Align for Visual Studio Code
 
 [![The MIT License](https://badgen.net/github/license/cerner/terra-framework)](https://badgen.net/github/license/cerner/terra-framework)
-[![GitHub Release](https://flat.badgen.net/github/release/chouzz/vscode-better-align)](https://github.com/InExSu/vscode-better-align/releases)
-[![Visual Studio Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/chouzz.vscode-better-align)](https://marketplace.visualstudio.com/items?itemName=Chouzz.vscode-better-align)
+[![GitHub Release](https://flat.badgen.net/github/release/inexsu/vscode-better-align)](https://github.com/InExSu/vscode-better-align/releases)
+[![Visual Studio Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/inexsu.vscode-better-align)](https://marketplace.visualstudio.com/items?itemName=inexsu.vscode-better-align)
 [![GitHub Actions Workflow](https://github.com/InExSu/vscode-better-align/actions/workflows/CI.yaml/badge.svg)](https://github.com/InExSu/vscode-better-align/actions/workflows/CI.yaml)
 
 > **Better vertical alignment with or without selection in any language, for any characters or words.**

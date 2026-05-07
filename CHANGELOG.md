@@ -1,3 +1,14 @@
+# v1.6.0 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.6.0)
+
+- New alignment engine: pure functions, state machine, SRP
+- Fixed property access alignment (`let x = x.x` now properly aligns)
+- Fixed operator position alignment (all operators in same column)
+- Tests now show input/output for visual verification
+
+# v1.5.2 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.5.2)
+
+- Fix alignment for lines ending with closing brackets (], ), })
+
 # v1.5.1 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.5.1)
 
 - Fix comma alignment issue (no extra spaces before commas on repeated format)
