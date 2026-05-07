@@ -1,4 +1,4 @@
-/// <reference types="mocha" />
+/// <reference types = "mocha" />
 
 const assert = require('assert')
 
@@ -64,6 +64,20 @@ suite('Format multiline', () => {
         const output = alignCode(input, '!=')
         assert.strictEqual(output, '  x != null\nxxx != null')
         show('!=', input, output, '!=')
+    })
+
+    test('=== strict equality stays intact', () => {
+        const input = 'a === b\nc === d'
+        const output = alignCode(input, '===')
+        assert.strictEqual(output, 'a === b\nc === d')
+        show('===', input, output, '===')
+    })
+
+    test('!== strict inequality stays intact', () => {
+        const input = 'a !== b\nc !== d'
+        const output = alignCode(input, '!==')
+        assert.strictEqual(output, 'a !== b\nc !== d')
+        show('!==', input, output, '!==')
     })
 })
 

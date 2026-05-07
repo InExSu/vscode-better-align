@@ -2,7 +2,7 @@
   "name": "vscode-better-align",
   "displayName": "Better Align",
   "description": "Better vertical alignment with/without selection in any language for any characters or words.",
-  "version": "1.6.6",
+  "version": "1.6.7",
   "icon": "images/icon.png",
   "publisher": "inexsu",
   "license": "SEE LICENSE IN LICENSE",
