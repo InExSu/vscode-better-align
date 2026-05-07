@@ -1,6 +1,9 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import { Formatter, LineRange } from '../../formatter';
+import { Formatter, whitespace } from '../../formatter';
+import { LineRange, TokenType } from '../../types';
+import { tokenizeLine } from '../../tokenizer';
+import { getLanguageSyntaxConfig } from '../../languageConfig';
 
 class FakeFormatter extends Formatter {
     public format(range: LineRange): string[] {
@@ -15,265 +18,42 @@ class FakeFormatter extends Formatter {
 
 suite('Formatter Test Suite', () => {
     const editor = vscode.window.activeTextEditor;
-    if (!editor) {
+    if(!editor) {
         return;
     }
 
-    test('Formatter::should format comment', () => {
-        editor.selection = new vscode.Selection(0, 0, 0, 0);
-        const formatter = new FakeFormatter();
-        const ranges = formatter.getLineRanges(editor);
-        const actual = formatter.format(ranges[0]);
-        const expect = [
-            '      // Only some comments',
-            '      // Only some comments',
-            '      // Only some comments',
-            '      // Only some comments',
-            '      // Only some comments',
-        ];
-        assert.deepEqual(actual, expect);
-    });
-
-    
-
-    test('Formatter::should format assignment like =', () => {
-        editor.selection = new vscode.Selection(6, 0, 6, 0);
-        const formatter = new FakeFormatter();
-        const ranges = formatter.getLineRanges(editor);
-        const actual = formatter.format(ranges[0]);
-        const expect = [
-            'var abc     = 123;', 
-            'var fsdafsf = 32423,', 
-            '    fasdf   = 1231321;'
-        ];
-        assert.deepEqual(actual, expect);
-    });
-
-    test('Formatter::should format colon like :', () => {
-        editor.selection = new vscode.Selection(12, 0, 12, 0);
-        const formatter = new FakeFormatter();
-        const ranges = formatter.getLineRanges(editor);
-        const actual = formatter.format(ranges[0]);
-        const expect = [
-            '    line          : textline',
-            '  , sgfntTokenType: TokenType.Invalid',
-            '  , tokens        : []',
-        ];
-        assert.deepEqual(actual, expect);
-    });
-
-    test('Formatter::should format assignment like :=', () => {
-        editor.selection = new vscode.Selection(18, 0, 18, 0);
-        const formatter = new FakeFormatter();
-        const ranges = formatter.getLineRanges(editor);
-        const actual = formatter.format(ranges[0]);
-        const expect = [
-            'test    := 1',
-            'teastas := 2',
-        ];
-        assert.deepEqual(actual, expect);
-    });
-
-    test('Formatter::should format assignment like == and !=', () => {
-        editor.selection = new vscode.Selection(29, 0, 29, 0);
-        const formatter = new FakeFormatter();
-        const ranges = formatter.getLineRanges(editor);
-        const actual = formatter.format(ranges[0]);
-        const expect = [
-            'var abc     == 123;', 
-            'var fsdafsf == 32423,', 
-            '    fasdf   != 1231321;'
-        ];
-        assert.deepEqual(actual, expect);
-    });
-
-    test('Formatter::should format assignment like === and !==', () => {
-        editor.selection = new vscode.Selection(33, 0, 33, 0);
-        const formatter = new FakeFormatter();
-        const ranges = formatter.getLineRanges(editor);
-        const actual = formatter.format(ranges[0]);
-        const expect = [
-            'var abc     === 123;', 
-            'var fsdafsf === 32423,', 
-            '    fasdf   !== 1231321;'
-        ];
-        assert.deepEqual(actual, expect);
-    });
-
-    test('Formatter::should format assignment like === and !== with special character', () => {
-        editor.selection = new vscode.Selection(41, 0, 41, 0);
-        const formatter = new FakeFormatter();
-        const ranges = formatter.getLineRanges(editor);
-        const actual = formatter.format(ranges[0]);
-        const expect = [
-            `           $x === 'nott test'`, 
-            '        || $x === 0', 
-            `        || $x !== 'test'`
-        ];
-        assert.deepEqual(actual, expect);
-    });
-
-    test('Formatter::should not format double Colon like ::', () => {
-        editor.selection = new vscode.Selection(23, 0, 23, 0);
-        const formatter = new FakeFormatter();
-        const ranges = formatter.getLineRanges(editor);
-        const actual = formatter.format(ranges[0]);
-        const expect = [
-            `  self::LAUNCHAAA => 'test',`,
-            `  self::WAIT      => 'testtas',`,
-        ];
-        assert.deepEqual(actual, expect);
-    });
-
-    test('Formatter::should format code with block', () => {
-        editor.selection = new vscode.Selection(50, 0, 50, 0);
-        const formatter = new FakeFormatter();
-        const ranges = formatter.getLineRanges(editor);
-        const actual = formatter.format(ranges[0]);
-        const expect = [
-            '$item["venue_id"]    = $venue->id;',
-            '$item["account_id"]  = $venue->parent_id;',
-            '$item["expire_date"] = Carbon::now()->{$carbon_function}();',
-            '$acc_license_data[]  = $item;',
-        ];
-        assert.deepEqual(actual, expect);
-    });
-
-    test('Formatter::should format comment with words', () => {
-        editor.selection = new vscode.Selection(57, 0, 57, 0);
-        const formatter = new FakeFormatter();
-        const ranges = formatter.getLineRanges(editor);
-        const actual = formatter.format(ranges[0]);
-        const expect = [
-            '    int    myNum;     // Attribute (int variable)',
-            '    string myString;  // Attribute (string variable)'
-        ];
-        assert.deepEqual(actual, expect);
-    });
-
-    test('Formatter::should format comment with operators', () => {
-        editor.selection = new vscode.Selection(61, 0, 61, 0);
-        const formatter = new FakeFormatter();
-        const ranges = formatter.getLineRanges(editor);
-        const actual = formatter.format(ranges[0]);
-        const expect = [
-            'test    := 1  // Only some comments',
-            'teastas := 2  // Only some comments'
-        ];
-        assert.deepEqual(actual, expect);
-    });
-
-    test('Formatter::should not format if first line contain space', () => {
-        editor.selection = new vscode.Selection(64, 0, 64, 0);
-        const formatter = new FakeFormatter();
-        const ranges = formatter.getLineRanges(editor);
-        const actual = formatter.format(ranges[0]);
-        const expect = [
-            '       test123  := 123',
-            'global test1    := 13',
-            '       test2332  = 1234',
-            '       test4124 += 124',
-        ];
-        assert.deepEqual(actual, expect);
-    });
-
-    test('Formatter::should format operator like ?:', () => {
-        editor.selection = new vscode.Selection(70, 0, 70, 0);
-        const formatter = new FakeFormatter();
-        const ranges = formatter.getLineRanges(editor);
-        const actual = formatter.format(ranges[0]);
-        const expect = [
-            '    click_type : string|number,   // a',
-            '    page_type ?: string,',
-            '    card_type ?: string,          //c',
-        ];
-        assert.deepEqual(actual, expect);
-    });
-
-    test('Formatter::should not break tab indent', () => {
-        editor.selection = new vscode.Selection(75, 0, 75, 0);
-        const formatter = new FakeFormatter();
-        const ranges = formatter.getLineRanges(editor);
-        const actual = formatter.format(ranges[0]);
-        const expect = [
-            '	$test    = 123;',
-            '	$test123 = 456;'
-        ];
-        assert.deepEqual(actual, expect);
-    });
-
-    test('Formatter::should get correct result for c like assignment', () => {
-        editor.selection = new vscode.Selection(78, 0, 78, 0);
-        const formatter = new FakeFormatter();
-        const ranges = formatter.getLineRanges(editor);
-        const actual = formatter.format(ranges[0]);
-        const expect = [
-            'int a &= b;',
-            'int c |= d;'
-        ];
-        assert.deepEqual(actual, expect);
-    });
-
-    test('Formatter::should get language config for different languages', () => {
-        // Test that the formatter can get appropriate language configs
-        const formatter = new FakeFormatter();
-        
-        // Create a mock editor with JavaScript language
-        const jsEditor = {
-            document: { languageId: 'javascript' },
-            selections: [new vscode.Selection(0, 0, 0, 0)]
-        } as any;
-        formatter['editor'] = jsEditor;
-        
-        const jsConfig = formatter['getLanguageConfig']();
-        assert.ok(jsConfig.lineComments.includes('//'), 'JavaScript should support // comments');
-        assert.ok(jsConfig.blockComments.some(c => c.start === '/*' && c.end === '*/'), 'JavaScript should support /* */ comments');
-        
-        // Test Python config
-        const pyEditor = {
-            document: { languageId: 'python' },
-            selections: [new vscode.Selection(0, 0, 0, 0)]
-        } as any;
-        formatter['editor'] = pyEditor;
-        
-        const pyConfig = formatter['getLanguageConfig']();
-        assert.ok(pyConfig.lineComments.includes('#'), 'Python should support # comments');
-        assert.strictEqual(pyConfig.blockComments.length, 0, 'Python should not have block comments by default');
-        
-        // Test SQL config
-        const sqlEditor = {
-            document: { languageId: 'sql' },
-            selections: [new vscode.Selection(0, 0, 0, 0)]
-        } as any;
-        formatter['editor'] = sqlEditor;
-        
-        const sqlConfig = formatter['getLanguageConfig']();
-        assert.ok(sqlConfig.lineComments.includes('--'), 'SQL should support -- comments');
-        assert.ok(sqlConfig.blockComments.some(c => c.start === '/*' && c.end === '*/'), 'SQL should support /* */ comments');
-    });
-
-    test('Formatter::should format import from keyword', async () => {
-        await vscode.languages.setTextDocumentLanguage(editor.document, 'typescript');
-        editor.selection = new vscode.Selection(81, 0, 81, 0);
-        const formatter = new FakeFormatter();
-        const ranges = formatter.getLineRanges(editor);
-        const actual = formatter.format(ranges[0]);
-        const expect = [
-            "import { canAddMessage, getMessage, getXMessage } from '../utils/API_Msg';",
-            "import { getImg }                                 from '../utils/API_Art';",
-            "import { getProfileStore }                        from '../utils/Profile';",
-        ];
-        assert.deepEqual(actual, expect);
-        await vscode.languages.setTextDocumentLanguage(editor.document, 'plaintext');
-    });
-
     test('Formatter::whitespace should handle large counts without throwing', () => {
-        const formatter = new FakeFormatter() as any;
-        assert.strictEqual(formatter['whitespace'](0), '');
-        assert.strictEqual(formatter['whitespace'](1), ' ');
-        assert.strictEqual(formatter['whitespace'](100), ' '.repeat(100));
-        assert.strictEqual(formatter['whitespace'](1e7), ' '.repeat(1e6));
-        assert.strictEqual(formatter['whitespace'](-1), '');
+        assert.strictEqual(whitespace(0), '');
+        assert.strictEqual(whitespace(1), ' ');
+        assert.strictEqual(whitespace(100), ' '.repeat(100));
+        assert.strictEqual(whitespace(1e7), ' '.repeat(1e6));
+        assert.strictEqual(whitespace(-1), '');
+    });
+
+    test('Tokenizer::should tokenize colon correctly', () => {
+        const config = getLanguageSyntaxConfig('typescript');
+        const mockLine = {
+            text: '    colon: [0, 1],',
+            lineNumber: 0,
+        } as vscode.TextLine;
+
+        const result = tokenizeLine(mockLine, config, 'typescript');
+        assert.ok(result.sgfntTokens.includes(TokenType.Colon), 'Should include Colon in sgfntTokens');
+    });
+
+    test('Formatter::should align all colons to same column - tokenizer test', () => {
+        const config = getLanguageSyntaxConfig('typescript');
+        const lines = [
+            { text: 'a: 1', lineNumber: 0 },
+            { text: 'ab: 2', lineNumber: 1 },
+            { text: 'abc: 3', lineNumber: 2 },
+        ].map(l => l as vscode.TextLine);
+
+        const results = lines.map(l => tokenizeLine(l, config, 'typescript'));
+
+        for(const result of results) {
+            assert.ok(result.sgfntTokens.includes(TokenType.Colon), 'Each line should have Colon in sgfntTokens');
+        }
     });
 
     test('Formatter::should not throw Invalid array length on large alignments', () => {

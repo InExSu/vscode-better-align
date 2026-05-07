@@ -7,6 +7,7 @@
  */
 
 import { Token, TokenType, LanguageSyntaxConfig } from './types'
+import * as vscode from 'vscode'
 
 // ---------------------------------------------------------------------------
 // Состояния автомата

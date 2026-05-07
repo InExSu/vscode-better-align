@@ -5,7 +5,7 @@ import { getLanguageSyntaxConfig } from './languageConfig'
 
 const REG_WS = /\s/
 
-function whitespace(count: number): string {
+export function whitespace(count: number): string {
     if(count <= 0) { return '' }
     if(!isFinite(count) || count > 1e6) { count = 1e6 }
     return ' '.repeat(count)
@@ -43,13 +43,13 @@ export class Formatter {
         const ranges: LineRange[] = []
         editor.selections.forEach((sel) => {
             const indentBase        = this.getConfig().get('indentBase', 'firstline') as string
-            const importantIndent   = indentBase === 'dontchange'
+            const importantIndent = indentBase === 'dontchange'
 
             if(sel.isSingleLine) {
                 ranges.push(this.narrow(0, editor.document.lineCount - 1, sel.active.line, importantIndent))
             } else {
-                let start = sel.start.line
-                const end = sel.end.line
+                let   start = sel.start.line
+                const end   = sel.end.line
 
                 while(true) {
                     const res      = this.narrow(start, end, start, importantIndent)
@@ -107,7 +107,7 @@ export class Formatter {
         const { tokens, sgfntTokens } = tokenizeLine(textLine, config, this.editor.document.languageId)
 
         return {
-            line: textLine,
+            line          : textLine,
             sgfntTokenType: TokenType.Invalid,
             sgfntTokens,
             tokens,
@@ -355,8 +355,8 @@ export class Formatter {
         const configDef: any = {
             colon     : [0, 1],
             assignment: [1, 1],
-            comment   : 2,
-            arrow     : [1, 1],
+            comment: 2,
+            arrow  : [1, 1],
             from      : [1, 1],
         }
         const configSTT     = configWS[stt] || configDef[stt]
@@ -367,7 +367,7 @@ export class Formatter {
         const column: number[] = new Array(rangeSize).fill(0)
         const result: string[]  = new Array(rangeSize).fill(indentation)
 
-        let exceed = 0
+        let exceed     = 0
         let resultSize = 0
 
         while(exceed < rangeSize) {
@@ -397,6 +397,7 @@ export class Formatter {
                     const token = info.tokens[i]
                     if(token.type === info.sgfntTokenType || (token.type === TokenType.Comma && i !== 0)) {
                         operatorSize = Math.max(operatorSize, token.text.length)
+                        resultSize = Math.max(resultSize, res.length)
                         break
                     } else {
                         res += token.text
@@ -404,9 +405,6 @@ export class Formatter {
                 }
 
                 result[l] = res
-                if(i < end) {
-                    resultSize = Math.max(resultSize, res.length)
-                }
 
                 if(i === end) {
                     ++exceed
