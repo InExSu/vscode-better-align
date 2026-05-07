@@ -1,518 +1,621 @@
 'use strict'
 import * as vscode from 'vscode'
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 const enum TokenType {
-    Invalid       = 'Invalid',
-    Word          = 'Word',
-    Assignment    = 'Assignment',
-    Arrow         = 'Arrow',
-    Block         = 'Block',
-    PartialBlock  = 'PartialBlock',
-    EndOfBlock    = 'EndOfBlock',
-    String        = 'String',
-    PartialString = 'PartialString',
-    Comment       = 'Comment',
-    Whitespace    = 'Whitespace',
-    Colon         = 'Colon',
-    Comma         = 'Comma',
-    CommaAsWord   = 'CommaAsWord',
-    Insertion     = 'Insertion',
-    Spaceship     = 'Spaceship',
-    PHPShortEcho  = 'PHPShortEcho',
-    From          = 'From',
+    Invalid    = 'Invalid',  Word           = 'Word',  Assignment       = 'Assignment',
+    Arrow      = 'Arrow',  Block            = 'Block',  PartialBlock    = 'PartialBlock',
+    EndOfBlock = 'EndOfBlock',  String      = 'String',  PartialString  = 'PartialString',
+    Comment    = 'Comment',  Whitespace     = 'Whitespace',  Colon      = 'Colon',
+    Comma      = 'Comma',  CommaAsWord      = 'CommaAsWord',  Insertion = 'Insertion',
+    Spaceship  = 'Spaceship',  PHPShortEcho = 'PHPShortEcho',  From     = 'From',
 }
 
 interface Token { type: TokenType; text: string }
 interface BlockComment { start: string; end: string }
 interface LanguageSyntaxConfig { lineComments: string[]; blockComments: BlockComment[] }
-
 interface TextLine { text: string; lineNumber: number }
-
-interface LineInfo {
-    line          : TextLine
-    sgfntTokenType: TokenType
-    sgfntTokens   : TokenType[]
-    tokens: Token[]
-}
-
+interface LineInfo { line: TextLine; sgfntTokenType: TokenType; sgfntTokens: TokenType[]; tokens: Token[] }
 interface LineRange { anchor: number; infos: LineInfo[] }
 
-const DEFAULT_LANG: Record<string, LanguageSyntaxConfig> = {
-    bash      : { lineComments: ['#'], blockComments: [] }, c: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
-    cpp       : { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },  csharp                                       : { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
-    dockerfile: { lineComments: ['#'], blockComments: [] }, go: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
-    html      : { lineComments: [], blockComments: [{ start: '<!--', end: '-->' }] },  java                                          : { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
-    javascript: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },  julia                                        : { lineComments: ['#'], blockComments: [{ start: '#=', end: '=#' }] },
-    php       : { lineComments: ['//', '#'], blockComments: [{ start: '/*', end: '*/' }] },  python                                  : { lineComments: ['#'], blockComments: [] },
-    ruby       : { lineComments: ['#'], blockComments: [] }, rust: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
-    shellscript: { lineComments: ['#'], blockComments: [] }, sql: { lineComments: ['--'], blockComments: [{ start: '/*', end: '*/' }] },
-    typescript : { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },  yaml                                           : { lineComments: ['#'], blockComments: [] },
-}
+// ─── Language config ──────────────────────────────────────────────────────────
 
+const DEFAULT_LANG: Record<string, LanguageSyntaxConfig> = {
+    bash: { lineComments: ['#'], blockComments: [] },
+    c: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
+    cpp: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
+    csharp: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
+    dockerfile: { lineComments: ['#'], blockComments: [] },
+    go: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
+    html: { lineComments: [], blockComments: [{ start: '<!--', end: '-->' }] },
+    java: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
+    javascript: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
+    julia: { lineComments: ['#'], blockComments: [{ start: '#=', end: '=#' }] },
+    php: { lineComments: ['//', '#'], blockComments: [{ start: '/*', end: '*/' }] },
+    python: { lineComments: ['#'], blockComments: [] },
+    ruby: { lineComments: ['#'], blockComments: [] },
+    rust: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
+    shellscript: { lineComments: ['#'], blockComments: [] },
+    sql: { lineComments: ['--'], blockComments: [{ start: '/*', end: '*/' }] },
+    typescript: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] },
+    yaml: { lineComments: ['#'], blockComments: [] },
+}
 const FALLBACK: LanguageSyntaxConfig = { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] }
 
-const getLangConfig = (lang: string, overrides = {} as Record<string, LanguageSyntaxConfig>) =>
+const getLangConfig = (lang: string, overrides: Record<string, LanguageSyntaxConfig> = {}) =>
     overrides[lang] ?? DEFAULT_LANG[lang] ?? FALLBACK
 
-const ws = (n: number) => n <= 0 ? '' : ' '.repeat(isFinite(n) && n > 1e6 ? 1e6 : n)
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-enum State { Default, InString, InBlock, InLineCmt, InBlockCmt }
+const ws = (n: number) => n <= 0 ? '' : ' '.repeat(Math.min(n, 1e6))
 
-interface Scan {
-    state: State; quote: string; open: string; depth: number; end: string; start: number; last: TokenType; partial: boolean
-}
-
-const PAIR: Record<string, string> = { '{': '}', '[': ']', '(': ')' }
 const REG_WS = /\s/
 
-const sortDesc = <T extends string | { start: string }>(arr: T[]): T[] =>
-    [...arr].sort((a, b) => (typeof a === 'string' ? a.length : a.start.length) - (typeof b === 'string' ? b.length : b.start.length))
+const sortByLenDesc = <T extends string | { start: string }>(arr: T[]): T[] =>
+    [...arr].sort((a, b) => {
+        const len = (x: T) => typeof x === 'string' ? x.length : (x as BlockComment).start.length
+        return len(b) - len(a)
+    })
 
-const findLineCmt = (txt: string, pos: number, cfg: LanguageSyntaxConfig): string | null => {
-    for(const m of sortDesc(cfg.lineComments)) {if(txt.startsWith(m, pos) && !(m === '//' && pos > 0 && txt[pos - 1] === ':')) {return m}}
-    return null
-}
-
-const findBlockCmt = (txt: string, pos: number, cfg: LanguageSyntaxConfig): string | null => {
-    for(const b of sortDesc(cfg.blockComments)) {if(txt.startsWith(b.start, pos)) {return b.end}}
-    return null
-}
-
-const classifyChar = (txt: string, pos: number, cfg: LanguageSyntaxConfig, leading: number): { t: TokenType; n: number } => {
-    const ch = txt[pos] ?? '', nx = txt[pos + 1] ?? '', rd = txt[pos + 2] ?? ''
-    const isWs = /\s/.test(ch)
-    if(isWs) {return { t: TokenType.Whitespace, n: 1 }}
-    const isStr = '"\'`'.includes(ch)
-    if(isStr) {return { t: TokenType.String, n: 1 }}
-    const isOpen = ch === '{' || ch === '(' || ch === '['
-    if(isOpen) {return { t: TokenType.Block, n: 1 }}
-    const isClose = ch === '}' || ch === ')' || ch === ']'
-    if(isClose) {return { t: TokenType.EndOfBlock, n: 1 }}
-    const isLineCmt = findLineCmt(txt, pos, cfg)
-    if(isLineCmt) {return { t: TokenType.Comment, n: 1 }}
-    const isBlockCmt = findBlockCmt(txt, pos, cfg)
-    if(isBlockCmt) {return { t: TokenType.Comment, n: 1 }}
-    const isComma = ch === ','
-    if(isComma) {return { t: leading === 0 ? TokenType.CommaAsWord : TokenType.Comma, n: 1 }}
-    const isSpaceship = ch === '<' && nx === '=' && rd === '>'
-    if(isSpaceship) {return { t: TokenType.Spaceship, n: 3 }}
-    const isPHPEcho = ch === '<' && nx === '?' && rd === '='
-    if(isPHPEcho) {return { t: TokenType.PHPShortEcho, n: 3 }}
-    const isArrow = ch === '=' && nx === '>'
-    if(isArrow) {return { t: TokenType.Arrow, n: 2 }}
-    const asn = new Set(['+', '-', '*', '/', '%', '~', '|', '^', '.', '!', '&', '=', ':'])
-    const isAssignOp = asn.has(ch) && nx === '='
-    if(isAssignOp) {return { t: TokenType.Assignment, n: rd === '=' ? 3 : 2 }}
-    const isAssign = ch === '=' && nx !== '='
-    if(isAssign) {return { t: TokenType.Assignment, n: 1 }}
-    const isDoubleColon = ch === ':' && nx === ':'
-    if(isDoubleColon) {return { t: TokenType.Word, n: 2 }}
-    const isColon = ch === ':' && nx !== ':'
-    if(isColon) {return { t: TokenType.Colon, n: 1 }}
-    return { t: TokenType.Word, n: 1 }
-}
-
-const getCommentState = (txt: string, pos: number, cfg: LanguageSyntaxConfig): State | null => {
-    const lineCmt = findLineCmt(txt, pos, cfg)
-    if(lineCmt) {return State.InLineCmt}
-    const blockCmt = findBlockCmt(txt, pos, cfg)
-    if(blockCmt) {return State.InBlockCmt}
-    return null
-}
-
-const getStringState = (ch: string): State | null => {
-    if('"\'`'.includes(ch)) {return State.InString}
-    return null
-}
-
-const getBlockState = (ch: string): State | null => {
-    if(ch === '{' || ch === '(' || ch === '[') {return State.InBlock}
-    return null
-}
-
-const getTokenState = (cls: { t: TokenType; n: number }, txt: string, pos: number, cfg: LanguageSyntaxConfig): State => {
-    const strState = getStringState(txt[pos])
-    if(strState) {return strState}
-    const blkState = getBlockState(txt[pos])
-    if(blkState) {return blkState}
-    if(cls.t === TokenType.Comment) {
-        const cmtState = getCommentState(txt, pos, cfg)
-        if(cmtState) {return cmtState}
+const matchPrefix = (text: string, pos: number, markers: string[]): string | null => {
+    for(const m of sortByLenDesc(markers)) {
+        if(text.startsWith(m, pos)) {return m}
     }
-    return State.Default
+    return null
 }
 
-const step = (txt: string, pos: number, scan: Scan, cfg: LanguageSyntaxConfig, toks: Token[]): { p: number; s: Scan; e?: Token } => {
-    const ch = txt[pos] ?? ''
-    const isEscaped = (c: string) => txt[pos - 1] === '\\'
+const findLineComment = (text: string, pos: number, cfg: LanguageSyntaxConfig): string | null => {
+    const m = matchPrefix(text, pos, cfg.lineComments)
+    // Don't treat '//' inside '://' as a comment (e.g. https://)
+    return m === '//' && pos > 0 && text[pos - 1] === ':' ? null : m
+}
 
-    switch(scan.state) {
-        case State.InString: {
-            const isClosed = ch === scan.quote && !isEscaped(ch)
-            if(isClosed) {return { p: pos + 1, s: { ...scan, state: State.Default, partial: false } }}
-            return { p: pos + 1, s: scan }
-        }
+const findBlockCommentEnd = (text: string, pos: number, cfg: LanguageSyntaxConfig): string | null => {
+    for(const bc of sortByLenDesc(cfg.blockComments)) {
+        if(text.startsWith(bc.start, pos)) {return bc.end}
+    }
+    return null
+}
 
-        case State.InBlock: {
-            const isOpen = ch === scan.open
-            if(isOpen) {return { p: pos + 1, s: { ...scan, depth: scan.depth + 1 } }}
-            const closeChar = PAIR[scan.open]
-            const isClose = ch === closeChar && !isEscaped(ch)
-            if(isClose) {
-                if(scan.depth === 1) {return { p: pos + 1, s: { ...scan, state: State.Default, depth: 0, partial: false } }}
-                return { p: pos + 1, s: { ...scan, depth: scan.depth - 1 } }
+// ─── Tokeniser state machine ───────────────────────────────────────────────────
+//
+//  States:
+//    Default      — scanning character by character, classifying tokens
+//    InString     — consuming until matching unescaped closing quote
+//    InBlock      — consuming until matching closing bracket (depth-tracked)
+//    InLineComment  — consuming rest of line (emits one Comment token)
+//    InBlockComment — consuming until closing sequence (may span lines in theory)
+//
+//  Transitions:
+//    Default → InString       on " ' `
+//    Default → InBlock        on { ( [
+//    Default → InLineComment  on line comment marker
+//    Default → InBlockComment on block comment start
+//    InString → Default       on matching unescaped close quote
+//    InBlock  → Default       on matching close bracket (depth = 0)
+//    InBlock  → InBlock       on nested open bracket (depth++)
+//    InLineComment  → Default (never; line ends, loop exits)
+//    InBlockComment → Default on block comment end sequence
+//
+//  Each state handles its own advance; Default is the only state that
+//  emits completed tokens (via flush) and classifies the *next* state.
+
+const enum State { Default, InString, InBlock, InLineComment, InBlockComment }
+
+const BRACKET_PAIR: Record<string, string> = { '{': '}', '[': ']', '(': ')' }
+
+// Raw character classification — only called from Default state.
+// Returns the token type the character *starts*, and how many chars to advance.
+// CommaAsWord detection is finalised after flush (see tokenizeLine).
+function classifyAtDefault(
+    text: string, pos: number, cfg: LanguageSyntaxConfig
+): { type: TokenType; advance: number } {
+    const ch = text[pos] ?? '', nx = text[pos + 1] ?? '', rd = text[pos + 2] ?? ''
+
+    if(REG_WS.test(ch)) {return { type: TokenType.Whitespace, advance: 1 }}
+    if('"\'`'.includes(ch)) {return { type: TokenType.String, advance: 1 }}
+    if(ch === '{' || ch === '(' || ch === '[') {return { type: TokenType.Block, advance: 1 }}
+    if(ch === '}' || ch === ')' || ch === ']') {return { type: TokenType.EndOfBlock, advance: 1 }}
+    if(findLineComment(text, pos, cfg)) {return { type: TokenType.Comment, advance: 1 }}
+    if(findBlockCommentEnd(text, pos, cfg)) {return { type: TokenType.Comment, advance: 1 }}
+    if(ch === ',') {return { type: TokenType.Comma, advance: 1 }}  // refined later
+    if(ch === '<' && nx === '=' && rd === '>') {return { type: TokenType.Spaceship, advance: 3 }}
+    if(ch === '<' && nx === '?' && rd === '=') {return { type: TokenType.PHPShortEcho, advance: 3 }}
+    if(ch === '=' && nx === '>') {return { type: TokenType.Arrow, advance: 2 }}
+
+    const ASSIGN_OPS = new Set(['+', '-', '*', '/', '%', '~', '|', '^', '.', '!', '&', '=', ':'])
+    if(ASSIGN_OPS.has(ch) && nx === '=') {return { type: TokenType.Assignment, advance: rd === '=' ? 3 : 2 }}
+    if(ch === '=' && nx !== '=') {return { type: TokenType.Assignment, advance: 1 }}
+    if(ch === ':' && nx === ':') {return { type: TokenType.Word, advance: 2 }}
+    if(ch === ':' && nx !== ':') {return { type: TokenType.Colon, advance: 1 }}
+
+    return { type: TokenType.Word, advance: 1 }
+}
+
+// Enter the sub-state that corresponds to the token type just classified.
+function nextStateFor(type: TokenType, text: string, pos: number, cfg: LanguageSyntaxConfig): {
+    state: State; quote: string; open: string; blockEnd: string
+} {
+    if(type === TokenType.String)
+        {return { state: State.InString, quote: text[pos], open: '', blockEnd: '' }}
+    if(type === TokenType.Block)
+        {return { state: State.InBlock, quote: '', open: text[pos], blockEnd: '' }}
+    if(type === TokenType.Comment) {
+        if(findLineComment(text, pos, cfg))
+            {return { state: State.InLineComment, quote: '', open: '', blockEnd: '' }}
+        const end = findBlockCommentEnd(text, pos, cfg)
+        if(end)
+            {return { state: State.InBlockComment, quote: '', open: '', blockEnd: end }}
+    }
+    return { state: State.Default, quote: '', open: '', blockEnd: '' }
+}
+
+function tokenizeLine(ln: { text: string }, cfg: LanguageSyntaxConfig, lang: string): {
+    tokens: Token[]; sgfntTokens: TokenType[]
+} {
+    const text = ln.text
+    const tokens: Token[] = []
+
+    // Mutable scan head — all fields are plain values, no closures, no classes.
+    let state = State.Default
+    let tokenStart = -1          // index where current token began (-1 = none open)
+    let lastType = TokenType.Invalid
+    let quote = ''          // InString: which quote char started this string
+    let open = ''          // InBlock:  which bracket opened this block
+    let blockDepth = 0           // InBlock:  nesting depth
+    let blockEnd = ''          // InBlockComment: closing sequence
+
+    // Flush the token that has been accumulating since tokenStart.
+    const flush = (upTo: number, overrideType?: TokenType) => {
+        if(tokenStart === -1) {return}
+        tokens.push({ type: overrideType ?? lastType, text: text.substring(tokenStart, upTo) })
+        tokenStart = -1
+    }
+
+    let pos = 0
+    while(pos < text.length) {
+
+        switch(state) {
+
+            case State.InString: {
+                if(text[pos] === quote && text[pos - 1] !== '\\') {
+                    pos++
+                    flush(pos)
+                    state = State.Default
+                } else {
+                    pos++
+                }
+                break
             }
-            return { p: pos + 1, s: scan }
-        }
 
-        case State.InLineCmt: {
-            return { p: txt.length, s: scan }
-        }
-
-        case State.InBlockCmt: {
-            const ends = txt.startsWith(scan.end, pos)
-            if(ends) {return { p: pos + scan.end.length, s: { ...scan, state: State.Default, partial: false } }}
-            return { p: pos + 1, s: scan }
-        }
-
-        case State.Default: {
-            const nonWs = toks.filter(t => t.type !== TokenType.Whitespace).length
-            const cls = classifyChar(txt, pos, cfg, nonWs)
-            const isNewToken = cls.t !== scan.last && scan.start !== -1
-
-            if(isNewToken) {
-                const emit: Token = { type: scan.last, text: txt.substring(scan.start, pos) }
-                const ns = getTokenState(cls, txt, pos, cfg)
-                const q = ns === State.InString ? txt[pos] : ''
-                const o = ns === State.InBlock ? txt[pos] : ''
-                const e = ns === State.InBlockCmt ? findBlockCmt(txt, pos, cfg) ?? '' : ''
-                const pt = ns !== State.Default
-                return { p: pos + cls.n, e: emit, s: { ...scan, state: ns, last: cls.t, start: pos, quote: q, open: o, end: e, partial: pt } }
+            case State.InBlock: {
+                if(text[pos] === open) {
+                    blockDepth++
+                    pos++
+                } else if(text[pos] === BRACKET_PAIR[open] && text[pos - 1] !== '\\') {
+                    pos++
+                    if(--blockDepth === 0) {
+                        flush(pos)
+                        state = State.Default
+                    }
+                } else {
+                    pos++
+                }
+                break
             }
 
-            const isFirstToken = scan.start === -1
-            if(isFirstToken) {
-                const ns = getTokenState(cls, txt, pos, cfg)
-                const q = ns === State.InString ? txt[pos] : ''
-                const o = ns === State.InBlock ? txt[pos] : ''
-                const e = ns === State.InBlockCmt ? findBlockCmt(txt, pos, cfg) ?? '' : ''
-                return { p: pos + cls.n, s: { ...scan, state: ns, last: cls.t, start: pos, quote: q, open: o, end: e } }
+            case State.InLineComment: {
+                flush(text.length)
+                pos = text.length   // consume rest of line
+                break
             }
 
-            return { p: pos + cls.n, s: scan }
+            case State.InBlockComment: {
+                if(text.startsWith(blockEnd, pos)) {
+                    pos += blockEnd.length
+                    flush(pos)
+                    state = State.Default
+                } else {
+                    pos++
+                }
+                break
+            }
+
+            case State.Default: {
+                const { type, advance } = classifyAtDefault(text, pos, cfg)
+
+                if(type !== lastType) {
+                    // Type changed → flush previous token, open new one.
+                    flush(pos)
+                    lastType = type
+                    tokenStart = pos
+                    const ns = nextStateFor(type, text, pos, cfg)
+                    state = ns.state
+                    quote = ns.quote
+                    open = ns.open
+                    blockEnd = ns.blockEnd
+                    blockDepth = state === State.InBlock ? 1 : 0
+                } else if(tokenStart === -1) {
+                    // Very first character.
+                    tokenStart = pos
+                    const ns = nextStateFor(type, text, pos, cfg)
+                    state = ns.state
+                    quote = ns.quote
+                    open = ns.open
+                    blockEnd = ns.blockEnd
+                    blockDepth = state === State.InBlock ? 1 : 0
+                }
+                // else: same type, same state — just accumulate.
+
+                pos += advance
+                break
+            }
+
+        } // switch
+    }
+
+    // Flush whatever remains; mark partial tokens.
+    if(tokenStart !== -1) {
+        const partialType =
+            state === State.InString ? TokenType.PartialString :
+                state === State.InBlock ? TokenType.PartialBlock :
+            /* InBlockComment / rest */     lastType
+        flush(text.length, partialType)
+    }
+
+    // Refine Comma → CommaAsWord: a comma is "word-like" when it is the very
+    // first non-whitespace token on the line (comma-first style).
+    for(let i = 0; i < tokens.length; i++) {
+        if(tokens[i].type !== TokenType.Comma) {continue}
+        const nonWsBefore = tokens.slice(0, i).some(t => t.type !== TokenType.Whitespace)
+        if(!nonWsBefore) {tokens[i] = { ...tokens[i], type: TokenType.CommaAsWord }}
+        break  // only the first comma can be CommaAsWord
+    }
+
+    // Refine Word → From for JS/TS import statements.
+    const JS_LIKE = new Set(['javascript', 'typescript', 'javascriptreact', 'typescriptreact'])
+    if(JS_LIKE.has(lang)) {
+        for(const t of tokens) {
+            if(t.type === TokenType.Word && t.text === 'from') {t.type = TokenType.From}
         }
     }
-}
 
-const JS_LIKE = new Set(['javascript', 'typescript', 'javascriptreact', 'typescriptreact'])
-const SIG = new Set([TokenType.Assignment, TokenType.Colon, TokenType.Arrow, TokenType.Comment])
-
-const tokenizeLine = (ln: { text: string }, cfg: LanguageSyntaxConfig, lang: string) => {
-    const txt = ln.text, toks: Token[] = []
-    let pos = 0, scan: Scan = { state: State.Default, quote: '', open: '', depth: 0, end: '', start: -1, last: TokenType.Invalid, partial: false }
-    while(pos < txt.length) {
-        const r = step(txt, pos, scan, cfg, toks)
-        if(r.e) {
-            const e = r.e.type === TokenType.Comma && toks.filter(t => t.type !== TokenType.Whitespace).length === 0
-                ? { ...r.e, type: TokenType.CommaAsWord } : r.e
-            toks.push(e)
-        }
-        pos = r.p; scan = r.s
-    }
-    if(scan.start !== -1) {
-        let ft = scan.last
-        if(scan.state === State.InString) {ft = TokenType.PartialString}
-        else if(scan.state === State.InBlock) {ft = TokenType.PartialBlock}
-        else if(scan.state === State.InBlockCmt) {ft = TokenType.Comment}
-        toks.push({ type: ft, text: txt.substring(scan.start) })
-    }
-    if(JS_LIKE.has(lang)) {for(const t of toks) {if(t.type === TokenType.Word && t.text === 'from') {t.type = TokenType.From}}}
+    // Collect significant token types (used by range-builder).
+    const SIG = new Set([TokenType.Assignment, TokenType.Colon, TokenType.Arrow, TokenType.Comment, TokenType.From])
     const sgfntTokens: TokenType[] = []
-    for(const t of toks) {if(SIG.has(t.type) && !sgfntTokens.includes(t.type)) {sgfntTokens.push(t.type)}}
-    if(JS_LIKE.has(lang) && toks.some(t => t.type === TokenType.From) && !sgfntTokens.includes(TokenType.From)) {sgfntTokens.push(TokenType.From)}
-    return { tokens: toks, sgfntTokens }
+    for(const t of tokens) {
+        if(SIG.has(t.type) && !sgfntTokens.includes(t.type)) {sgfntTokens.push(t.type)}
+    }
+
+    return { tokens, sgfntTokens }
 }
 
-const hasPartial = (info: LineInfo): boolean =>
+// ─── Range collection ─────────────────────────────────────────────────────────
+
+const hasPartial = (info: LineInfo) =>
     info.tokens.some(t => t.type === TokenType.PartialBlock || t.type === TokenType.PartialString)
 
-const sameIndent = (i1: LineInfo, i2: LineInfo): boolean => {
-    const t1 = i1.tokens[0], t2 = i2.tokens[0]
+const sameIndent = (a: LineInfo, b: LineInfo) => {
+    const t1 = a.tokens[0], t2 = b.tokens[0]
     return t1?.type === TokenType.Whitespace ? t1.text === t2?.text : t2?.type !== TokenType.Whitespace
 }
 
-const intersect = (a: TokenType[], b: TokenType[]): TokenType[] => {
-    const m: Record<string, boolean> = {}
-    a.forEach(t => m[t as string] = true)
-    return b.filter(t => m[t as string])
+const intersect = (a: TokenType[], b: TokenType[]) => {
+    const set = new Set(a)
+    return b.filter(t => set.has(t))
 }
 
-const collectRange = (
-doc : vscode.TextDocument,  start: number,  end                         : number,  anchor : number,
-lang: string,  overrides         : Record<string,  LanguageSyntaxConfig>,  indentImportant: boolean
-)   : LineRange => {
+function collectRange(
+    doc: vscode.TextDocument, start: number, end: number, anchor: number,
+    lang: string, overrides: Record<string, LanguageSyntaxConfig>, indentImportant: boolean
+): LineRange {
     const tokenize = (ln: number): LineInfo => {
         const tl = doc.lineAt(ln)
         const { tokens, sgfntTokens } = tokenizeLine(tl, getLangConfig(lang, overrides), lang)
         return { line: tl, sgfntTokenType: TokenType.Invalid, sgfntTokens, tokens }
     }
+
     const anchorInfo = tokenize(anchor)
     const range: LineRange = { anchor, infos: [anchorInfo] }
     let types = anchorInfo.sgfntTokens
 
     if(!types.length || hasPartial(anchorInfo)) {return range}
 
-    for(let i = anchor - 1; i >= start; --i) {
+    for(let i = anchor - 1; i >= start; i--) {
         const info = tokenize(i)
         if(hasPartial(info)) {break}
         const tt = intersect(types, info.sgfntTokens)
         if(!tt.length) {break}
-        types = tt
         if(indentImportant && !sameIndent(anchorInfo, info)) {break}
+        types = tt
         range.infos.unshift(info)
     }
-    for(let i = anchor + 1; i <= end; ++i) {
+
+    for(let i = anchor + 1; i <= end; i++) {
         const info = tokenize(i)
         const tt = intersect(types, info.sgfntTokens)
         if(!tt.length) {break}
-        types = tt
         if(indentImportant && !sameIndent(anchorInfo, info)) {break}
-        if(hasPartial(info)) { range.infos.push(info); break }
+        types = tt
         range.infos.push(info)
+        if(hasPartial(info)) {break}
     }
 
-    const sgt = types.includes(TokenType.Assignment) ? TokenType.Assignment : types[0]
-    range.infos.forEach(i => i.sgfntTokenType = sgt!)
+    const sgt = types.includes(TokenType.Assignment) ? TokenType.Assignment : types[0]!
+    for(const info of range.infos) {info.sgfntTokenType = sgt}
     return range
 }
 
-const onlyComments = (r: LineRange): boolean =>
-    r.infos.every(i => i.tokens.filter(t => t.type !== TokenType.Whitespace).length === 1 && i.tokens[0]?.type === TokenType.Comment)
+// ─── Formatting ───────────────────────────────────────────────────────────────
 
-const calcIndent = (infos: LineInfo[]): string => {
-    let min = Infinity,  wsType = ' '
-    for(const i of infos) {
-        min = Math.min(min, i.line.text.search(/\S/))
-        if(i.tokens[0]?.type === TokenType.Whitespace) { wsType = i.tokens[0].text[0] ?? ' '; i.tokens.shift() }
-        if(i.tokens.length > 1 && i.tokens[i.tokens.length - 1]?.type === TokenType.Whitespace) {i.tokens.pop()}
+const isOnlyComments = (range: LineRange) =>
+    range.infos.every(info => {
+        const nonWs = info.tokens.filter(t => t.type !== TokenType.Whitespace)
+        return nonWs.length === 1 && nonWs[0]?.type === TokenType.Comment
+    })
+
+// Strip leading/trailing whitespace tokens; return the common indentation string.
+function extractIndent(infos: LineInfo[]): string {
+    let min = Infinity, wsChar = ' '
+    for(const info of infos) {
+        min = Math.min(min, info.line.text.search(/\S/))
+        if(info.tokens[0]?.type === TokenType.Whitespace) {
+            wsChar = info.tokens[0].text[0] ?? ' '
+            info.tokens.shift()
+        }
+        if(info.tokens.at(-1)?.type === TokenType.Whitespace) {info.tokens.pop()}
     }
-    return wsType.repeat(min)
+    return wsChar.repeat(min === Infinity ? 0 : min)
 }
 
-const calcFirstWord = (infos: LineInfo[]): number => {
-    let max = 0
-    for(const i of infos) {
-        let cnt = 0
-        for(const t of i.tokens) {
-            if(t.type === i.sgfntTokenType) { cnt = -cnt; break }
-            if(t.type !== TokenType.Block && t.type !== TokenType.Whitespace) {++cnt}
+// If lines have the pattern  WORD WORD OP  (two words before operator),
+// pad the first word so all operators line up after a consistent prefix.
+function padFirstWord(infos: LineInfo[]): void {
+    // Count words before the significant operator.
+    const wordsBefore = (info: LineInfo): number => {
+        let count = 0
+        for(const t of info.tokens) {
+            if(t.type === info.sgfntTokenType) {return -count}  // negative = "had operator"
+            if(t.type !== TokenType.Whitespace && t.type !== TokenType.Block) {count++}
         }
-        if(cnt < -1) {max = Math.max(max, i.tokens[0]?.text.length ?? 0)}
+        return count  // positive = "no operator found"
     }
-    return max
-}
 
-const injectFirstWord = (infos: LineInfo[], len: number): void => {
-    if(!len) {return}
-    const wordSp = { type: TokenType.Insertion, text: ws(len + 1) }, oneSp = { type: TokenType.Insertion, text: ' ' }
-    for(const i of infos) {
-        let cnt = 0
-        for(const t of i.tokens) {
-            if(t.type === i.sgfntTokenType) { cnt = -cnt; break }
-            if(t.type !== TokenType.Whitespace) {++cnt}
-        }
+    const maxFirstLen = infos.reduce((max, info) => {
+        const wb = wordsBefore(info)
+        return wb < -1 ? Math.max(max, info.tokens[0]?.text.length ?? 0) : max
+    }, 0)
 
-        const isFirstWord = cnt === -1
-        if(isFirstWord) {i.tokens.unshift(wordSp); continue}
+    if(!maxFirstLen) {return}
 
-        const isSecondWord = cnt < -1
-        if(!isSecondWord) {continue}
+    const spacer = { type: TokenType.Insertion, text: ws(maxFirstLen + 1) }
+    const singleSp = { type: TokenType.Insertion, text: ' ' }
 
-        const needsSpace = i.tokens[1]?.type === TokenType.Whitespace
-        if(needsSpace) {i.tokens[1] = oneSp; continue}
+    for(const info of infos) {
+        const wb = wordsBefore(info)
+        if(wb === -(-1)) {  // exactly one word before op — prepend full spacer
+            info.tokens.unshift(spacer)
+        } else if(wb < -1) {  // two+ words — pad first word to maxFirstLen
+            const firstLen = info.tokens[0]?.text.length ?? 0
+            const isCommaFirst = info.tokens[0]?.type === TokenType.CommaAsWord
 
-        const isCommaWord = i.tokens[0]?.type === TokenType.CommaAsWord
-        if(isCommaWord) {i.tokens.splice(1, 0, oneSp); continue}
-
-        if(i.tokens[0]?.text.length !== len) {
-            const w = { type: TokenType.Insertion, text: ws(len - i.tokens[0].text.length) }
-            i.tokens.splice(1, 0, w)
-        }
-    }
-}
-
-const rmPadWs = (infos: LineInfo[]): void => {
-    for(const i of infos) {
-        let j = 1
-        while(j < i.tokens.length) {
-            if(i.tokens[j]?.type === i.sgfntTokenType) {
-                if(i.tokens[j - 1]?.type === TokenType.Whitespace) { i.tokens.splice(j - 1, 1); --j }
-                if(i.tokens[j + 1]?.type === TokenType.Whitespace) {i.tokens.splice(j + 1, 1)}
+            // Normalise the whitespace after the first word.
+            if(info.tokens[1]?.type === TokenType.Whitespace) {
+                info.tokens[1] = singleSp
+            } else {
+                info.tokens.splice(1, 0, singleSp)
             }
-            ++j
+
+            // Insert padding if the first word is shorter than the longest.
+            if(firstLen < maxFirstLen) {
+                const pad = { type: TokenType.Insertion, text: ws(maxFirstLen - firstLen) }
+                info.tokens.splice(isCommaFirst ? 0 : 1, 0, pad)
+            }
         }
     }
 }
 
-const DEFAULT_STT: Record<string, number | number[]> = { colon: [0, 1], assignment: [1, 1], comment: 2, arrow: [1, 1], from: [1, 1] }
-
-const formatComma = (cur: string, op: string, hasMore: boolean): string => cur + op + (hasMore ? ' ' : '')
-const formatComment = (exceed: number): number => exceed + 1
-
-const formatOperatorNegative = (cur: string, op: string, pad: string, stt: number[]): string => {
-    if(stt[1] < 0) {
-        let z = cur.length - 1
-        while(z >= 0 && !REG_WS.test(cur[z] ?? '')) {--z}
-        return cur.substring(0, z + 1) + pad + cur.substring(z + 1) + op
+// Remove any whitespace immediately before or after the significant operator.
+function stripOperatorWhitespace(infos: LineInfo[]): void {
+    for(const info of infos) {
+        for(let i = 1; i < info.tokens.length; i++) {
+            const t = info.tokens[i]
+            if(t?.type !== info.sgfntTokenType && t?.type !== TokenType.Comma) {continue}
+            if(info.tokens[i - 1]?.type === TokenType.Whitespace) { info.tokens.splice(i - 1, 1); i-- }
+            if(info.tokens[i + 1]?.type === TokenType.Whitespace) {info.tokens.splice(i + 1, 1)}
+        }
     }
-    return cur + op + pad
 }
 
-const formatOperatorStandard = (cur: string, op: string, pad: string, stt: number[]): string => {
-    let res = cur + pad + ws(stt[0]) + op
-    if(stt[1] > 0) {res += ws(stt[1])}
-    return res
+const DEFAULT_SURROUND: Record<string, number | number[]> = {
+    colon: [0, 1], assignment: [1, 1], comment: 2, arrow: [1, 1], from: [1, 1],
 }
 
-const formatOperator = (cur: string, op: string, stt: number[], pad: string, isLast: boolean): string => {
-    if(stt[0] < 0) {return formatOperatorNegative(cur, op, pad, stt)}
-    return formatOperatorStandard(cur, op, pad, stt)
+// Build the final string for one operator cell given padding config.
+function applyOperator(before: string, op: string, pad: string, stt: number[]): string {
+    if(stt[0]! < 0) {
+        // Operator sticks to the word on its left.
+        if(stt[1]! < 0) {
+            // Sibling token sticks to operator on the right too.
+            let z = before.length - 1
+            while(z >= 0 && !REG_WS.test(before[z] ?? '')) {z--}
+            return before.slice(0, z + 1) + pad + before.slice(z + 1) + op
+        }
+        return before + op + pad
+    }
+    let result = before + pad + ws(stt[0]!) + op
+    if(stt[1]! > 0) {result += ws(stt[1]!)}
+    return result
 }
 
-const buildLines = (range: LineRange, indent: string, firstWord: number, cfg: (k: string, v?: unknown) => unknown): string[] => {
-    if(onlyComments(range)) {return range.infos.map(i => i.line.text)}
+function buildLines(range: LineRange, indent: string, cfg: ReturnType<typeof makeConfig>): string[] {
+    if(isOnlyComments(range)) {return range.infos.map(i => i.line.text)}
 
-    const sttKey = String(range.infos[0].sgfntTokenType).toLowerCase()
-    const stt = ((cfg('surroundSpace', {}) as Record<string, number[]>)?.[sttKey]) ?? DEFAULT_STT[sttKey]
-    const commentCfg = ((cfg('surroundSpace', {}) as Record<string, number>)?.comment) ?? DEFAULT_STT.comment
-    const opPad = cfg('operatorPadding', 'right') as string
+    padFirstWord(range.infos)
+    stripOperatorWhitespace(range.infos)
 
-    const infos = range.infos, size = infos.length
-    injectFirstWord(infos, firstWord)
-    rmPadWs(infos)
+    const sttKey = String(range.infos[0]!.sgfntTokenType).toLowerCase()
+    const surrounds = cfg('surroundSpace', {}) as Record<string, number | number[]>
+    const stt = (surrounds[sttKey] ?? DEFAULT_SURROUND[sttKey]) as number[]
+    const commentGap = (surrounds['comment'] ?? DEFAULT_SURROUND['comment']) as number
+    const opAlign = cfg('operatorPadding', 'right') as string
 
-    const col: number[] = new Array(size).fill(0), res: string[] = new Array(size).fill(indent)
-    let exceed = 0, maxOp = 0, maxCol = 0
+    const infos = range.infos
+    const size = infos.length
 
-    while(exceed < size) {
-        let opSize = 0
-        for(let l = 0; l < size; ++l) {
-            const c = col[l], info = infos[l], tkCnt = info.tokens.length
-            if(c === -1) {continue}
-            let j = c, end = tkCnt, cur = res[l]
-            if(tkCnt > 1 && info.tokens[tkCnt - 1]?.type === TokenType.Comment) {
-                end = tkCnt > 2 && info.tokens[tkCnt - 2]?.type === TokenType.Whitespace ? tkCnt - 2 : tkCnt - 1
-            }
-            for(; j < end; ++j) {
-                const t = info.tokens[j]
+    // Per-line write cursors into infos[l].tokens; -1 means this line is done.
+    const col: number[] = new Array(size).fill(0)
+    const result: string[] = new Array(size).fill(indent)
+
+    let done = 0
+    while(done < size) {
+        // ── Pass 1: advance each line to its next operator, measure the column. ──
+        let maxOpLen = 0, maxCol = 0
+        for(let l = 0; l < size; l++) {
+            if(col[l] === -1) {continue}
+            const info = infos[l]!
+            const toks = info.tokens
+            // Exclude trailing comment from this pass.
+            const end = toks.length > 1 && toks.at(-1)?.type === TokenType.Comment
+                ? (toks.at(-2)?.type === TokenType.Whitespace ? toks.length - 2 : toks.length - 1)
+                : toks.length
+
+            let cur = result[l]!
+            let j = col[l]!
+            for(; j < end; j++) {
+                const t = toks[j]!
                 if(t.type === info.sgfntTokenType || (t.type === TokenType.Comma && j !== 0)) {
-                    opSize = Math.max(opSize, t.text.length)
+                    maxOpLen = Math.max(maxOpLen, t.text.length)
                     maxCol = Math.max(maxCol, cur.length)
                     break
                 }
                 cur += t.text
             }
-            res[l] = cur
-            if(j === end) { ++exceed; col[l] = -1; info.tokens.splice(0, end) }
+            result[l] = cur
+            if(j === end) { done++; col[l] = -1; toks.splice(0, end) }
             else {col[l] = j}
         }
 
-        for(let l = 0; l < size; ++l) {
-            const i = col[l]
-            if(i === -1) {continue}
-            const info = infos[l], cur = res[l]
-            let op = info.tokens[i]?.text ?? ''
-            if(op.length < opSize) {op = opPad === 'right' ? ws(opSize - op.length) + op : op + ws(opSize - op.length)}
-            const pad = maxCol > cur.length ? ws(maxCol - cur.length) : ''
+        // ── Pass 2: write operator + padding for each line. ──
+        for(let l = 0; l < size; l++) {
+            const j = col[l]!
+            if(j === -1) {continue}
 
-            if(info.tokens[i]?.type === TokenType.Comma) {
-                res[l] = formatComma(cur, op, i < info.tokens.length - 1)
-                col[l] = i + 1
-                continue
+            const info = infos[l]!
+            const toks = info.tokens
+            const cur = result[l]!
+            const pad = ws(maxCol - cur.length)
+
+            let opText = toks[j]!.text
+            if(opText.length < maxOpLen) {
+                opText = opAlign === 'right'
+                    ? ws(maxOpLen - opText.length) + opText
+                    : opText + ws(maxOpLen - opText.length)
             }
 
-            if(info.tokens.length === 1 && info.tokens[0]?.type === TokenType.Comment) {
-                ++exceed
-                continue
+            if(toks[j]!.type === TokenType.Comma) {
+                result[l] = cur + opText + (j < toks.length - 1 ? ' ' : '')
+            } else if(toks.length === 1 && toks[0]!.type === TokenType.Comment) {
+                done++   // lone comment line — nothing more to align
+            } else {
+                result[l] = applyOperator(cur, opText, pad, stt)
             }
 
-            res[l] = formatOperator(cur, op, stt, pad, i < info.tokens.length - 1)
-            col[l] = i + 1
+            col[l] = j + 1
         }
     }
 
-    if(commentCfg < 0) {
-        for(let l = 0; l < size; ++l) {for(const t of infos[l].tokens) {res[l] += t.text}}
+    // ── Trailing comment alignment. ──
+    if(commentGap < 0) {
+        // No alignment — just append whatever remains.
+        for(let l = 0; l < size; l++) {
+            for(const t of infos[l]!.tokens) {result[l] += t.text}
+        }
     } else {
-        let mx = 0
-        for(const r of res) {mx = Math.max(mx, r.length)}
-        for(let l = 0; l < size; ++l) {if(infos[l].tokens.length)
-            {res[l] += ws(mx - res[l].length + commentCfg) + infos[l].tokens.pop()?.text}}
+        const maxLen = result.reduce((m, r) => Math.max(m, r.length), 0)
+        for(let l = 0; l < size; l++) {
+            const trailing = infos[l]!.tokens.pop()
+            if(trailing) {result[l] += ws(maxLen - result[l]!.length + commentGap) + trailing.text}
+        }
     }
-    return res
+
+    return result
 }
 
-const getConfig = (doc: vscode.TextDocument) => {
-    const def = vscode.workspace.getConfiguration('betterAlign')
-    let lng: Record<string,  unknown> | null = null
-    try { lng = vscode.workspace.getConfiguration().get(`[${doc.languageId}]`) as Record<string, unknown> ?? null } catch { }
-    return (k: string, v?: unknown) => lng ? (lng as Record<string, unknown>)[`betterAlign.${k}`] ?? def.get(k, v) : def.get(k, v)
+// ─── Config helpers ───────────────────────────────────────────────────────────
+
+type ConfigFn = (key: string, defaultValue?: unknown) => unknown
+
+function makeConfig(doc: vscode.TextDocument): ConfigFn {
+    const base = vscode.workspace.getConfiguration('betterAlign')
+    let lang: Record<string, unknown> | null = null
+    try { lang = vscode.workspace.getConfiguration().get<Record<string, unknown>>(`[${doc.languageId}]`) ?? null } catch { }
+    return (key, def) => lang?.[`betterAlign.${key}`] ?? base.get(key, def)
 }
 
-const getOverrides = (cfg: (k: string, v?: unknown) => unknown) => cfg('languageConfigs', {}) as Record<string, LanguageSyntaxConfig>
+// ─── Main entry point ─────────────────────────────────────────────────────────
 
-const process = (ed: vscode.TextEditor): void => {
-    const doc = ed.document
-    const cfg = getConfig(doc)
-    const overrides = getOverrides(cfg)
+function process(editor: vscode.TextEditor): void {
+    const doc = editor.document
+    const cfg = makeConfig(doc)
+    const overrides = cfg('languageConfigs', {}) as Record<string, LanguageSyntaxConfig>
     const ranges: LineRange[] = []
 
-    ed.selections.forEach(sel => {
+    for(const sel of editor.selections) {
         const indentImportant = cfg('indentBase', 'firstline') === 'dontchange'
+
         if(sel.isSingleLine) {
             ranges.push(collectRange(doc, 0, doc.lineCount - 1, sel.active.line, doc.languageId, overrides, indentImportant))
-        } else {
-            let start = sel.start.line,  end = sel.end.line
-            while(true) {
-                const res = collectRange(doc, start, end, start, doc.languageId, overrides, indentImportant)
-                const last = res.infos[res.infos.length - 1]
-                if(last.line.lineNumber > end) {break}
-                if(res.infos[0]?.sgfntTokenType !== TokenType.Invalid) {ranges.push(res)}
-                if(last.line.lineNumber === end) {break}
-                start = last.line.lineNumber + 1
-            }
+            continue
         }
-    })
+
+        let start = sel.start.line
+        const end = sel.end.line
+        while(start <= end) {
+            const r = collectRange(doc, start, end, start, doc.languageId, overrides, indentImportant)
+            const last = r.infos.at(-1)!
+            if(last.line.lineNumber > end) {break}
+            if(r.infos[0]?.sgfntTokenType !== TokenType.Invalid) {ranges.push(r)}
+            if(last.line.lineNumber === end) {break}
+            start = last.line.lineNumber + 1
+        }
+    }
 
     const outputs = ranges.map(r => {
-        const indent = onlyComments(r) ? '' : calcIndent(r.infos)
-        const firstWord = onlyComments(r) ? 0 : calcFirstWord(r.infos)
-        return buildLines(r, indent, firstWord, cfg)
+        const indent = isOnlyComments(r) ? '' : extractIndent(r.infos)
+        return buildLines(r, indent, cfg)
     })
 
-    ed.edit(b => {
-        for(let i = 0; i < ranges.length; ++i) {
-            const infos = ranges[i].infos, last = infos[infos.length - 1].line
-            const loc = new vscode.Range(infos[0].line.lineNumber, 0, last.lineNumber, last.text.length)
-            const eol      = doc.eol === vscode.EndOfLine.LF ? '\n' : '\r\n'
-            const replaced = outputs[i].join(eol)
-            if(doc.getText(loc) !== replaced) {b.replace(loc, replaced)}
+    editor.edit(b => {
+        const eol = doc.eol === vscode.EndOfLine.LF ? '\n' : '\r\n'
+        for(let i = 0; i < ranges.length; i++) {
+            const infos = ranges[i]!.infos
+            const last = infos.at(-1)!.line
+            const loc = new vscode.Range(infos[0]!.line.lineNumber, 0, last.lineNumber, last.text.length)
+            const text = outputs[i]!.join(eol)
+            if(doc.getText(loc) !== text) {b.replace(loc, text)}
         }
     })
 }
 
+// ─── Extension lifecycle ──────────────────────────────────────────────────────
+
 export function activate(ctx: vscode.ExtensionContext) {
-    let alignAfterEnter = vscode.workspace.getConfiguration('betterAlign').get<boolean>('alignAfterTypeEnter')
+    let alignOnEnter = vscode.workspace.getConfiguration('betterAlign').get<boolean>('alignAfterTypeEnter')
+
     ctx.subscriptions.push(
         vscode.commands.registerTextEditorCommand('vscode-better-align.align', process),
+
         vscode.workspace.onDidChangeTextDocument(e => {
-            if(alignAfterEnter && e.contentChanges.some(c => c.text.includes('\n')))
+            if(alignOnEnter && e.contentChanges.some(c => c.text.includes('\n')))
                 {vscode.commands.executeCommand('vscode-better-align.align')}
         }),
+
         vscode.workspace.onDidChangeConfiguration(e => {
             if(e.affectsConfiguration('betterAlign'))
-                {alignAfterEnter = vscode.workspace.getConfiguration('betterAlign').get<boolean>('alignAfterTypeEnter')}
-        })
+                {alignOnEnter = vscode.workspace.getConfiguration('betterAlign').get<boolean>('alignAfterTypeEnter')}
+        }),
     )
 }
 

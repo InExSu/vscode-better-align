@@ -1,3 +1,7 @@
+# v1.6.1 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.6.1)
+
+- Fixed ESLint curly rule violations (53 errors)
+
 # v1.6.0 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.6.0)
 
 - New alignment engine: pure functions, state machine, SRP
