@@ -1,6 +1,7 @@
 # v1.4.6 [#](https://github.com/chouzz/vscode-better-align/releases/tag/v1.4.6)
 
 - Fix "Invalid array length" error on large files
+- Fix extra spaces being added to single-line comments
 
 # v1.4.5 [#](https://github.com/chouzz/vscode-better-align/releases/tag/v1.4.5)
 
