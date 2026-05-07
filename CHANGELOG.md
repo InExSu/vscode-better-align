@@ -1,3 +1,7 @@
+# v1.6.9 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.6.9)
+
+- Fix: Improved tokenizer and formatter logic to prevent corruption of comparison operators (`===`, `!==`) and string literals during alignment.
+
 # v1.6.8 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.6.8)
 
 - Fix: Corrected tokenization logic to prevent corruption of comparison operators (`===`, `!==`) and compound assignment operators.

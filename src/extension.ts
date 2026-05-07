@@ -91,6 +91,24 @@ const findBlockCommentEnd = (text: string, pos: number, cfg: LanguageSyntaxConfi
 }
 
 // ─── Tokeniser state machine ──────────────────────────────────────────────────
+//
+// States: 
+//    Default        — scanning character by character, classifying tokens
+//    InString       — consuming until matching unescaped closing quote
+//    InBlock        — consuming until matching closing bracket (depth-tracked)
+//    InLineComment  — consuming rest of line
+//    InBlockComment — consuming until closing sequence
+//
+// Transitions: 
+//    Default → InString       on " ' `
+//    Default → InBlock        on { ( [
+//    Default → InLineComment  on line comment marker
+//    Default → InBlockComment on block comment start
+//    InString → Default       on matching unescaped close quote
+//    InBlock  → Default       on matching close bracket (depth = 0)
+//    InBlock  → InBlock       on nested open bracket (depth++)
+//    InLineComment  → (exits; line ends)
+//    InBlockComment → Default on block comment end sequence
 
 const enum State { Default, InString, InBlock, InLineComment, InBlockComment }
 
@@ -105,11 +123,10 @@ function classifyAtDefault(
 
     switch(ch) {
         case ' ':
-        case '\t':
-        case '\n':
-        case '\r':
+        case '\\t':
+        case '\\n':
+        case '\\r':
             return { type: TokenType.Whitespace, advance: 1 }
-
         case '"':
         case "'":
         case '`':
@@ -129,7 +146,6 @@ function classifyAtDefault(
             return { type: TokenType.Comma, advance: 1 }
 
         case '<':
-            // FIX: Check 3-char operators BEFORE 2-char operators
             if(nx === '=' && rd === '>') { return { type: TokenType.Spaceship, advance: 3 } }
             if(nx === '?' && rd === '=') { return { type: TokenType.PHPShortEcho, advance: 3 } }
             if(nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } }
@@ -137,23 +153,20 @@ function classifyAtDefault(
             return { type: TokenType.Comparison, advance: 1 }
 
         case '>':
-            // FIX: Check 3-char operators BEFORE 2-char operators
             if(nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } }
             if(nx === '=') { return { type: TokenType.Comparison, advance: 2 } }
             return { type: TokenType.Comparison, advance: 1 }
 
         case '!':
-            // FIX: Check !== before !=
-            if(nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } }
-            if(nx === '=') { return { type: TokenType.Comparison, advance: 2 } }
-            return { type: TokenType.Comparison, advance: 1 }
+            if(nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } } // Handles !==
+            if(nx === '=') { return { type: TokenType.Comparison, advance: 2 } } // Handles !=
+            return { type: TokenType.Word, advance: 1 } // Handles '!' as a word/unary operator
 
         case '=':
-            // FIX: Check === before == and =>
             if(nx === '>') { return { type: TokenType.Arrow, advance: 2 } }
-            if(nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } }
-            if(nx === '=') { return { type: TokenType.Comparison, advance: 2 } }
-            return { type: TokenType.Assignment, advance: 1 }
+            if(nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } } // Handles ===
+            if(nx === '=' && nx !== rd) { return { type: TokenType.Comparison, advance: 2 } } // Handles ==
+            return { type: TokenType.Assignment, advance: 1 } // Handles =
 
         case '+':
         case '-':
@@ -165,7 +178,6 @@ function classifyAtDefault(
         case '^':
         case '.':
         case '&':
-            // FIX: Compound assignments are always 2 chars, not 3
             if(nx === '=') { return { type: TokenType.Assignment, advance: 2 } }
             return { type: TokenType.Word, advance: 1 }
 
@@ -370,12 +382,12 @@ function collectRange(
 
     for(let i = anchor + 1; i <= end; i++) {
         const info = tokenize(i)
+        if(hasPartial(info)) { break }
         const tt = intersect(types, info.sgfntTokens)
         if(!tt.length) { break }
         if(indentImportant && !sameIndent(anchorInfo, info)) { break }
         types = tt
         range.infos.push(info)
-        if(hasPartial(info)) { break }
     }
 
     const sgt = types.includes(TokenType.Assignment) ? TokenType.Assignment : types[0]!
@@ -465,6 +477,11 @@ const DEFAULT_SURROUND: Record<string, number | number[]> = {
 }
 
 function applyOperator(before: string, op: string, pad: string, stt: number[]): string {
+    // Special case for triple-character comparison operators
+    if(op === '===' || op === '!==') {
+        return before + pad + op // No spaces around these
+    }
+
     if(stt[0]! < 0) {
         if(stt[1]! < 0) {
             let z = before.length - 1
@@ -616,7 +633,7 @@ function process(editor: vscode.TextEditor): void {
     })
 
     editor.edit(b => {
-        const eol = doc.eol === vscode.EndOfLine.LF ? '\n' : '\r\n'
+        const eol = doc.eol === vscode.EndOfLine.LF ? '\\n' : '\\r\\n';
         for(let i = 0; i < ranges.length; i++) {
             const infos = ranges[i]!.infos
             const last = infos.at(-1)!.line
@@ -636,7 +653,8 @@ export function activate(ctx: vscode.ExtensionContext) {
         vscode.commands.registerTextEditorCommand('vscode-better-align.align', process),
 
         vscode.workspace.onDidChangeTextDocument(e => {
-            if(alignOnEnter && e.contentChanges.some(c => c.text.includes('\n'))) { vscode.commands.executeCommand('vscode-better-align.align') }
+            if(alignOnEnter && e.contentChanges.some(c => c.text.includes('\\n')))
+                { vscode.commands.executeCommand('vscode-better-align.align') }
         }),
 
         vscode.workspace.onDidChangeConfiguration(e => {
