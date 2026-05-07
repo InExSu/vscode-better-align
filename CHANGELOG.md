@@ -1,3 +1,8 @@
+# v1.6.2 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.6.2)
+
+- Added AGENTS.md development instructions
+- Minor formatting improvements
+
 # v1.6.1 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.6.1)
 
 - Fixed ESLint curly rule violations (53 errors)

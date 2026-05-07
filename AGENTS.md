@@ -1,3 +1,12 @@
+# Agent Instructions for Development
+
+After making code changes, always verify by running:
+
+```bash
+npm run lint    # Check linter
+npm run test   # Run tests
+```
+
 # Agent Instructions for Release Process
 
 After successfully improving the code, follow these steps to release a new version:
