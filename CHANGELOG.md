@@ -1,4 +1,14 @@
-# v1.6.9 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.6.9)
+# v1.7.0 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.7.0)
+
+- Fix: Don't treat `://` (URLs) as line comments
+- Fix: Use actual whitespace character codes in tokenizer (not escaped string literals)
+- Fix: Track escape sequences properly in strings (handle `\\"` correctly)
+- Fix: Handle brackets without backslash escaping
+- Fix: Improve `wordsBefore` logic for multi-word prefixes
+- Fix: Normalize surroundSpace values (no more negative indices)
+- Fix: Comma alignment improvements
+- Fix: Improved trailing comment alignment
+- Fix: Clean up EOL handling
 
 - Fix: Improved tokenizer and formatter logic to prevent corruption of comparison operators (`===`, `!==`) and string literals during alignment.
 

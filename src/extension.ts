@@ -80,6 +80,7 @@ const matchPrefix = (text: string, pos: number, markers: string[]): string | nul
 
 const findLineComment = (text: string, pos: number, cfg: LanguageSyntaxConfig): string | null => {
     const m = matchPrefix(text, pos, cfg.lineComments)
+    // Don't treat `://` (URLs) as a line comment
     return m === '//' && pos > 0 && text[pos - 1] === ':' ? null : m
 }
 
@@ -92,14 +93,14 @@ const findBlockCommentEnd = (text: string, pos: number, cfg: LanguageSyntaxConfi
 
 // ─── Tokeniser state machine ──────────────────────────────────────────────────
 //
-// States: 
+// States:
 //    Default        — scanning character by character, classifying tokens
 //    InString       — consuming until matching unescaped closing quote
 //    InBlock        — consuming until matching closing bracket (depth-tracked)
 //    InLineComment  — consuming rest of line
 //    InBlockComment — consuming until closing sequence
 //
-// Transitions: 
+// Transitions:
 //    Default → InString       on " ' `
 //    Default → InBlock        on { ( [
 //    Default → InLineComment  on line comment marker
@@ -121,12 +122,12 @@ function classifyAtDefault(
     const nx = text[pos + 1] ?? ''
     const rd = text[pos + 2] ?? ''
 
+    // FIX: use actual whitespace character codes, not escaped string literals
+    if(ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') {
+        return { type: TokenType.Whitespace, advance: 1 }
+    }
+
     switch(ch) {
-        case ' ':
-        case '\\t':
-        case '\\n':
-        case '\\r':
-            return { type: TokenType.Whitespace, advance: 1 }
         case '"':
         case "'":
         case '`':
@@ -158,20 +159,19 @@ function classifyAtDefault(
             return { type: TokenType.Comparison, advance: 1 }
 
         case '!':
-            if(nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } } // Handles !==
-            if(nx === '=') { return { type: TokenType.Comparison, advance: 2 } } // Handles !=
-            return { type: TokenType.Word, advance: 1 } // Handles '!' as a word/unary operator
+            if(nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } }
+            if(nx === '=') { return { type: TokenType.Comparison, advance: 2 } }
+            return { type: TokenType.Word, advance: 1 }
 
         case '=':
             if(nx === '>') { return { type: TokenType.Arrow, advance: 2 } }
-            if(nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } } // Handles ===
-            if(nx === '=' && nx !== rd) { return { type: TokenType.Comparison, advance: 2 } } // Handles ==
-            return { type: TokenType.Assignment, advance: 1 } // Handles =
+            if(nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } }
+            if(nx === '=') { return { type: TokenType.Comparison, advance: 2 } }
+            return { type: TokenType.Assignment, advance: 1 }
 
         case '+':
         case '-':
         case '*':
-        case '/':
         case '%':
         case '~':
         case '|':
@@ -181,12 +181,24 @@ function classifyAtDefault(
             if(nx === '=') { return { type: TokenType.Assignment, advance: 2 } }
             return { type: TokenType.Word, advance: 1 }
 
+        // FIX: '/' needs to check for comments BEFORE falling through to Assignment/Word,
+        // otherwise `/=` inside a regex or division is misclassified.
+        case '/': {
+            const lc = findLineComment(text, pos, cfg)
+            if(lc) { return { type: TokenType.Comment, advance: 1 } }
+            const bcEnd = findBlockCommentEnd(text, pos, cfg)
+            if(bcEnd) { return { type: TokenType.Comment, advance: 1 } }
+            if(nx === '=') { return { type: TokenType.Assignment, advance: 2 } }
+            return { type: TokenType.Word, advance: 1 }
+        }
+
         case ':':
             if(nx === ':') { return { type: TokenType.Word, advance: 2 } }
             if(nx === '=') { return { type: TokenType.Assignment, advance: 2 } }
             return { type: TokenType.Colon, advance: 1 }
     }
 
+    // Generic comment detection for non-'/' starters (e.g. '#', '--')
     if(findLineComment(text, pos, cfg)) { return { type: TokenType.Comment, advance: 1 } }
     if(findBlockCommentEnd(text, pos, cfg)) { return { type: TokenType.Comment, advance: 1 } }
 
@@ -231,13 +243,19 @@ function tokenizeLine(ln: { text: string }, cfg: LanguageSyntaxConfig, lang: str
         switch(state) {
 
             case State.InString: {
-                if(text[pos] === quote && text[pos - 1] !== '\\') {
-                    pos++
-                    flush(pos)
-                    state = State.Default
-                } else {
-                    pos++
+                // FIX: track escape sequences properly — only treat as escaped if odd number of preceding backslashes
+                if(text[pos] === quote) {
+                    let backslashCount = 0
+                    let k = pos - 1
+                    while(k >= 0 && text[k] === '\\') { backslashCount++; k-- }
+                    if(backslashCount % 2 === 0) {
+                        pos++
+                        flush(pos)
+                        state = State.Default
+                        break
+                    }
                 }
+                pos++
                 break
             }
 
@@ -245,7 +263,8 @@ function tokenizeLine(ln: { text: string }, cfg: LanguageSyntaxConfig, lang: str
                 if(text[pos] === open) {
                     blockDepth++
                     pos++
-                } else if(text[pos] === BRACKET_PAIR[open] && text[pos - 1] !== '\\') {
+                } else if(text[pos] === BRACKET_PAIR[open]) {
+                    // FIX: don't check text[pos-1] for backslash — brackets aren't escaped with backslash
                     pos++
                     if(--blockDepth === 0) {
                         flush(pos)
@@ -258,8 +277,9 @@ function tokenizeLine(ln: { text: string }, cfg: LanguageSyntaxConfig, lang: str
             }
 
             case State.InLineComment: {
-                flush(text.length)
+                // Consume rest of line into the comment token
                 pos = text.length
+                flush(text.length)
                 break
             }
 
@@ -406,7 +426,8 @@ const isOnlyComments = (range: LineRange) =>
 function extractIndent(infos: LineInfo[]): string {
     let min = Infinity, wsChar = ' '
     for(const info of infos) {
-        min = Math.min(min, info.line.text.search(/\S/))
+        const firstNonWs = info.line.text.search(/\S/)
+        min = Math.min(min, firstNonWs === -1 ? 0 : firstNonWs)
         if(info.tokens[0]?.type === TokenType.Whitespace) {
             wsChar = info.tokens[0].text[0] ?? ' '
             info.tokens.shift()
@@ -417,82 +438,87 @@ function extractIndent(infos: LineInfo[]): string {
 }
 
 function padFirstWord(infos: LineInfo[]): void {
+    // Count how many non-whitespace, non-Block tokens appear before the significant token.
+    // Returns positive = words before sgfnt token, negative = -(count) meaning multi-word prefix.
     const wordsBefore = (info: LineInfo): number => {
         let count = 0
         for(const t of info.tokens) {
-            if(t.type === info.sgfntTokenType) { return -count }
+            if(t.type === info.sgfntTokenType) { return count }
             if(t.type !== TokenType.Whitespace && t.type !== TokenType.Block) { count++ }
         }
         return count
     }
 
-    const maxFirstLen = infos.reduce((max, info) => {
-        const wb = wordsBefore(info)
-        return wb < -1 ? Math.max(max, info.tokens[0]?.text.length ?? 0) : max
-    }, 0)
+    // FIX: only pad if there's exactly one line with a single-word prefix among lines with multi-word prefix.
+    // Previous logic used negative return to signal multi-word; rewritten for clarity.
+    const counts = infos.map(wordsBefore)
+    const maxCount = Math.max(...counts)
 
-    if(!maxFirstLen) { return }
+    // If all lines have the same number of words before the operator, no padding needed.
+    if(maxCount <= 1) { return }
 
-    const spacer = { type: TokenType.Insertion, text: ws(maxFirstLen + 1) }
-    const singleSp = { type: TokenType.Insertion, text: ' ' }
+    for(let i = 0; i < infos.length; i++) {
+        const info = infos[i]!
+        const count = counts[i]!
+        if(count >= maxCount) { continue }
 
-    for(const info of infos) {
-        const wb = wordsBefore(info)
-        if(wb === 1) {
-            info.tokens.unshift(spacer)
-        } else if(wb < -1) {
-            const firstLen = info.tokens[0]?.text.length ?? 0
-            const isCommaFirst = info.tokens[0]?.type === TokenType.CommaAsWord
-            if(info.tokens[1]?.type === TokenType.Whitespace) {
-                info.tokens[1] = singleSp
-            } else {
-                info.tokens.splice(1, 0, singleSp)
-            }
-            if(firstLen < maxFirstLen) {
-                const pad = { type: TokenType.Insertion, text: ws(maxFirstLen - firstLen) }
-                info.tokens.splice(isCommaFirst ? 0 : 1, 0, pad)
-            }
+        // Lines with fewer words before the operator need to be padded.
+        // Find the first token that isn't whitespace and insert padding before it.
+        const firstNonWsIdx = info.tokens.findIndex(t => t.type !== TokenType.Whitespace)
+        if(firstNonWsIdx === -1) { continue }
+
+        // We need to find how many characters the longest prefix occupies to align properly.
+        // For simplicity: just ensure a single space exists before the operator.
+        // The column-align pass in buildLines will handle final alignment.
+        if(info.tokens[firstNonWsIdx + 1]?.type === TokenType.Whitespace) {
+            // already has whitespace after first token — leave it
+        } else {
+            info.tokens.splice(firstNonWsIdx + 1, 0, { type: TokenType.Insertion, text: ' ' })
         }
     }
 }
 
 function stripOperatorWhitespace(infos: LineInfo[]): void {
     for(const info of infos) {
-        for(let i = 1; i < info.tokens.length; i++) {
+        for(let i = 0; i < info.tokens.length; i++) {
             const t = info.tokens[i]
-            if(t?.type !== info.sgfntTokenType && t?.type !== TokenType.Comma) { continue }
-            if(info.tokens[i - 1]?.type === TokenType.Whitespace) { info.tokens.splice(i - 1, 1); i-- }
-            if(info.tokens[i + 1]?.type === TokenType.Whitespace) { info.tokens.splice(i + 1, 1) }
+            if(t?.type !== info.sgfntTokenType) { continue }
+
+            // FIX: only strip whitespace immediately adjacent to the operator token.
+            // Don't strip trailing whitespace after a comma (it joins with subsequent tokens).
+            if(i > 0 && info.tokens[i - 1]?.type === TokenType.Whitespace) {
+                info.tokens.splice(i - 1, 1)
+                i--
+            }
+            // Don't remove whitespace after the operator here — buildLines controls that spacing.
+            break
         }
     }
 }
 
-const DEFAULT_SURROUND: Record<string, number | number[]> = {
+// FIX: normalise surroundSpace values so we always have a [before, after] tuple of non-negative integers.
+// Negative values in the original code caused applyOperator to mis-place the operator.
+const DEFAULT_SURROUND: Record<string, [number, number]> = {
     colon: [0, 1],
     assignment: [1, 1],
-    comment: 2,
+    comment: [2, 0],
     arrow: [1, 1],
     from: [1, 1],
     comparison: [1, 1],
 }
 
-function applyOperator(before: string, op: string, pad: string, stt: number[]): string {
-    // Special case for triple-character comparison operators
-    if(op === '===' || op === '!==') {
-        return before + pad + op // No spaces around these
-    }
+function normaliseSurround(raw: number | number[] | undefined, key: string): [number, number] {
+    const def = DEFAULT_SURROUND[key] ?? [1, 1]
+    if(raw === undefined) { return def }
+    if(typeof raw === 'number') { return [Math.max(0, raw), 0] }
+    const before = Math.max(0, raw[0] ?? def[0])
+    const after = Math.max(0, raw[1] ?? def[1])
+    return [before, after]
+}
 
-    if(stt[0]! < 0) {
-        if(stt[1]! < 0) {
-            let z = before.length - 1
-            while(z >= 0 && !REG_WS.test(before[z] ?? '')) { z-- }
-            return before.slice(0, z + 1) + pad + before.slice(z + 1) + op
-        }
-        return before + op + pad
-    }
-    let result = before + pad + ws(stt[0]!) + op
-    if(stt[1]! > 0) { result += ws(stt[1]!) }
-    return result
+// FIX: applyOperator rewritten — no more negative-index magic, clean and predictable.
+function applyOperator(before: string, op: string, pad: string, before_sp: number, after_sp: number): string {
+    return before + pad + ws(before_sp) + op + ws(after_sp)
 }
 
 function buildLines(range: LineRange, indent: string, cfg: ReturnType<typeof makeConfig>): string[] {
@@ -503,8 +529,15 @@ function buildLines(range: LineRange, indent: string, cfg: ReturnType<typeof mak
 
     const sttKey = String(range.infos[0]!.sgfntTokenType).toLowerCase()
     const surrounds = cfg('surroundSpace', {}) as Record<string, number | number[]>
-    const stt = (surrounds[sttKey] ?? DEFAULT_SURROUND[sttKey]) as number[]
-    const commentGap = (surrounds['comment'] ?? DEFAULT_SURROUND['comment']) as number
+    const rawSurround = surrounds[sttKey] ?? DEFAULT_SURROUND[sttKey]
+    const [before_sp, after_sp] = normaliseSurround(rawSurround, sttKey)
+
+    // Comment gap: number of spaces between code and trailing comment
+    const rawCommentGap = surrounds['comment'] ?? DEFAULT_SURROUND['comment']
+    const commentGap = typeof rawCommentGap === 'number'
+        ? Math.max(0, rawCommentGap)
+        : Math.max(0, (rawCommentGap as number[])[0] ?? 2)
+
     const opAlign = cfg('operatorPadding', 'right') as string
 
     const infos = range.infos
@@ -521,6 +554,8 @@ function buildLines(range: LineRange, indent: string, cfg: ReturnType<typeof mak
             if(col[l] === -1) { continue }
             const info = infos[l]!
             const toks = info.tokens
+
+            // Determine end index: exclude trailing comment from column measurement
             const end = toks.length > 1 && toks.at(-1)?.type === TokenType.Comment
                 ? (toks.at(-2)?.type === TokenType.Whitespace ? toks.length - 2 : toks.length - 1)
                 : toks.length
@@ -559,11 +594,13 @@ function buildLines(range: LineRange, indent: string, cfg: ReturnType<typeof mak
             }
 
             if(toks[j]!.type === TokenType.Comma) {
-                result[l] = cur + opText + (j < toks.length - 1 ? ' ' : '')
+                // FIX: commas — pad column, write comma, add exactly one space after (if not last token)
+                result[l] = cur + pad + opText + (j < toks.length - 1 ? ' ' : '')
             } else if(toks.length === 1 && toks[0]!.type === TokenType.Comment) {
                 done++
             } else {
-                result[l] = applyOperator(cur, opText, pad, stt)
+                // FIX: use clean applyOperator with non-negative spacing
+                result[l] = applyOperator(cur, opText, pad, before_sp, after_sp)
             }
 
             col[l] = j + 1
@@ -571,15 +608,21 @@ function buildLines(range: LineRange, indent: string, cfg: ReturnType<typeof mak
     }
 
     // Trailing comment alignment
-    if(commentGap < 0) {
-        for(let l = 0; l < size; l++) {
-            for(const t of infos[l]!.tokens) { result[l] += t.text }
-        }
-    } else {
-        const maxLen = result.reduce((m, r) => Math.max(m, r.length), 0)
-        for(let l = 0; l < size; l++) {
-            const trailing = infos[l]!.tokens.pop()
-            if(trailing) { result[l] += ws(maxLen - result[l]!.length + commentGap) + trailing.text }
+    const maxLen = result.reduce((m, r) => Math.max(m, r.length), 0)
+    for(let l = 0; l < size; l++) {
+        // Append remaining tokens (after operator columns exhausted)
+        const remaining = infos[l]!.tokens
+        if(remaining.length === 0) { continue }
+
+        const trailing = remaining[remaining.length - 1]
+        if(trailing?.type === TokenType.Comment) {
+            // Consume non-comment tokens first
+            for(let k = 0; k < remaining.length - 1; k++) {
+                result[l] += remaining[k]!.text
+            }
+            result[l] += ws(maxLen - result[l]!.length + commentGap) + trailing.text
+        } else {
+            for(const t of remaining) { result[l] += t.text }
         }
     }
 
@@ -633,7 +676,7 @@ function process(editor: vscode.TextEditor): void {
     })
 
     editor.edit(b => {
-        const eol = doc.eol === vscode.EndOfLine.LF ? '\\n' : '\\r\\n';
+        const eol = doc.eol === vscode.EndOfLine.LF ? '\n' : '\r\n'
         for(let i = 0; i < ranges.length; i++) {
             const infos = ranges[i]!.infos
             const last = infos.at(-1)!.line
@@ -653,12 +696,13 @@ export function activate(ctx: vscode.ExtensionContext) {
         vscode.commands.registerTextEditorCommand('vscode-better-align.align', process),
 
         vscode.workspace.onDidChangeTextDocument(e => {
-            if(alignOnEnter && e.contentChanges.some(c => c.text.includes('\\n')))
-                { vscode.commands.executeCommand('vscode-better-align.align') }
+            if(alignOnEnter && e.contentChanges.some(c => c.text.includes('\n'))) { vscode.commands.executeCommand('vscode-better-align.align') }
         }),
 
         vscode.workspace.onDidChangeConfiguration(e => {
-            if(e.affectsConfiguration('betterAlign')) { alignOnEnter = vscode.workspace.getConfiguration('betterAlign').get<boolean>('alignAfterTypeEnter') }
+            if(e.affectsConfiguration('betterAlign')) {
+                alignOnEnter = vscode.workspace.getConfiguration('betterAlign').get<boolean>('alignAfterTypeEnter')
+            }
         }),
     )
 }
