@@ -1,3 +1,7 @@
+# v1.10.0 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.10.0)
+
+- Rename: Commands from `vscode-better-align` to `vscode-better-align-columns`
+
 # v1.9.0 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.9.0)
 
 - Add: PHP support for `->` operator (method chaining)

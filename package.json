@@ -2,7 +2,7 @@
   "name": "vscode-better-align-columns",
   "displayName": "Better Align Columns",
   "description": "Better vertical alignment with/without selection in any language for any characters or words.",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "icon": "images/icon.png",
   "publisher": "inexsu",
   "license": "SEE LICENSE IN LICENSE",
@@ -15,12 +15,12 @@
     "theme": "dark"
   },
   "bugs": {
-    "url": "https://github.com/InExSu/vscode-better-align/issues",
+    "url": "https://github.com/InExSu/vscode-better-align-columns/issues",
     "email": "inexsu@bk.ru"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/InExSu/vscode-better-align.git"
+    "url": "https://github.com/InExSu/vscode-better-align-columns.git"
   },
   "engines": {
     "vscode": "^1.47.0"
@@ -30,14 +30,14 @@
   ],
   "activationEvents": [
     "onStartupFinished",
-    "onCommand:vscode-better-align.align"
+    "onCommand:vscode-better-align-columns.align"
   ],
   "main": "./dist/extension.js",
   "browser": "./dist/web/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "vscode-better-align.align",
+        "command": "vscode-better-align-columns.align",
         "title": "Align"
       }
     ],
@@ -151,7 +151,7 @@
     },
     "keybindings": [
       {
-        "command": "vscode-better-align.align",
+        "command": "vscode-better-align-columns.align",
         "key": "alt+a",
         "when": "editorTextFocus"
       }

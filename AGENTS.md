@@ -30,7 +30,7 @@ Add new section at the top of `CHANGELOG.md`:
 
 Remove old VSIX if exists:
 ```bash
-rm -f vscode-better-align-X.Y.Z.vsix
+rm -f vscode-better-align-columns-X.Y.Z.vsix
 ```
 
 Build and package the extension:
@@ -47,8 +47,8 @@ npx vsce package
 
 To ensure the new version is working correctly as part of the release process, install the newly packaged extension and reload VS Code:
 ```bash
-code --uninstall-extension inexsu.vscode-better-align 2>/dev/null || true
-code --install-extension vscode-better-align-X.Y.Z.vsix --force
+code --uninstall-extension inexsu.vscode-better-align-columns 2>/dev/null || true
+code --install-extension vscode-better-align-columns-X.Y.Z.vsix --force
 code --reload-window
 ```
 
@@ -88,6 +88,6 @@ For a fix improving the "Invalid array length" error handling:
    - Fix "Invalid array length" error on large alignments
    ```
 3. Run: `npx vsce package`
-4. Install: `code --uninstall-extension inexsu.vscode-better-align 2>/dev/null || true && code --install-extension vscode-better-align-X.Y.Z.vsix --force && code --reload-window`
+4. Install: `code --uninstall-extension inexsu.vscode-better-align-columns 2>/dev/null || true && code --install-extension vscode-better-align-columns-X.Y.Z.vsix --force && code --reload-window`
 5. Verify extension details in VS Code Extensions panel
 6. Commit: `git add -A && git commit -m "vX.Y.Z: Fix Invalid array length on large alignments"`

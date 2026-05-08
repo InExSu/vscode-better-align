@@ -15,7 +15,7 @@ alwaysApply: false
   - Run: `npm test` (executes [out/test/runTest.js](mdc:out/test/runTest.js))
   - Test suites: [src/test/suite/](mdc:src/test/suite/)
 - **Debugging**:
-  - Use VS Code Extension Host to run and debug `Align` command `vscode-better-align.align`
+  - Use VS Code Extension Host to run and debug `Align` command `vscode-better-align-columns.align`
 - **Do not edit generated files**: [dist/](mdc:dist/) and [out/](mdc:out/) are build outputs
 - **Web extension**:
   - Browser entry: [dist/web/extension.js](mdc:dist/web/extension.js)

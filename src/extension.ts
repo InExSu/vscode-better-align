@@ -767,10 +767,10 @@ export function activate(ctx: vscode.ExtensionContext) {
     let alignOnEnter = vscode.workspace.getConfiguration('betterAlign').get<boolean>('alignAfterTypeEnter')
 
     ctx.subscriptions.push(
-        vscode.commands.registerTextEditorCommand('vscode-better-align.align', process),
+        vscode.commands.registerTextEditorCommand('vscode-better-align-columns.align', process),
 
         vscode.workspace.onDidChangeTextDocument(e => {
-            if(alignOnEnter && e.contentChanges.some(c => c.text.includes('\n'))) { vscode.commands.executeCommand('vscode-better-align.align') }
+            if(alignOnEnter && e.contentChanges.some(c => c.text.includes('\n'))) { vscode.commands.executeCommand('vscode-better-align-columns.align') }
         }),
 
         vscode.workspace.onDidChangeConfiguration(e => {

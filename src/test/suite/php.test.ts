@@ -3,25 +3,25 @@
 const phpAssert = require('assert')
 
 const enum TokenType {
-    Invalid = 'Invalid',
-    Word = 'Word',
-    Assignment = 'Assignment',
-    Arrow = 'Arrow',
-    Block = 'Block',
-    PartialBlock = 'PartialBlock',
-    EndOfBlock = 'EndOfBlock',
-    String = 'String',
+    Invalid       = 'Invalid'      ,
+    Word          = 'Word'         ,
+    Assignment    = 'Assignment'   ,
+    Arrow         = 'Arrow'        ,
+    Block         = 'Block'        ,
+    PartialBlock  = 'PartialBlock' ,
+    EndOfBlock    = 'EndOfBlock'   ,
+    String        = 'String'       ,
     PartialString = 'PartialString',
-    Comment = 'Comment',
-    Whitespace = 'Whitespace',
-    Colon = 'Colon',
-    Comma = 'Comma',
-    CommaAsWord = 'CommaAsWord',
-    Insertion = 'Insertion',
-    Spaceship = 'Spaceship',
-    PHPShortEcho = 'PHPShortEcho',
-    From = 'From',
-    Comparison = 'Comparison',
+    Comment       = 'Comment'      ,
+    Whitespace    = 'Whitespace'   ,
+    Colon         = 'Colon'        ,
+    Comma         = 'Comma'        ,
+    CommaAsWord   = 'CommaAsWord'  ,
+    Insertion     = 'Insertion'    ,
+    Spaceship     = 'Spaceship'    ,
+    PHPShortEcho  = 'PHPShortEcho' ,
+    From          = 'From'         ,
+    Comparison    = 'Comparison'   ,
 }
 
 interface Token { type: TokenType; text: string }
@@ -70,7 +70,7 @@ const isGenericOpen = (text: string, pos: number): boolean => {
 
 const consumeGeneric = (text: string, pos: number): number => {
     let depth = 0
-    let i = pos
+    let i     = pos
     while (i < text.length) {
         if (text[i] === '<') { depth++; i++; continue }
         if (text[i] === '>') {
@@ -96,22 +96,22 @@ function classifyAtDefault(
     }
 
     switch (ch) {
-        case '"':
-        case "'":
-        case '`':
+        case '"': 
+        case "'": 
+        case '`': 
             return { type: TokenType.String, advance: 1 }
 
-        case '{':
-        case '(':
-        case '[':
+        case '{': 
+        case '(': 
+        case '[': 
             return { type: TokenType.Block, advance: 1 }
 
-        case '}':
-        case ')':
-        case ']':
+        case '}': 
+        case ')': 
+        case ']': 
             return { type: TokenType.EndOfBlock, advance: 1 }
 
-        case ',':
+        case ',': 
             return { type: TokenType.Comma, advance: 1 }
 
         case '<': {
@@ -134,35 +134,35 @@ function classifyAtDefault(
             return { type: TokenType.Comparison, advance: 1 }
         }
 
-        case '>':
+        case '>': 
             if (nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } }
             if (nx === '=') { return { type: TokenType.Comparison, advance: 2 } }
             return { type: TokenType.Comparison, advance: 1 }
 
-        case '!':
+        case '!': 
             if (nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } }
             if (nx === '=') { return { type: TokenType.Comparison, advance: 2 } }
             return { type: TokenType.Word, advance: 1 }
 
-        case '=':
+        case '=': 
             if (nx === '>') { return { type: TokenType.Arrow, advance: 2 } }
             if (nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } }
             if (nx === '=') { return { type: TokenType.Comparison, advance: 2 } }
             return { type: TokenType.Assignment, advance: 1 }
 
-        case '-':
+        case '-': 
             if (nx === '>') { return { type: TokenType.Word, advance: 2 } }
             if (nx === '=') { return { type: TokenType.Assignment, advance: 2 } }
             return { type: TokenType.Word, advance: 1 }
 
-        case '+':
-        case '*':
-        case '%':
-        case '~':
-        case '|':
-        case '^':
-        case '.':
-        case '&':
+        case '+': 
+        case '*': 
+        case '%': 
+        case '~': 
+        case '|': 
+        case '^': 
+        case '.': 
+        case '&': 
             if (nx === '=') { return { type: TokenType.Assignment, advance: 2 } }
             return { type: TokenType.Word, advance: 1 }
 
@@ -175,7 +175,7 @@ function classifyAtDefault(
             return { type: TokenType.Word, advance: 1 }
         }
 
-        case ':':
+        case ':': 
             if (nx === ':') { return { type: TokenType.Word, advance: 2 } }
             if (nx === '=') { return { type: TokenType.Assignment, advance: 2 } }
             return { type: TokenType.Colon, advance: 1 }
@@ -192,13 +192,13 @@ const enum State { Default, InString, InBlock, InLineComment, InBlockComment }
 function tokenizeLine(text: string, cfg: LanguageSyntaxConfig): Token[] {
     const tokens: Token[] = []
 
-    let state = State.Default
+    let state      = State.Default
     let tokenStart = -1
-    let lastType = TokenType.Invalid
-    let quote = ''
-    let open = ''
+    let lastType   = TokenType.Invalid
+    let quote      = ''
+    let open       = ''
     let blockDepth = 0
-    let blockEnd = ''
+    let blockEnd   = ''
 
     const flush = (upTo: number, overrideType?: TokenType) => {
         if (tokenStart === -1) { return }
@@ -212,7 +212,7 @@ function tokenizeLine(text: string, cfg: LanguageSyntaxConfig): Token[] {
             case State.InString: {
                 if (text[pos] === quote) {
                     let backslashCount = 0
-                    let k = pos - 1
+                    let k              = pos - 1
                     while (k >= 0 && text[k] === '\\') { backslashCount++; k-- }
                     if (backslashCount % 2 === 0) {
                         pos++
@@ -264,15 +264,15 @@ function tokenizeLine(text: string, cfg: LanguageSyntaxConfig): Token[] {
                 if (advance > 1 && type === TokenType.Word) {
                     flush(pos)
                     tokens.push({ type: TokenType.Word, text: text.substring(pos, pos + advance) })
-                    lastType = TokenType.Word
-                    tokenStart = -1
-                    pos += advance
+                    lastType    = TokenType.Word
+                    tokenStart  = -1
+                    pos        += advance
                     break
                 }
 
                 if (type !== lastType) {
                     flush(pos)
-                    lastType = type
+                    lastType   = type
                     tokenStart = pos
 
                     if (type === TokenType.String) { state = State.InString; quote = text[pos] ?? '' }
@@ -314,7 +314,7 @@ suite('PHP tokenization', () => {
     const phpCfg = getLangConfig('php')
 
     test('-> is tokenized as single Word token', () => {
-        const tokens = tokenizeLine('$this->foo', phpCfg)
+        const tokens     = tokenizeLine('$this->foo', phpCfg)
         const arrowToken = tokens.find(t => t.text === '->')
         phpAssert.ok(arrowToken, 'Should find -> token')
         phpAssert.strictEqual(arrowToken!.type, TokenType.Word, '-> should be Word type')
@@ -322,7 +322,7 @@ suite('PHP tokenization', () => {
 
     test('-> in method chaining is preserved', () => {
         const tokens = tokenizeLine('$obj->method()->property', phpCfg)
-        const texts = tokens.map(t => t.text).join('')
+        const texts  = tokens.map(t => t.text).join('')
         phpAssert.strictEqual(texts, '$obj->method()->property')
     })
 
@@ -341,14 +341,14 @@ suite('PHP tokenization', () => {
     })
 
     test('PHP block comment /* */ is recognized', () => {
-        const tokens = tokenizeLine('$x = 1; /* block */', phpCfg)
+        const tokens       = tokenizeLine('$x = 1; /* block */', phpCfg)
         const commentToken = tokens.find(t => t.text.startsWith('/*'))
         phpAssert.ok(commentToken, 'Should find /* comment token')
         phpAssert.strictEqual(commentToken!.type, TokenType.Comment, '/* should be Comment type')
     })
 
     test('generic type annotation following word is handled', () => {
-        const tokens = tokenizeLine('array<string> $param', phpCfg)
+        const tokens   = tokenizeLine('array<string> $param', phpCfg)
         const hasArray = tokens.some(t => t.text.startsWith('array'))
         phpAssert.ok(hasArray, 'Should have array token')
     })
@@ -365,20 +365,20 @@ class Foo {
         const lines = code.split('\n')
         for (const line of lines) {
             const tokens = tokenizeLine(line, phpCfg)
-            const texts = tokens.map(t => t.text).join('')
+            const texts  = tokens.map(t => t.text).join('')
             phpAssert.strictEqual(texts, line, `Line should tokenize correctly: "${line}"`)
         }
     })
 
     test('spaceship operator <=> works in PHP', () => {
-        const tokens = tokenizeLine('$a <=> $b', phpCfg)
+        const tokens    = tokenizeLine('$a <=> $b', phpCfg)
         const spaceship = tokens.find(t => t.text === '<=>')
         phpAssert.ok(spaceship, 'Should find <=> operator')
     })
 
     test('PHP variables with $ are preserved', () => {
         const tokens = tokenizeLine('$name = "test"', phpCfg)
-        const texts = tokens.map(t => t.text).join('')
+        const texts  = tokens.map(t => t.text).join('')
         phpAssert.strictEqual(texts, '$name = "test"')
     })
 })

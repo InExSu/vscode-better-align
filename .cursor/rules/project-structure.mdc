@@ -10,7 +10,7 @@ alwaysApply: false
   - Formatter logic: [src/formatter.ts](mdc:src/formatter.ts)
   - Telemetry: [src/telemetry.ts](mdc:src/telemetry.ts)
 - **Build output**: [dist/](mdc:dist/) and [out/](mdc:out/)
-- **Commands**: `vscode-better-align.align` registered in `package.json`
+- **Commands**: `vscode-better-align-columns.align` registered in `package.json`
 - **Activation**: `onStartupFinished` and on command
 - **Configuration**: `betterAlign.*` contributed in [package.json](mdc:package.json)
 - **Scripts** (from `package.json`):
