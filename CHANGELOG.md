@@ -1,3 +1,15 @@
+# v1.9.0 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.9.0)
+
+- Add: PHP support for `->` operator (method chaining)
+- Add: PHP support for `<?php` / `<?=` tags
+- Add: PHP support for generic type annotations (e.g., `array<string>`, `array<array<string>>`)
+- Add: PHP support for spaceship operator `<=>`
+- Add: PHP tokenization tests
+
+# v1.8.0 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.8.0)
+
+- Rename: Extension is now "Better Align Columns"
+
 # v1.7.1 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.7.1)
 
 - Refactor: Code formatting with improved alignment
