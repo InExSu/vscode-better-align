@@ -1,11 +1,11 @@
-# Better Align for Visual Studio Code
+# Better Align Columns for Visual Studio Code
 
 [![The MIT License](https://badgen.net/github/license/cerner/terra-framework)](https://badgen.net/github/license/cerner/terra-framework)
-[![GitHub Release](https://flat.badgen.net/github/release/inexsu/vscode-better-align)](https://github.com/InExSu/vscode-better-align/releases)
-[![Visual Studio Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/inexsu.vscode-better-align)](https://marketplace.visualstudio.com/items?itemName=inexsu.vscode-better-align)
-[![GitHub Actions Workflow](https://github.com/InExSu/vscode-better-align/actions/workflows/CI.yaml/badge.svg)](https://github.com/InExSu/vscode-better-align/actions/workflows/CI.yaml)
+[![GitHub Release](https://flat.badgen.net/github/release/inexsu/vscode-better-align)](https://github.com/InExSu/vscode-better-align-columns/releases)
+[![Visual Studio Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/inexsu.vscode-better-align-columns)](https://marketplace.visualstudio.com/items?itemName=inexsu.vscode-better-align-columns)
+[![GitHub Actions Workflow](https://github.com/InExSu/vscode-better-align-columns/actions/workflows/CI.yaml/badge.svg)](https://github.com/InExSu/vscode-better-align-columns/actions/workflows/CI.yaml)
 
-> **Better vertical alignment with or without selection in any language, for any characters or words.**
+  > **Better vertical alignment with or without selection in any language, for any characters or words.**
 
 ---
 
@@ -19,7 +19,7 @@
 
 ## 🚀 Usage
 
-Place your cursor at the position where you want alignment, then:
+Place your cursor at the position where you want alignment, then: 
 
 - Press **`Alt + A`** (Windows/Linux) or **`Option + A`** (Mac)
 - Or invoke the **`Align`** command via Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
@@ -28,28 +28,28 @@ Place your cursor at the position where you want alignment, then:
 
 ## 📸 Demo
 
-![Auto-align Characters](https://github.com/InExSu/vscode-better-align/blob/main/images/auto-align-characters.gif)
+![Auto-align Characters](https://github.com/InExSu/vscode-better-align-columns/blob/main/images/auto-align-characters.gif)
 
 ---
 
 ## ⚙️ Configuration
 
-### `betterAlign.surroundSpace`
+### `betterAlignColumns.surroundSpace`
 
 Control the spacing around alignment characters.
 
-**Default Configuration:**
+**Default Configuration: **
 
 ```jsonc
-"betterAlign.surroundSpace": {
-  "colon":      [0, 1],  // [left space, right space]
-  "assignment": [1, 1],  // [left space, right space]
-  "arrow":      [1, 1],  // [left space, right space]
-  "comment":    2        // Space between code and trailing comment
+"betterAlignColumns.surroundSpace": {
+  "colon"     : [0, 1],   // [left space, right space]
+  "assignment": [1, 1],   // [left space, right space]
+  "arrow"     : [1, 1],   // [left space, right space]
+  "comment"   : 2         // Space between code and trailing comment
 }
 ```
 
-**Configuration Options:**
+**Configuration Options: **
 
 | Key          | Type               | Description                                              |
 | ------------ | ------------------ | -------------------------------------------------------- |
@@ -64,45 +64,45 @@ Control the spacing around alignment characters.
 
 #### Object Properties Alignment
 
-**Original Code:**
+**Original Code: **
 ```javascript
 var abc = {
-  hello:      1
-  ,my :2//comment
-  ,friend:   3      // comment
+  hello: 1,
+  my: 2,   //comment
+  friend: 3,   // comment
 }
 ```
 
-**With `"colon": [0, 1]` and `"comment": 2`:**
+**With `"colon": [0, 1]` and `"comment": 2`: **
 ```javascript
 var abc = {
-    hello : 1
-  , my    : 2  // comment
-  , friend: 3  // comment
+  hello : 1,
+  my    : 2,  //comment
+  friend: 3,  // comment
 }
 ```
 
-**With `"colon": [1, 2]` and `"comment": 4`:**
+**With `"colon": [1, 2]` and `"comment": 4`: **
 ```javascript
 var abc = {
-    hello  :  1
-  , my     :  2    // comment
-  , friend :  3    // comment
+  hello : 1,
+  my    : 2,    // comment
+  friend: 3,    // comment
 }
 ```
 
-**With `"colon": [-1, 3]` and `"comment": 2`:**
+**With `"colon": [-1, 3]` and `"comment": 2`: **
 ```javascript
 var abc = {
-    hello:    1
-  , my:       2  // comment
-  , friend:   3  // comment
+  hello:    1,
+  my: 2,  // comment
+  friend: 3,  // comment
 }
 ```
 
 #### Arrow Function Alignment
 
-**Original Code:**
+**Original Code: **
 ```php
 $data = array(
     'text' => 'something',
@@ -110,11 +110,11 @@ $data = array(
 );
 ```
 
-**With `"arrow": [1, 3]`:**
+**With `"arrow": [1, 3]`: **
 ```php
 $data = array(
-    'text'            =>   'something',
-    'here is another' =>   'sample'
+    'text'            => 'something',
+    'here is another' => 'sample'
 );
 ```
 
@@ -122,7 +122,7 @@ $data = array(
 
 ## 🐛 Issues & Contribution
 
-- **Found a bug?** [Open an issue](https://github.com/InExSu/vscode-better-align/issues)
+- **Found a bug?** [Open an issue](https://github.com/InExSu/vscode-better-align-columns/issues)
 - **Want to contribute?** [Fork the repo](https://github.com/InExSu/vscode-better-align) and submit a pull request
 
 ---

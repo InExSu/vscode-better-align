@@ -21,7 +21,7 @@ Update version in `package.json`:
 Add new section at the top of `CHANGELOG.md`:
 
 ```markdown
-# vX.Y.Z [#](https://github.com/InExSu/vscode-better-align/releases/tag/vX.Y.Z)
+# vX.Y.Z [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/vX.Y.Z)
 
 - Brief description of the changes
 ```
@@ -83,7 +83,7 @@ For a fix improving the "Invalid array length" error handling:
 1. Update `package.json`: `"version": "X.Y.Z"`
 2. Add to `CHANGELOG.md`:
    ```markdown
-   # vX.Y.Z [#](https://github.com/InExSu/vscode-better-align/releases/tag/vX.Y.Z)
+   # vX.Y.Z [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/vX.Y.Z)
 
    - Fix "Invalid array length" error on large alignments
    ```
