@@ -1,3 +1,7 @@
+# v1.7.1 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.7.1)
+
+- Refactor: Code formatting with improved alignment
+
 # v1.7.0 [#](https://github.com/InExSu/vscode-better-align/releases/tag/v1.7.0)
 
 - Fix: Don't treat `://` (URLs) as line comments
