@@ -2,7 +2,7 @@
   "name": "vscode-better-align-columns",
   "displayName": "Better Align Columns",
   "description": "Better vertical alignment with/without selection in any language for any characters or words.",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "icon": "images/icon.png",
   "publisher": "inexsu",
   "license": "SEE LICENSE IN LICENSE",
@@ -45,7 +45,7 @@
       "type": "object",
       "title": "Better Align",
       "properties": {
-        "betterAlign.operatorPadding": {
+        "betterAlignColumns.operatorPadding": {
           "type": "string",
           "enum": [
             "left",
@@ -54,7 +54,7 @@
           "default": "right",
           "description": "Control where to insert space to align different length operators (e.g. aligning = += *= ...)"
         },
-        "betterAlign.surroundSpace": {
+        "betterAlignColumns.surroundSpace": {
           "type": "object",
           "default": {
             "colon": [
@@ -77,7 +77,7 @@
           },
           "description": "Specify how many spaces to insert around the operator."
         },
-        "betterAlign.indentBase": {
+        "betterAlignColumns.indentBase": {
           "type": "string",
           "enum": [
             "firstline",
@@ -87,12 +87,12 @@
           "default": "firstline",
           "description": "firstline: Change indent of all lines to the firstline.\n activeline: Change intent of all lines to the activeline.\n dontchange: Don't change line indent, only aligns those lines with same indentation."
         },
-        "betterAlign.alignAfterTypeEnter": {
+        "betterAlignColumns.alignAfterTypeEnter": {
           "type": "boolean",
           "default": false,
           "description": "Auto align current text near the cursor after type enter in editor"
         },
-        "betterAlign.languageConfigs": {
+        "betterAlignColumns.languageConfigs": {
           "type": "object",
           "default": {},
           "description": "Language-specific comment syntax configuration. Each key is a VS Code language ID, and the value defines comment styles.",
@@ -132,7 +132,7 @@
     },
     "configurationDefaults": {
       "[shellscript]": {
-        "betterAlign.surroundSpace": {
+        "betterAlignColumns.surroundSpace": {
           "colon": [
             0,
             1

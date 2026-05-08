@@ -4,25 +4,25 @@ import * as vscode from 'vscode'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 const enum TokenType {
-    Invalid       = 'Invalid'      ,
-    Word          = 'Word'         ,
-    Assignment    = 'Assignment'   ,
     Arrow         = 'Arrow'        ,
+    Assignment    = 'Assignment'   ,
     Block         = 'Block'        ,
-    PartialBlock  = 'PartialBlock' ,
-    EndOfBlock    = 'EndOfBlock'   ,
-    String        = 'String'       ,
-    PartialString = 'PartialString',
-    Comment       = 'Comment'      ,
-    Whitespace    = 'Whitespace'   ,
     Colon         = 'Colon'        ,
     Comma         = 'Comma'        ,
     CommaAsWord   = 'CommaAsWord'  ,
-    Insertion     = 'Insertion'    ,
-    Spaceship     = 'Spaceship'    ,
-    PHPShortEcho  = 'PHPShortEcho' ,
-    From          = 'From'         ,
+    Comment       = 'Comment'      ,
     Comparison    = 'Comparison'   ,
+    EndOfBlock    = 'EndOfBlock'   ,
+    From          = 'From'         ,
+    Insertion     = 'Insertion'    ,
+    Invalid       = 'Invalid'      ,
+    PartialBlock  = 'PartialBlock' ,
+    PartialString = 'PartialString',
+    PHPShortEcho  = 'PHPShortEcho' ,
+    Spaceship     = 'Spaceship'    ,
+    String        = 'String'       ,
+    Whitespace    = 'Whitespace'   ,
+    Word          = 'Word'         ,
 }
 
 interface Token { type: TokenType; text: string }
@@ -458,7 +458,7 @@ const intersect = (a: TokenType[], b: TokenType[]) => {
 }
 
 function collectRange(
-    doc : vscode.TextDocument, start    : number       , end                  : number         , anchor: number,
+    doc : vscode.TextDocument, start    : number                              , end            : number, anchor: number,
     lang: string             , overrides: Record<string, LanguageSyntaxConfig>, indentImportant: boolean
 ): LineRange {
     const tokenize = (ln: number): LineInfo => {
@@ -708,12 +708,12 @@ function buildLines(range: LineRange, indent: string, cfg: ReturnType<typeof mak
 type ConfigFn = (key: string, defaultValue?: unknown) => unknown
 
 function makeConfig(doc: vscode.TextDocument): ConfigFn {
-    const base              = vscode.workspace.getConfiguration('betterAlign')
+    const base                               = vscode.workspace.getConfiguration('betterAlignColumns')
     let lang: Record<string, unknown> | null = null
     try {
         lang = vscode.workspace.getConfiguration().get<Record<string, unknown>>(`[${doc.languageId}]`) ?? null
     } catch { }
-    return (key, def) => lang?.[`betterAlign.${key}`] ?? base.get(key, def)
+    return (key, def) => lang?.[`betterAlignColumns.${key}`] ?? base.get(key, def)
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -764,7 +764,7 @@ function process(editor: vscode.TextEditor): void {
 // ─── Extension lifecycle ──────────────────────────────────────────────────────
 
 export function activate(ctx: vscode.ExtensionContext) {
-    let alignOnEnter = vscode.workspace.getConfiguration('betterAlign').get<boolean>('alignAfterTypeEnter')
+    let alignOnEnter = vscode.workspace.getConfiguration('betterAlignColumns').get<boolean>('alignAfterTypeEnter')
 
     ctx.subscriptions.push(
         vscode.commands.registerTextEditorCommand('vscode-better-align-columns.align', process),
@@ -774,8 +774,8 @@ export function activate(ctx: vscode.ExtensionContext) {
         }),
 
         vscode.workspace.onDidChangeConfiguration(e => {
-            if(e.affectsConfiguration('betterAlign')) {
-                alignOnEnter = vscode.workspace.getConfiguration('betterAlign').get<boolean>('alignAfterTypeEnter')
+            if(e.affectsConfiguration('betterAlignColumns')) {
+                alignOnEnter = vscode.workspace.getConfiguration('betterAlignColumns').get<boolean>('alignAfterTypeEnter')
             }
         }),
     )
