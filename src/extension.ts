@@ -69,7 +69,7 @@ const ws = (n: number) => n <= 0 ? '' : ' '.repeat(Math.min(n, 1e6))
 const sortByLenDesc = <T extends string | { start: string }>(arr: T[]): T[] =>
     [...arr].sort((a, b) => {
         const len = (x: T) => typeof x === 'string' ? x.length : (x as BlockComment).start.length
-        return len(b)- len(a)
+        return len(b) - len(a)
     })
 
 const matchPrefix = (text: string, pos: number, markers: string[]): string | null => {
@@ -109,25 +109,10 @@ const consumeGeneric = (text: string, pos: number): number => {
 }
 
 // ─── Tokeniser state machine ──────────────────────────────────────────────────
-//
-// Шалыто-style switch automaton.
-//
-// States:
-//   Default        — character-by-character classification
-//   InString       — consume until matching unescaped closing quote
-//   InBlock        — consume until matching close bracket (depth-tracked)
-//   InLineComment  — consume rest of line
-//   InBlockComment — consume until closing sequence
-//
-// After the main loop every `{…}` / `(…)` token is split into:
-//   OpenBrace/OpenParen  +  Block(inner text)  +  EndOfBlock
-// so downstream passes can recurse into the content.
+// Шалыто-style switch automaton. Flat structure, explicit transitions.
 
 const enum State { Default, InString, InBlock, InLineComment, InBlockComment }
-
 const BRACKET_PAIR: Record<string, string> = { '{': '}', '[': ']', '(': ')' }
-
-// ── classifyAtDefault ─────────────────────────────────────────────────────────
 
 function classifyAtDefault(
     text: string, pos: number, cfg: LanguageSyntaxConfig
@@ -224,8 +209,6 @@ function classifyAtDefault(
     return { type: TokenType.Word, advance: 1 }
 }
 
-// ── nextStateFor ──────────────────────────────────────────────────────────────
-
 function nextStateFor(
     type: TokenType, text: string, pos: number, cfg: LanguageSyntaxConfig
 ): { state: State; quote: string; open: string; blockEnd: string } {
@@ -249,8 +232,6 @@ function nextStateFor(
     }
 }
 
-// ── tokenizeLine — first-pass tokeniser ──────────────────────────────────────
-
 function tokenizeLine(ln: { text: string }, cfg: LanguageSyntaxConfig, lang: string): {
     tokens: Token[]; sgfntTokens: TokenType[]
 } {
@@ -265,7 +246,7 @@ function tokenizeLine(ln: { text: string }, cfg: LanguageSyntaxConfig, lang: str
     let blockEnd          = ''
 
     const flush = (upTo: number, overrideType?: TokenType) => {
-        if                                                                  (tokenStart === -1){ return }
+        if(tokenStart === -1){ return }
         tokens.push({ type: overrideType ?? lastType, text: text.substring(tokenStart, upTo) })
         tokenStart = -1
     }
@@ -273,21 +254,21 @@ function tokenizeLine(ln: { text: string }, cfg: LanguageSyntaxConfig, lang: str
     let pos = 0
     while(pos < text.length) {
         switch(state) {
-
             case State.InString: {
                 if(text[pos] === quote) {
                     let backslashes = 0, k = pos - 1
                     while(k >= 0 && text[k] === '\\'){ backslashes++; k-- }
-                    if        (backslashes % 2 === 0){ pos++; flush(pos); state = State.Default; break }
+                    if(backslashes % 2 === 0){ pos++; flush(pos); state = State.Default; break }
                 }
                 pos++
                 break
             }
 
             case State.InBlock: {
-                switch(true) {
-                    case text[pos] === open: blockDepth++; pos++; break
-                    case text[pos] === BRACKET_PAIR[open]: {
+                switch(text[pos]) {
+                    case undefined: pos++; break
+                    case (open): blockDepth++; pos++; break
+                    case (BRACKET_PAIR[open]): {
                         pos++; blockDepth--
                         if(blockDepth === 0){ flush(pos); state = State.Default }
                         break
@@ -309,7 +290,7 @@ function tokenizeLine(ln: { text: string }, cfg: LanguageSyntaxConfig, lang: str
                 const { type, advance } = classifyAtDefault(text, pos, cfg)
 
                 if(advance > 1 && type === TokenType.Word) {
-                    flush                                                                     (pos)
+                    flush(pos)
                     tokens.push({ type: TokenType.Word, text: text.substring(pos, pos + advance) })
                     lastType = TokenType.Word; tokenStart = -1; pos += advance
                     break
@@ -317,18 +298,17 @@ function tokenizeLine(ln: { text: string }, cfg: LanguageSyntaxConfig, lang: str
 
                 if(type !== lastType) {
                     flush(pos)
-                    lastType   = type
+                    lastType = type
                     tokenStart = pos
-                    const ns   = nextStateFor(type, text, pos, cfg)
-                    state      = ns.state; quote = ns.quote; open = ns.open; blockEnd = ns.blockEnd
+                    const ns = nextStateFor(type, text, pos, cfg)
+                    state = ns.state; quote = ns.quote; open = ns.open; blockEnd = ns.blockEnd
                     blockDepth = state === State.InBlock ? 1 : 0
                 } else if(tokenStart === -1) {
                     tokenStart = pos
-                    const ns   = nextStateFor(type, text, pos, cfg)
-                    state      = ns.state; quote = ns.quote; open = ns.open; blockEnd = ns.blockEnd
+                    const ns = nextStateFor(type, text, pos, cfg)
+                    state = ns.state; quote = ns.quote; open = ns.open; blockEnd = ns.blockEnd
                     blockDepth = state === State.InBlock ? 1 : 0
                 }
-
                 pos += advance
                 break
             }
@@ -342,17 +322,14 @@ function tokenizeLine(ln: { text: string }, cfg: LanguageSyntaxConfig, lang: str
         flush(text.length, partialType)
     }
 
-    // ── Split {…} and (…) tokens into OpenBrace/OpenParen + Block(inner) + EndOfBlock ──
+    // Split {…} and (…) tokens into Open + Block(inner) + EndOfBlock
     const split: Token[] = []
     for(const tok of tokens) {
         const ch = tok.text[0]
-        if(
-            (tok.type === TokenType.Block || tok.type === TokenType.OpenBrace || tok.type === TokenType.OpenParen)&&
-            tok.text.length >= 2 && (ch === '{' || ch === '(')
-        ) {
+        if((tok.type === TokenType.Block || tok.type === TokenType.OpenBrace || tok.type === TokenType.OpenParen) && tok.text.length >= 2 && (ch === '{' || ch === '(')) {
             const opType = ch === '{' ? TokenType.OpenBrace : TokenType.OpenParen
-            split.push                             ({ type: opType, text: ch })
-            split.push ({ type: TokenType.Block, text: tok.text.slice(1, -1) })
+            split.push({ type: opType, text: ch })
+            split.push({ type: TokenType.Block, text: tok.text.slice(1, -1) })
             split.push({ type: TokenType.EndOfBlock, text: BRACKET_PAIR[ch]! })
         } else {
             split.push(tok)
@@ -369,7 +346,7 @@ function tokenizeLine(ln: { text: string }, cfg: LanguageSyntaxConfig, lang: str
         break
     }
 
-    // Refine Word → From
+    // Refine Word → From (JS-like langs)
     const JS_LIKE = new Set(['javascript', 'typescript', 'javascriptreact', 'typescriptreact'])
     if(JS_LIKE.has(lang)) {
         for(const t of finalTokens) {
@@ -390,24 +367,14 @@ function tokenizeLine(ln: { text: string }, cfg: LanguageSyntaxConfig, lang: str
     return { tokens: finalTokens, sgfntTokens }
 }
 
-// ─── tokenizeFlat ─────────────────────────────────────────────────────────────
-//
-// Produces a fully transparent token stream by recursively opening `{…}` and
-// `(…)` blocks.  `[…]` blocks remain opaque.
-// Used by Colon and Semicolon alignment passes.
-//
-// Шалыто-style switch automaton (FlatState).
+// ─── tokenizeFlat — transparent recursion for { and ( ─────────────────────────
 
 const enum FlatState { Word, InString, InBracket, InLineComment, InBlockComment }
 
 function tokenizeFlat(inner: string, cfg: LanguageSyntaxConfig): Token[] {
     const result: Token[] = []
-    let state             = FlatState.Word
-    let pos               = 0
-    let start             = 0
-    let quote             = ''
-    let depth             = 0
-    let bcEnd             = ''
+    let state = FlatState.Word
+    let pos = 0, start = 0, quote = '', depth = 0, bcEnd = ''
 
     const flushWord = (upTo: number) => {
         if(start < upTo){ result.push({ type: TokenType.Word, text: inner.substring(start, upTo) }) }
@@ -415,9 +382,7 @@ function tokenizeFlat(inner: string, cfg: LanguageSyntaxConfig): Token[] {
 
     while(pos < inner.length) {
         const ch = inner[pos]!
-
         switch(state) {
-
             case FlatState.InString: {
                 if(ch === quote) {
                     let backslashes = 0, k = pos - 1
@@ -426,21 +391,22 @@ function tokenizeFlat(inner: string, cfg: LanguageSyntaxConfig): Token[] {
                         pos++
                         result.push({ type: TokenType.String, text: inner.substring(start, pos) })
                         start = pos; state = FlatState.Word
-                } else { pos++ }
+                    } else { pos++ }
                 } else { pos++ }
                 break
             }
 
             case FlatState.InBracket: {
-                // Opaque `[…]` only
                 switch(ch) {
                     case '[': depth++; pos++; break
-                    case ']': depth--; pos++
+                    case ']': {
+                        depth--; pos++
                         if(depth === 0) {
                             result.push({ type: TokenType.Block, text: inner.substring(start, pos) })
                             start = pos; state = FlatState.Word
                         }
                         break
+                    }
                     default: pos++
                 }
                 break
@@ -464,38 +430,34 @@ function tokenizeFlat(inner: string, cfg: LanguageSyntaxConfig): Token[] {
 
             case FlatState.Word: {
                 switch(ch) {
-
-                    case '"': case "'": case '`': 
+                    case '"': case "'": case '`': {
                         flushWord(pos)
                         start = pos; quote = ch; state = FlatState.InString; pos++
                         break
-
-                    case '[': 
+                    }
+                    case '[': {
                         flushWord(pos)
                         start = pos; depth = 1; state = FlatState.InBracket; pos++
                         break
-
-                    // ── `{` → transparent recursion ──────────────────────────
+                    }
                     case '{': {
-                        flushWord                                       (pos)
+                        flushWord(pos)
                         result.push({ type: TokenType.OpenBrace, text: '{' })
                         pos++
                         let d = 1, s = pos
                         while(pos < inner.length && d > 0) {
                             switch(inner[pos]) {
                                 case '{': d++; pos++; break
-                                case '}': d--; if(d > 0) { pos++ } break
-                                default : pos++
+                                case '}': d--; if(d > 0) { pos++ }; break
+                                default: pos++
                             }
                         }
                         result.push(...tokenizeFlat(inner.substring(s, pos), cfg))
-                        result.push    ({ type: TokenType.EndOfBlock, text: '}' })
-                        if                                    (pos < inner.length){ pos++ }
+                        result.push({ type: TokenType.EndOfBlock, text: '}' })
+                        if(pos < inner.length){ pos++ }
                         start = pos
                         break
                     }
-
-                    // ── `(` → transparent recursion ──────────────────────────
                     case '(': {
                         flushWord(pos)
                         result.push({ type: TokenType.OpenParen, text: '(' })
@@ -504,8 +466,8 @@ function tokenizeFlat(inner: string, cfg: LanguageSyntaxConfig): Token[] {
                         while(pos < inner.length && d > 0) {
                             switch(inner[pos]) {
                                 case '(': d++; pos++; break
-                                case ')': d--; if(d > 0) { pos++ } break
-                                default : pos++
+                                case ')': d--; if(d > 0) { pos++ }; break
+                                default: pos++
                             }
                         }
                         result.push(...tokenizeFlat(inner.substring(s, pos), cfg))
@@ -514,27 +476,26 @@ function tokenizeFlat(inner: string, cfg: LanguageSyntaxConfig): Token[] {
                         start = pos
                         break
                     }
-
-                    case ';': 
-                        flushWord                                       (pos)
+                    case ';': {
+                        flushWord(pos)
                         result.push({ type: TokenType.Semicolon, text: ';' })
                         pos++; start = pos
                         break
-
-                    case ',': 
-                        flushWord                                   (pos)
+                    }
+                    case ',': {
+                        flushWord(pos)
                         result.push({ type: TokenType.Comma, text: ',' })
                         pos++; start = pos
                         break
-
-                    case ':': 
-                        // `::` and `:=` stay as Word
-                        if         (inner[pos + 1] === ':' || inner[pos + 1] === '='){ pos += 2; break }
-                        flushWord                                               (pos)
-                        result.push            ({ type: TokenType.Colon, text: ':' })
+                    }
+                    case ':': {
+                        const nx = inner[pos + 1]
+                        if(nx === ':' || nx === '='){ pos += 2; break }
+                        flushWord(pos)
+                        result.push({ type: TokenType.Colon, text: ':' })
                         pos++; start = pos
                         break
-
+                    }
                     default: {
                         const lc = findLineComment(inner, pos, cfg)
                         if(lc) {
@@ -556,12 +517,12 @@ function tokenizeFlat(inner: string, cfg: LanguageSyntaxConfig): Token[] {
         }
     }
 
-    // Flush tail
+    // Flush tail — each case handles its own cleanup, no fallthrough confusion
     switch(state) {
-        case FlatState.Word          : flushWord(inner.length); break
-        case FlatState.InString      : result.push({ type: TokenType.String, text: inner.substring(start) }); break
-        case FlatState.InBracket     : result.push({ type: TokenType.Block, text: inner.substring(start) }); break
-        case FlatState.InLineComment : 
+        case FlatState.Word: flushWord(inner.length); break
+        case FlatState.InString: result.push({ type: TokenType.String, text: inner.substring(start) }); break
+        case FlatState.InBracket: result.push({ type: TokenType.Block, text: inner.substring(start) }); break
+        case FlatState.InLineComment:
         case FlatState.InBlockComment: result.push({ type: TokenType.Comment, text: inner.substring(start) }); break
     }
 
@@ -588,26 +549,22 @@ const SIG_BLOCK = new Set([TokenType.OpenBrace, TokenType.OpenParen, TokenType.S
 function prefixKey(tokens: Token[], type: TokenType): string {
     const parts: string[] = []
     for(const t of tokens) {
-        if                (t.type === type){ break }
+        if(t.type === type){ break }
         if(t.type === TokenType.Whitespace){ continue }
         switch(t.type) {
-            case TokenType.Word       : 
-            case TokenType.String     : 
-            case TokenType.Block      : 
-            case TokenType.CommaAsWord: 
+            case TokenType.Word: case TokenType.String: case TokenType.Block: case TokenType.CommaAsWord:
                 parts.push(t.type); break
-            default: 
-                parts.push(t.text)
+            default: parts.push(t.text)
         }
     }
     return parts.join('|')
 }
 
 function intersectWithStructure(anchor: LineInfo, candidate: LineInfo): TokenType[] {
-    const common     = intersect(anchor.sgfntTokens, candidate.sgfntTokens)
+    const common = intersect(anchor.sgfntTokens, candidate.sgfntTokens)
     const blockTypes = common.filter(t => SIG_BLOCK.has(t))
     const otherTypes = common.filter(t => !SIG_BLOCK.has(t))
-    const result     = [...otherTypes]
+    const result = [...otherTypes]
     for(const bt of blockTypes) {
         if(prefixKey(anchor.tokens, bt) === prefixKey(candidate.tokens, bt)){ result.push(bt) }
     }
@@ -615,23 +572,18 @@ function intersectWithStructure(anchor: LineInfo, candidate: LineInfo): TokenTyp
 }
 
 function collectRange(
-    doc            : vscode.TextDocument                 ,
-    start          : number                              ,
-    end            : number                              ,
-    anchor         : number                              ,
-    lang           : string                              ,
-    overrides      : Record<string, LanguageSyntaxConfig>,
-    indentImportant: boolean
+    doc: vscode.TextDocument, start: number, end: number, anchor: number,
+    lang: string, overrides: Record<string, LanguageSyntaxConfig>, indentImportant: boolean
 ): LineRange {
     const tokenize = (ln: number): LineInfo => {
-        const tl                      = doc.lineAt(ln)
+        const tl = doc.lineAt(ln)
         const { tokens, sgfntTokens } = tokenizeLine(tl, getLangConfig(lang, overrides), lang)
         return { line: tl, sgfntTokenType: TokenType.Invalid, sgfntTokens, tokens }
     }
 
-    const anchorInfo       = tokenize(anchor)
+    const anchorInfo = tokenize(anchor)
     const range: LineRange = { anchor, infos: [anchorInfo] }
-    let types              = anchorInfo.sgfntTokens
+    let types = anchorInfo.sgfntTokens
 
     if(!types.length || hasPartial(anchorInfo)){ return range }
 
@@ -639,7 +591,7 @@ function collectRange(
         const info = tokenize(i)
         if(hasPartial(info)){ break }
         const tt = intersectWithStructure(anchorInfo, info)
-        if                                      (!tt.length){ break }
+        if(!tt.length){ break }
         if(indentImportant && !sameIndent(anchorInfo, info)){ break }
         types = tt
         range.infos.unshift(info)
@@ -649,7 +601,7 @@ function collectRange(
         const info = tokenize(i)
         if(hasPartial(info)){ break }
         const tt = intersectWithStructure(anchorInfo, info)
-        if                                      (!tt.length){ break }
+        if(!tt.length){ break }
         if(indentImportant && !sameIndent(anchorInfo, info)){ break }
         types = tt
         range.infos.push(info)
@@ -672,7 +624,7 @@ function extractIndent(infos: LineInfo[]): string {
     let min = Infinity, wsChar = ' '
     for(const info of infos) {
         const firstNonWs = info.line.text.search(/\S/)
-        min              = Math.min(min, firstNonWs === -1 ? 0 : firstNonWs)
+        min = Math.min(min, firstNonWs === -1 ? 0 : firstNonWs)
         if(info.tokens[0]?.type === TokenType.Whitespace) {
             wsChar = info.tokens[0].text[0] ?? ' '
             info.tokens.shift()
@@ -686,16 +638,14 @@ function padFirstWord(infos: LineInfo[]): void {
     const wordsBefore = (info: LineInfo): number => {
         let count = 0
         for(const t of info.tokens) {
-            if                               (t.type === info.sgfntTokenType){ return count }
+            if(t.type === info.sgfntTokenType){ return count }
             if(t.type !== TokenType.Whitespace && t.type !== TokenType.Block){ count++ }
         }
         return count
     }
-
-    const counts   = infos.map(wordsBefore)
+    const counts = infos.map(wordsBefore)
     const maxCount = Math.max(...counts)
     if(maxCount <= 1){ return }
-
     for(let i = 0; i < infos.length; i++) {
         const info = infos[i]!, count = counts[i]!
         if(count >= maxCount){ continue }
@@ -712,9 +662,9 @@ function stripOperatorWhitespace(infos: LineInfo[]): void {
         for(let i = 0; i < info.tokens.length; i++) {
             const t = info.tokens[i]
             if(t?.type !== info.sgfntTokenType && t?.type !== TokenType.Comma){ continue }
-            if                         (t.type === TokenType.Comma && i === 0){ continue }
-            if    (i > 0 && info.tokens[i - 1]?.type === TokenType.Whitespace){ info.tokens.splice(i - 1, 1); i-- }
-            if             (info.tokens[i + 1]?.type === TokenType.Whitespace){ info.tokens.splice(i + 1, 1) }
+            if(t.type === TokenType.Comma && i === 0){ continue }
+            if(i > 0 && info.tokens[i - 1]?.type === TokenType.Whitespace){ info.tokens.splice(i - 1, 1); i-- }
+            if(info.tokens[i + 1]?.type === TokenType.Whitespace){ info.tokens.splice(i + 1, 1) }
         }
         for(let i = 0; i < info.tokens.length - 1; i++) {
             if(info.tokens[i]?.type === TokenType.Whitespace && info.tokens[i + 1]?.type === TokenType.Whitespace) {
@@ -730,7 +680,7 @@ function stripBracketWhitespace(infos: LineInfo[]): void {
         const sgt = info.sgfntTokenType
         if(sgt !== TokenType.OpenBrace && sgt !== TokenType.OpenParen){ continue }
         for(let i = 0; i < info.tokens.length; i++) {
-            if                              (info.tokens[i]?.type !== sgt){ continue }
+            if(info.tokens[i]?.type !== sgt){ continue }
             if(i > 0 && info.tokens[i - 1]?.type === TokenType.Whitespace){ info.tokens.splice(i - 1, 1); i-- }
         }
     }
@@ -739,107 +689,81 @@ function stripBracketWhitespace(infos: LineInfo[]): void {
 // ─── DEFAULT_SURROUND ─────────────────────────────────────────────────────────
 
 const DEFAULT_SURROUND: Record<string, [number, number]> = {
-    colon     : [1, 1],
-    assignment: [1, 1],
-    comment   : [2, 0],
-    arrow     : [1, 1],
-    from      : [1, 1],
-    comparison: [1, 1],
-    openbrace : [1, 0],
-    openparen : [0, 0],
-    semicolon : [0, 1],
+    colon: [1, 1], assignment: [1, 1], comment: [2, 0], arrow: [1, 1],
+    from: [1, 1], comparison: [1, 1], openbrace: [1, 0], openparen: [0, 0], semicolon: [0, 1],
 }
 
 function normaliseSurround(raw: number | number[] | undefined, key: string): [number, number] {
     const def = DEFAULT_SURROUND[key] ?? [1, 1]
-    if      (raw === undefined){ return def }
+    if(raw === undefined){ return def }
     if(typeof raw === 'number'){ return [Math.max(0, raw), 0] }
     return [Math.max(0, raw[0] ?? def[0]), Math.max(0, raw[1] ?? def[1])]
 }
 
 function applyOperator(before: string, op: string, pad: string, bsp: number, asp: number): string {
-    return before + pad + ws(bsp)+ op + ws(asp)
+    return before + pad + ws(bsp) + op + ws(asp)
 }
 
-// ─── buildSemicolonAlignedLines ───────────────────────────────────────────────
-//
-// Semicolon rule:
-//   `;` itself does NOT move — only the token AFTER it is column-aligned.
-//   Minimum one space between `;` and the next token is guaranteed.
-//
-// We use tokenizeFlat so that `;` inside `{…}` / `(…)` is visible.
-//
-// Algorithm for each gap position N:
-//   1. Render everything up to and including the N-th `;` for each line,
-//      padding the prefix before `;` to the same column across all lines.
-//   2. Find the maximum "current position + 1 space" across all lines.
-//   3. Pad each line to that target column before emitting the next token.
+// ─── buildSemicolonAlignedLines — FIXED: no duplicate rendering ───────────────
 
 function buildSemicolonAlignedLines(
-    infos : LineInfo[],
-    indent: string    ,
-    cfg   : LanguageSyntaxConfig
+    infos: LineInfo[], indent: string, cfg: LanguageSyntaxConfig
 ): string[] {
     type Seg = Token[]
+    type Row = { segs: Seg[]; seps: Token[]; rendered: boolean[] }
 
-    // Build flat streams (Block tokens for inner content of { and ( are expanded)
+    // Build flat token streams
     const flatRows = infos.map(info => {
         const expanded: Token[] = []
         for(const tok of info.tokens) {
             switch(tok.type) {
-                case TokenType.OpenBrace : 
-                case TokenType.OpenParen : 
-                case TokenType.EndOfBlock: 
+                case TokenType.OpenBrace: case TokenType.OpenParen: case TokenType.EndOfBlock:
                     expanded.push(tok); break
-                case TokenType.Block: 
+                case TokenType.Block:
                     expanded.push(...tokenizeFlat(tok.text, cfg)); break
-                default: 
+                default:
                     expanded.push(tok)
             }
         }
         return expanded
     })
 
-    // Split at Semicolons
+    // Split at semicolons, track which segments are rendered
     const splitRows = flatRows.map(toks => {
-        const segs: Seg[] = [], seps: Token[] = []
-        let cur: Token[]  = []
+        const segs: Seg[] = [], seps: Token[] = [], rendered: boolean[] = []
+        let cur: Token[] = []
         for(const t of toks) {
-            if(t.type === TokenType.Semicolon){ segs.push(cur); seps.push(t); cur = [] }
+            if(t.type === TokenType.Semicolon){ segs.push(cur); rendered.push(false); seps.push(t); cur = [] }
             else { cur.push(t) }
         }
-        segs.push(cur)
-        return { segs, seps }
+        segs.push(cur); rendered.push(false)
+        return { segs, seps, rendered }
     })
 
-    const numSeps   = Math.max(...splitRows.map(r => r.seps.length))
+    const numSeps = Math.max(...splitRows.map(r => r.seps.length))
     const renderSeg = (seg: Seg) => seg.map(t => t.text).join('')
-
     const results: string[] = infos.map(() => indent)
 
     for(let si = 0; si < numSeps; si++) {
-
-        // ── Step 1: align the prefix before `;` and emit `;` ──────────────────
+        // Step 1: align prefix before `;` and emit `;`
         const prefixLens = splitRows.map((row, li) => {
-            if(si >= row.segs.length){ return results[li]!.length }
+            if(si >= row.segs.length || row.rendered[si]){ return results[li]!.length }
             return results[li]!.length + renderSeg(row.segs[si]!).trimEnd().length
         })
-        const maxPrefix = Math.max(...prefixLens.filter((_, li) => si < splitRows[li]!.seps.length))
+        const maxPrefix = Math.max(...prefixLens.filter((_, li) => si < splitRows[li]!.seps.length && !splitRows[li]!.rendered[si]))
 
         for(let li = 0; li < infos.length; li++) {
             const row = splitRows[li]!
-            if(si >= row.seps.length) {
-                results[li] += renderSeg(row.segs[si] ?? [])
-                continue
-            }
-            const segText  = renderSeg(row.segs[si]!).trimEnd()
-            results [li]  += segText + ws(maxPrefix - results[li]!.length - segText.length) + ';'
+            if(si >= row.segs.length || row.rendered[si]){ continue }
+            const segText = renderSeg(row.segs[si]!).trimEnd()
+            results[li] += segText + ws(maxPrefix - results[li]!.length - segText.length) + ';'
+            row.rendered[si] = true
         }
 
-        // ── Step 2: align first token after `;` (min 1 space) ────────────────
+        // Step 2: align first token after `;` (min 1 space)
         const afterCols = splitRows.map((row, li) => {
             if(si >= row.seps.length){ return 0 }
-            const raw    = renderSeg(row.segs[si + 1] ?? [])
+            const raw = renderSeg(row.segs[si + 1] ?? [])
             const spaces = raw.length - raw.trimStart().length
             return results[li]!.length + Math.max(1, spaces)
         })
@@ -848,87 +772,85 @@ function buildSemicolonAlignedLines(
         for(let li = 0; li < infos.length; li++) {
             const row = splitRows[li]!
             if(si >= row.seps.length){ continue }
-            const nextSeg      = row.segs[si + 1] ?? []
-            const trimmed      = renderSeg(nextSeg).trimStart()
-            results [li]      += ws(targetCol - results[li]!.length)
-            row.segs [si + 1]  = [{ type: TokenType.Word, text: trimmed }]
+            const nextSeg = row.segs[si + 1] ?? []
+            const trimmed = renderSeg(nextSeg).trimStart()
+            results[li] += ws(targetCol - results[li]!.length)
+            row.segs[si + 1] = [{ type: TokenType.Word, text: trimmed }]
         }
     }
 
-    // Emit last segment
+    // Emit last segment — ONLY if not already rendered
     for(let li = 0; li < infos.length; li++) {
-        const row      = splitRows[li]!
-        const lastSeg  = row.segs[numSeps] ?? row.segs[row.segs.length - 1] ?? []
-        results [li]  += renderSeg(lastSeg)
+        const row = splitRows[li]!
+        const lastIdx = row.segs.length - 1
+        if(!row.rendered[lastIdx]){
+            const lastSeg = row.segs[lastIdx] ?? []
+            results[li] += renderSeg(lastSeg)
+        }
     }
 
     return results
 }
 
-// ─── buildColonAlignedLines ───────────────────────────────────────────────────
-//
-// Colon alignment is transparent through `{` and `(` boundaries.
-// tokenizeFlat exposes `:` inside braces.
-// Each N-th `:` on one line aligns with the N-th `:` on the other lines.
-// Surrounding spaces: ` : ` (one space each side).
+// ─── buildColonAlignedLines — FIXED: no duplicate rendering ───────────────────
 
 function buildColonAlignedLines(
-    infos : LineInfo[],
-    indent: string    ,
-    cfg   : LanguageSyntaxConfig
+    infos: LineInfo[], indent: string, cfg: LanguageSyntaxConfig
 ): string[] {
     type Seg = Token[]
+    type Row = { segs: Seg[]; seps: Token[]; rendered: boolean[] }
 
-    const flatRows = infos.map(info =>
-        tokenizeFlat(info.tokens.map(t => t.text).join(''), cfg)
-    )
+    const flatRows = infos.map(info => tokenizeFlat(info.tokens.map(t => t.text).join(''), cfg))
 
     const splitRows = flatRows.map(toks => {
-        const segs: Seg[] = [], seps: Token[] = []
-        let cur: Token[]  = []
+        const segs: Seg[] = [], seps: Token[] = [], rendered: boolean[] = []
+        let cur: Token[] = []
         for(const t of toks) {
-            if(t.type === TokenType.Colon){ segs.push(cur); seps.push(t); cur = [] }
+            if(t.type === TokenType.Colon){ segs.push(cur); rendered.push(false); seps.push(t); cur = [] }
             else { cur.push(t) }
         }
-        segs.push(cur)
-        return { segs, seps }
+        segs.push(cur); rendered.push(false)
+        return { segs, seps, rendered }
     })
 
-    const numSeps   = Math.max(...splitRows.map(r => r.seps.length))
+    const numSeps = Math.max(...splitRows.map(r => r.seps.length))
     const renderSeg = (seg: Seg) => seg.map(t => t.text).join('')
-
     const results: string[] = infos.map(() => indent)
 
     for(let si = 0; si < numSeps; si++) {
-
         // Align prefix before `:`
         const prefixLens = splitRows.map((row, li) => {
-            if(si >= row.segs.length){ return results[li]!.length }
+            if(si >= row.segs.length || row.rendered[si]){ return results[li]!.length }
             return results[li]!.length + renderSeg(row.segs[si]!).trimEnd().length
         })
-        const maxPrefix = Math.max(...prefixLens.filter((_, li) => si < splitRows[li]!.seps.length))
+        const maxPrefix = Math.max(...prefixLens.filter((_, li) => si < splitRows[li]!.seps.length && !splitRows[li]!.rendered[si]))
 
         for(let li = 0; li < infos.length; li++) {
             const row = splitRows[li]!
-            if(si >= row.seps.length){ results[li] += renderSeg(row.segs[si] ?? []); continue }
-            const segText  = renderSeg(row.segs[si]!).trimEnd()
-            results [li]  += segText + ws(maxPrefix - results[li]!.length - segText.length) + ' :'
+            if(si >= row.seps.length || row.rendered[si]){ results[li] += renderSeg(row.segs[si] ?? []); row.rendered[si] = true; continue }
+            const segText = renderSeg(row.segs[si]!).trimEnd()
+            results[li] += segText + ws(maxPrefix - results[li]!.length - segText.length) + ' :'
+            row.rendered[si] = true
         }
 
         // One space after `:`
         for(let li = 0; li < infos.length; li++) {
             const row = splitRows[li]!
             if(si >= row.seps.length){ continue }
-            const nextSeg     = row.segs[si + 1] ?? []
-            const trimmed     = renderSeg(nextSeg).trimStart()
-            row.segs [si + 1] = [{ type: TokenType.Word, text: ' ' + trimmed }]
+            const nextSeg = row.segs[si + 1] ?? []
+            const trimmed = renderSeg(nextSeg).trimStart()
+            row.segs[si + 1] = [{ type: TokenType.Word, text: ' ' + trimmed }]
         }
     }
 
+    // Emit last segment — ONLY if not already rendered
     for(let li = 0; li < infos.length; li++) {
-        const row      = splitRows[li]!
-        const lastSeg  = row.segs[numSeps] ?? row.segs[row.segs.length - 1] ?? []
-        results [li]  += renderSeg(lastSeg)
+        const row = splitRows[li]!
+        const lastIdx = row.segs.length - 1
+        if(!row.rendered[lastIdx]){
+            const lastSeg = row.segs[lastIdx] ?? []
+            results[li] += renderSeg(lastSeg)
+        }
     }
 
     return results
@@ -939,43 +861,30 @@ function buildColonAlignedLines(
 function buildLines(range: LineRange, indent: string, cfg: ReturnType<typeof makeConfig>): string[] {
     if(isOnlyComments(range)){ return range.infos.map(i => i.line.text) }
 
-    const sgt     = range.infos[0]?.sgfntTokenType
-    const langId  = (range.infos[0]?.line as unknown as { languageId?: string })?.languageId ?? 'typescript'
+    const sgt = range.infos[0]?.sgfntTokenType
+    const langId = (range.infos[0]?.line as unknown as { languageId?: string })?.languageId ?? 'typescript'
     const langCfg = getLangConfig(langId)
 
     switch(sgt) {
-
-        case TokenType.Semicolon: 
-            return buildSemicolonAlignedLines(range.infos, indent, langCfg)
-
-        case TokenType.Colon: 
-            return buildColonAlignedLines(range.infos, indent, langCfg)
-
-        case TokenType.OpenBrace: 
-        case TokenType.OpenParen: 
-            stripBracketWhitespace(range.infos)
-            break
+        case TokenType.Semicolon: return buildSemicolonAlignedLines(range.infos, indent, langCfg)
+        case TokenType.Colon: return buildColonAlignedLines(range.infos, indent, langCfg)
+        case TokenType.OpenBrace: case TokenType.OpenParen: stripBracketWhitespace(range.infos); break
     }
 
-    padFirstWord           (range.infos)
+    padFirstWord(range.infos)
     stripOperatorWhitespace(range.infos)
 
-    const sttKey                = String(range.infos[0]!.sgfntTokenType).toLowerCase()
-    const surrounds             = cfg('surroundSpace', {}) as Record<string, number | number[]>
-    const rawSurround           = surrounds[sttKey] ?? DEFAULT_SURROUND[sttKey]
+    const sttKey = String(range.infos[0]!.sgfntTokenType).toLowerCase()
+    const surrounds = cfg('surroundSpace', {}) as Record<string, number | number[]>
+    const rawSurround = surrounds[sttKey] ?? DEFAULT_SURROUND[sttKey]
     const [before_sp, after_sp] = normaliseSurround(rawSurround, sttKey)
 
     const rawCommentGap = surrounds['comment'] ?? DEFAULT_SURROUND['comment']
-    const commentGap    = typeof rawCommentGap === 'number'
-        ? Math.max(0, rawCommentGap)
-        : Math.max(0, (rawCommentGap as number[])[0] ?? 2)
+    const commentGap = typeof rawCommentGap === 'number' ? Math.max(0, rawCommentGap) : Math.max(0, (rawCommentGap as number[])[0] ?? 2)
 
     const opAlign = cfg('operatorPadding', 'right') as string
-
-    const infos = range.infos
-    const size  = infos.length
-
-    const col: number[]    = new Array(size).fill(0)
+    const infos = range.infos, size = infos.length
+    const col: number[] = new Array(size).fill(0)
     const result: string[] = new Array(size).fill(indent)
 
     let done = 0
@@ -984,15 +893,15 @@ function buildLines(range: LineRange, indent: string, cfg: ReturnType<typeof mak
         for(let l = 0; l < size; l++) {
             if(col[l] === -1){ continue }
             const info = infos[l]!, toks = info.tokens
-            const end  = toks.length > 1 && toks.at(-1)?.type === TokenType.Comment
-                ?(toks.at(-2)?.type === TokenType.Whitespace ? toks.length - 2 : toks.length - 1)
+            const end = toks.length > 1 && toks.at(-1)?.type === TokenType.Comment
+                ? (toks.at(-2)?.type === TokenType.Whitespace ? toks.length - 2 : toks.length - 1)
                 : toks.length
             let cur = result[l]!, j = col[l]!
             for(; j < end; j++) {
                 const t = toks[j]!
                 if(t.type === info.sgfntTokenType || (t.type === TokenType.Comma && j !== 0)) {
                     maxOpLen = Math.max(maxOpLen, t.text.length)
-                    maxCol   = Math.max(maxCol, cur.length)
+                    maxCol = Math.max(maxCol, cur.length)
                     break
                 }
                 cur += t.text
@@ -1005,20 +914,15 @@ function buildLines(range: LineRange, indent: string, cfg: ReturnType<typeof mak
         for(let l = 0; l < size; l++) {
             const j = col[l]!
             if(j === -1){ continue }
-            const info = infos[l]!, toks = info.tokens
-            const cur  = result[l]!
-            const pad  = ws(maxCol - cur.length)
+            const info = infos[l]!, toks = info.tokens, cur = result[l]!
+            const pad = ws(maxCol - cur.length)
             let opText = toks[j]!.text
             if(opText.length < maxOpLen) {
-                opText = opAlign === 'right'
-                    ? ws(maxOpLen - opText.length)+ opText
-                    : opText + ws(maxOpLen - opText.length)
+                opText = opAlign === 'right' ? ws(maxOpLen - opText.length) + opText : opText + ws(maxOpLen - opText.length)
             }
             switch(toks[j]!.type) {
-                case TokenType.Comma: 
-                    result[l] = cur + pad + opText + (j < toks.length - 1 ? ' ' : '')
-                    break
-                default: 
+                case TokenType.Comma: result[l] = cur + pad + opText + (j < toks.length - 1 ? ' ' : ''); break
+                default:
                     if(toks.length === 1 && toks[0]!.type === TokenType.Comment){ done++ }
                     else { result[l] = applyOperator(cur, opText, pad, before_sp, after_sp) }
             }
@@ -1040,7 +944,6 @@ function buildLines(range: LineRange, indent: string, cfg: ReturnType<typeof mak
             for(const t of remaining){ result[l] += t.text }
         }
     }
-
     return result
 }
 
@@ -1049,38 +952,33 @@ function buildLines(range: LineRange, indent: string, cfg: ReturnType<typeof mak
 type ConfigFn = (key: string, defaultValue?: unknown) => unknown
 
 function makeConfig(doc: vscode.TextDocument): ConfigFn {
-    const base                               = vscode.workspace.getConfiguration('betterAlignColumns')
+    const base = vscode.workspace.getConfiguration('betterAlignColumns')
     let lang: Record<string, unknown> | null = null
-    try {
-        lang = vscode.workspace.getConfiguration().get<Record<string, unknown>>(`[${doc.languageId}]`) ?? null
-    } catch { }
-    return(key, def)=> lang?.[`betterAlignColumns.${key}`] ?? base.get(key, def)
+    try { lang = vscode.workspace.getConfiguration().get<Record<string, unknown>>(`[${doc.languageId}]`) ?? null } catch { }
+    return (key, def) => lang?.[`betterAlignColumns.${key}`] ?? base.get(key, def)
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 function process(editor: vscode.TextEditor): void {
-    const doc                 = editor.document
-    const cfg                 = makeConfig(doc)
-    const overrides           = cfg('languageConfigs', {}) as Record<string, LanguageSyntaxConfig>
+    const doc = editor.document
+    const cfg = makeConfig(doc)
+    const overrides = cfg('languageConfigs', {}) as Record<string, LanguageSyntaxConfig>
     const ranges: LineRange[] = []
 
     for(const sel of editor.selections) {
         const indentImportant = cfg('indentBase', 'firstline') === 'dontchange'
-
         if(sel.isSingleLine) {
             ranges.push(collectRange(doc, 0, doc.lineCount - 1, sel.active.line, doc.languageId, overrides, indentImportant))
             continue
         }
-
-        let start = sel.start.line
-        const end = sel.end.line
+        let start = sel.start.line, end = sel.end.line
         while(start <= end) {
-            const r    = collectRange(doc, start, end, start, doc.languageId, overrides, indentImportant)
+            const r = collectRange(doc, start, end, start, doc.languageId, overrides, indentImportant)
             const last = r.infos.at(-1)!
-            if                      (last.line.lineNumber > end){ break }
+            if(last.line.lineNumber > end){ break }
             if(r.infos[0]?.sgfntTokenType !== TokenType.Invalid){ ranges.push(r) }
-            if                    (last.line.lineNumber === end){ break }
+            if(last.line.lineNumber === end){ break }
             start = last.line.lineNumber + 1
         }
     }
@@ -1093,10 +991,9 @@ function process(editor: vscode.TextEditor): void {
     editor.edit(b => {
         const eol = doc.eol === vscode.EndOfLine.LF ? '\n' : '\r\n'
         for(let i = 0; i < ranges.length; i++) {
-            const infos = ranges[i]!.infos
-            const last  = infos.at(-1)!.line
-            const loc   = new vscode.Range(infos[0]!.line.lineNumber, 0, last.lineNumber, last.text.length)
-            const text  = outputs[i]!.join(eol)
+            const infos = ranges[i]!.infos, last = infos.at(-1)!.line
+            const loc = new vscode.Range(infos[0]!.line.lineNumber, 0, last.lineNumber, last.text.length)
+            const text = outputs[i]!.join(eol)
             if(doc.getText(loc) !== text){ b.replace(loc, text) }
         }
     })
@@ -1106,16 +1003,13 @@ function process(editor: vscode.TextEditor): void {
 
 export function activate(ctx: vscode.ExtensionContext) {
     let alignOnEnter = vscode.workspace.getConfiguration('betterAlignColumns').get<boolean>('alignAfterTypeEnter')
-
     ctx.subscriptions.push(
         vscode.commands.registerTextEditorCommand('vscode-better-align-columns.align', process),
-
         vscode.workspace.onDidChangeTextDocument(e => {
             if(alignOnEnter && e.contentChanges.some(c => c.text.includes('\n'))) {
                 vscode.commands.executeCommand('vscode-better-align-columns.align')
             }
         }),
-
         vscode.workspace.onDidChangeConfiguration(e => {
             if(e.affectsConfiguration('betterAlignColumns')) {
                 alignOnEnter = vscode.workspace.getConfiguration('betterAlignColumns').get<boolean>('alignAfterTypeEnter')
@@ -1125,5 +1019,4 @@ export function activate(ctx: vscode.ExtensionContext) {
 }
 
 export function deactivate(){ }
-
 export { ws, tokenizeLine, TokenType, LanguageSyntaxConfig, LineInfo, LineRange }

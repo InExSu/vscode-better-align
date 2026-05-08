@@ -1,3 +1,7 @@
+# v2.0.7 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v2.0.7)
+
+- Fix: User code fixes in src/extension.ts
+
 # v2.0.1 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v2.0.1)
 
 - Add: Comprehensive test suite with 37 tests
