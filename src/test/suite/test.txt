@@ -1,5 +1,5 @@
 x = 1
 y = 2
 
-   gfntTokens: TokenType[]
-   tokens    : Token[]fz
+   gfntTokens : TokenType[]
+   tokens     : Token[]fz

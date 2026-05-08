@@ -24,12 +24,12 @@ const enum TokenType {
     Comparison    = 'Comparison'   ,
 }
 
-interface Token { type: TokenType; text: string }
-interface BlockComment { start: string; end: string }
+interface Token                { type: TokenType; text: string }
+interface BlockComment         { start: string; end: string }
 interface LanguageSyntaxConfig { lineComments: string[]; blockComments: BlockComment[] }
 
 const DEFAULT_LANG: Record<string, LanguageSyntaxConfig> = {
-    php: { lineComments: ['//', '#'], blockComments: [{ start: '/*', end: '*/' }] },
+    php : { lineComments : ['//', '#'], blockComments : [{ start: '/*', end: '*/' }] },
 }
 
 const FALLBACK: LanguageSyntaxConfig = { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] }
@@ -45,7 +45,7 @@ const sortByLenDesc = <T extends string | { start: string }>(arr: T[]): T[] =>
 
 const matchPrefix = (text: string, pos: number, markers: string[]): string | null => {
     for (const m of sortByLenDesc(markers)) {
-        if (text.startsWith(m, pos)) { return m }
+        if(text.startsWith(m, pos)) { return m }
     }
     return null
 }
@@ -57,13 +57,13 @@ const findLineComment = (text: string, pos: number, cfg: LanguageSyntaxConfig): 
 
 const findBlockCommentEnd = (text: string, pos: number, cfg: LanguageSyntaxConfig): string | null => {
     for (const bc of sortByLenDesc(cfg.blockComments)) {
-        if (text.startsWith(bc.start, pos)) { return bc.end }
+        if(text.startsWith(bc.start, pos)) { return bc.end }
     }
     return null
 }
 
 const isGenericOpen = (text: string, pos: number): boolean => {
-    if (pos === 0) { return false }
+    if(pos === 0) { return false }
     const prev = text[pos - 1]!
     return /[\w>\\]/.test(prev)
 }
@@ -72,11 +72,11 @@ const consumeGeneric = (text: string, pos: number): number => {
     let depth = 0
     let i     = pos
     while (i < text.length) {
-        if (text[i] === '<') { depth++; i++; continue }
+        if(text[i] === '<') { depth++; i++; continue }
         if (text[i] === '>') {
             depth--
             i++
-            if (depth === 0) { return i }
+            if(depth === 0) { return i }
             continue
         }
         i++
@@ -85,7 +85,7 @@ const consumeGeneric = (text: string, pos: number): number => {
 }
 
 function classifyAtDefault(
-    text: string, pos: number, cfg: LanguageSyntaxConfig
+    text : string, pos : number, cfg : LanguageSyntaxConfig
 ): { type: TokenType; advance: number } {
     const ch = text[pos] ?? ''
     const nx = text[pos + 1] ?? ''
@@ -96,93 +96,93 @@ function classifyAtDefault(
     }
 
     switch (ch) {
-        case '"': 
-        case "'": 
-        case '`': 
+        case '"' : 
+        case "'" : 
+        case '`' : 
             return { type: TokenType.String, advance: 1 }
 
-        case '{': 
-        case '(': 
-        case '[': 
+        case '{' : 
+        case '(' : 
+        case '[' : 
             return { type: TokenType.Block, advance: 1 }
 
-        case '}': 
-        case ')': 
-        case ']': 
+        case '}' : 
+        case ')' : 
+        case ']' : 
             return { type: TokenType.EndOfBlock, advance: 1 }
 
-        case ',': 
+        case ',' : 
             return { type: TokenType.Comma, advance: 1 }
 
         case '<': {
             if (nx === '?') {
                 let end = pos + 2
-                while (end < text.length && /[a-zA-Z]/.test(text[end]!)) { end++ }
+                while(end < text.length && /[a-zA-Z]/.test(text[end]!)) { end++ }
                 return { type: TokenType.Word, advance: end - pos }
             }
 
-            if (nx === '=' && rd === '>') { return { type: TokenType.Spaceship, advance: 3 } }
+            if(nx === '=' && rd === '>') { return { type: TokenType.Spaceship, advance: 3 } }
 
-            if (nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } }
-            if (nx === '=') { return { type: TokenType.Comparison, advance: 2 } }
+            if(nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } }
+            if(nx === '=') { return { type: TokenType.Comparison, advance: 2 } }
 
             if (isGenericOpen(text, pos)) {
                 const end = consumeGeneric(text, pos)
-                if (end !== -1) { return { type: TokenType.Word, advance: end - pos } }
+                if(end !== -1) { return { type: TokenType.Word, advance: end - pos } }
             }
 
             return { type: TokenType.Comparison, advance: 1 }
         }
 
-        case '>': 
-            if (nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } }
-            if (nx === '=') { return { type: TokenType.Comparison, advance: 2 } }
+        case '>' : 
+            if(nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } }
+            if(nx === '=') { return { type: TokenType.Comparison, advance: 2 } }
             return { type: TokenType.Comparison, advance: 1 }
 
-        case '!': 
-            if (nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } }
-            if (nx === '=') { return { type: TokenType.Comparison, advance: 2 } }
+        case '!' : 
+            if(nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } }
+            if(nx === '=') { return { type: TokenType.Comparison, advance: 2 } }
             return { type: TokenType.Word, advance: 1 }
 
-        case '=': 
-            if (nx === '>') { return { type: TokenType.Arrow, advance: 2 } }
-            if (nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } }
-            if (nx === '=') { return { type: TokenType.Comparison, advance: 2 } }
+        case '=' : 
+            if(nx === '>') { return { type: TokenType.Arrow, advance: 2 } }
+            if(nx === '=' && rd === '=') { return { type: TokenType.Comparison, advance: 3 } }
+            if(nx === '=') { return { type: TokenType.Comparison, advance: 2 } }
             return { type: TokenType.Assignment, advance: 1 }
 
-        case '-': 
-            if (nx === '>') { return { type: TokenType.Word, advance: 2 } }
-            if (nx === '=') { return { type: TokenType.Assignment, advance: 2 } }
+        case '-' : 
+            if(nx === '>') { return { type: TokenType.Word, advance: 2 } }
+            if(nx === '=') { return { type: TokenType.Assignment, advance: 2 } }
             return { type: TokenType.Word, advance: 1 }
 
-        case '+': 
-        case '*': 
-        case '%': 
-        case '~': 
-        case '|': 
-        case '^': 
-        case '.': 
-        case '&': 
-            if (nx === '=') { return { type: TokenType.Assignment, advance: 2 } }
+        case '+' : 
+        case '*' : 
+        case '%' : 
+        case '~' : 
+        case '|' : 
+        case '^' : 
+        case '.' : 
+        case '&' : 
+            if(nx === '=') { return { type: TokenType.Assignment, advance: 2 } }
             return { type: TokenType.Word, advance: 1 }
 
         case '/': {
             const lc = findLineComment(text, pos, cfg)
-            if (lc) { return { type: TokenType.Comment, advance: 1 } }
+            if(lc) { return { type: TokenType.Comment, advance: 1 } }
             const bcEnd = findBlockCommentEnd(text, pos, cfg)
-            if (bcEnd) { return { type: TokenType.Comment, advance: 1 } }
-            if (nx === '=') { return { type: TokenType.Assignment, advance: 2 } }
+            if(bcEnd) { return { type: TokenType.Comment, advance: 1 } }
+            if(nx === '=') { return { type: TokenType.Assignment, advance: 2 } }
             return { type: TokenType.Word, advance: 1 }
         }
 
-        case ':': 
-            if (nx === ':') { return { type: TokenType.Word, advance: 2 } }
-            if (nx === '=') { return { type: TokenType.Assignment, advance: 2 } }
+        case ':' : 
+            if(nx === ':') { return { type: TokenType.Word, advance: 2 } }
+            if(nx === '=') { return { type: TokenType.Assignment, advance: 2 } }
             return { type: TokenType.Colon, advance: 1 }
     }
 
-    if (findLineComment(text, pos, cfg)) { return { type: TokenType.Comment, advance: 1 } }
-    if (findBlockCommentEnd(text, pos, cfg)) { return { type: TokenType.Comment, advance: 1 } }
+    if(findLineComment(text, pos, cfg)) { return { type: TokenType.Comment, advance: 1 } }
+    if(findBlockCommentEnd(text, pos, cfg)) { return { type: TokenType.Comment, advance: 1 } }
 
     return { type: TokenType.Word, advance: 1 }
 }
@@ -201,7 +201,7 @@ function tokenizeLine(text: string, cfg: LanguageSyntaxConfig): Token[] {
     let blockEnd   = ''
 
     const flush = (upTo: number, overrideType?: TokenType) => {
-        if (tokenStart === -1) { return }
+        if         (tokenStart === -1) { return }
         tokens.push({ type: overrideType ?? lastType, text: text.substring(tokenStart, upTo) })
         tokenStart = -1
     }
@@ -213,7 +213,7 @@ function tokenizeLine(text: string, cfg: LanguageSyntaxConfig): Token[] {
                 if (text[pos] === quote) {
                     let backslashCount = 0
                     let k              = pos - 1
-                    while (k >= 0 && text[k] === '\\') { backslashCount++; k-- }
+                    while(k >= 0 && text[k] === '\\') { backslashCount++; k-- }
                     if (backslashCount % 2 === 0) {
                         pos++
                         flush(pos)
@@ -262,7 +262,7 @@ function tokenizeLine(text: string, cfg: LanguageSyntaxConfig): Token[] {
                 const { type, advance } = classifyAtDefault(text, pos, cfg)
 
                 if (advance > 1 && type === TokenType.Word) {
-                    flush(pos)
+                    flush      (pos)
                     tokens.push({ type: TokenType.Word, text: text.substring(pos, pos + advance) })
                     lastType    = TokenType.Word
                     tokenStart  = -1
@@ -275,24 +275,24 @@ function tokenizeLine(text: string, cfg: LanguageSyntaxConfig): Token[] {
                     lastType   = type
                     tokenStart = pos
 
-                    if (type === TokenType.String) { state = State.InString; quote = text[pos] ?? '' }
-                    else if (type === TokenType.Block) { state = State.InBlock; open = text[pos] ?? ''; blockDepth = 1 }
+                    if(type === TokenType.String) { state = State.InString; quote = text[pos] ?? '' }
+                    else if(type === TokenType.Block) { state = State.InBlock; open = text[pos] ?? ''; blockDepth = 1 }
                     else if (type === TokenType.Comment) {
-                        if (findLineComment(text, pos, cfg)) { state = State.InLineComment }
+                        if(findLineComment(text, pos, cfg)) { state = State.InLineComment }
                         else {
                             const end = findBlockCommentEnd(text, pos, cfg)
-                            if (end) { state = State.InBlockComment; blockEnd = end }
+                            if(end) { state = State.InBlockComment; blockEnd = end }
                         }
                     }
                 } else if (tokenStart === -1) {
                     tokenStart = pos
-                    if (type === TokenType.String) { state = State.InString; quote = text[pos] ?? '' }
-                    else if (type === TokenType.Block) { state = State.InBlock; open = text[pos] ?? ''; blockDepth = 1 }
+                    if(type === TokenType.String) { state = State.InString; quote = text[pos] ?? '' }
+                    else if(type === TokenType.Block) { state = State.InBlock; open = text[pos] ?? ''; blockDepth = 1 }
                     else if (type === TokenType.Comment) {
-                        if (findLineComment(text, pos, cfg)) { state = State.InLineComment }
+                        if(findLineComment(text, pos, cfg)) { state = State.InLineComment }
                         else {
                             const end = findBlockCommentEnd(text, pos, cfg)
-                            if (end) { state = State.InBlockComment; blockEnd = end }
+                            if(end) { state = State.InBlockComment; blockEnd = end }
                         }
                     }
                 }
@@ -316,7 +316,7 @@ suite('PHP tokenization', () => {
     test('-> is tokenized as single Word token', () => {
         const tokens     = tokenizeLine('$this->foo', phpCfg)
         const arrowToken = tokens.find(t => t.text === '->')
-        phpAssert.ok(arrowToken, 'Should find -> token')
+        phpAssert.ok         (arrowToken, 'Should find -> token')
         phpAssert.strictEqual(arrowToken!.type, TokenType.Word, '-> should be Word type')
     })
 
@@ -329,21 +329,21 @@ suite('PHP tokenization', () => {
     test('<?php tag is tokenized as single Word token', () => {
         const tokens = tokenizeLine('<?php echo "hello";', phpCfg)
         const phpTag = tokens.find(t => t.text.startsWith('<?'))
-        phpAssert.ok(phpTag, 'Should find <?php tag')
+        phpAssert.ok         (phpTag, 'Should find <?php tag')
         phpAssert.strictEqual(phpTag!.type, TokenType.Word, '<?php should be Word type')
     })
 
     test('<?= short echo tag is tokenized correctly', () => {
         const tokens = tokenizeLine('<?= $var ?>', phpCfg)
         const phpTag = tokens.find(t => t.text.startsWith('<?'))
-        phpAssert.ok(phpTag, 'Should find <?= tag')
+        phpAssert.ok         (phpTag, 'Should find <?= tag')
         phpAssert.strictEqual(phpTag!.type, TokenType.Word, '<?= should be Word type')
     })
 
     test('PHP block comment /* */ is recognized', () => {
         const tokens       = tokenizeLine('$x = 1; /* block */', phpCfg)
         const commentToken = tokens.find(t => t.text.startsWith('/*'))
-        phpAssert.ok(commentToken, 'Should find /* comment token')
+        phpAssert.ok         (commentToken, 'Should find /* comment token')
         phpAssert.strictEqual(commentToken!.type, TokenType.Comment, '/* should be Comment type')
     })
 
@@ -359,7 +359,7 @@ class Foo {
     public function bar(array<array<string>> $a_1S): void {
         $this->foo()
             ->method()
-            ->chain();
+            ->chain ();
     }
 }`
         const lines = code.split('\n')

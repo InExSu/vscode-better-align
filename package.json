@@ -1,29 +1,29 @@
 {
-  "name": "vscode-better-align-columns",
-  "displayName": "Better Align Columns",
-  "description": "Better vertical alignment with/without selection in any language for any characters or words.",
-  "version": "2.0.7",
-  "icon": "images/icon.png",
-  "publisher": "inexsu",
-  "license": "SEE LICENSE IN LICENSE",
+  "name"        : "vscode-better-align-columns",
+  "displayName" : "Better Align Columns",
+  "description" : "Better vertical alignment with/without selection in any language for any characters or words.",
+  "version"     : "2.0.7",
+  "icon"        : "images/icon.png",
+  "publisher"   : "inexsu",
+  "license"     : "SEE LICENSE IN LICENSE",
   "author": {
-    "name": "inexsu",
-    "url": "https://github.com/inexsu"
+    "name" : "inexsu",
+    "url"  : "https://github.com/inexsu"
   },
   "galleryBanner": {
-    "color": "#272729",
-    "theme": "dark"
+    "color" : "#272729",
+    "theme" : "dark"
   },
   "bugs": {
-    "url": "https://github.com/InExSu/vscode-better-align-columns/issues",
-    "email": "inexsu@bk.ru"
+    "url"   : "https://github.com/InExSu/vscode-better-align-columns/issues",
+    "email" : "inexsu@bk.ru"
   },
   "repository": {
-    "type": "git",
-    "url": "https://github.com/InExSu/vscode-better-align-columns.git"
+    "type" : "git",
+    "url"  : "https://github.com/InExSu/vscode-better-align-columns.git"
   },
   "engines": {
-    "vscode": "^1.47.0"
+    "vscode" : "^1.47.0"
   },
   "categories": [
     "Formatters"
@@ -32,30 +32,30 @@
     "onStartupFinished",
     "onCommand:vscode-better-align-columns.align"
   ],
-  "main": "./dist/extension.js",
-  "browser": "./dist/web/extension.js",
+  "main"    : "./dist/extension.js",
+  "browser" : "./dist/web/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "vscode-better-align-columns.align",
-        "title": "Align"
+        "command" : "vscode-better-align-columns.align",
+        "title"   : "Align"
       }
     ],
     "configuration": {
-      "type": "object",
-      "title": "Better Align",
+      "type"  : "object",
+      "title" : "Better Align",
       "properties": {
         "betterAlignColumns.operatorPadding": {
-          "type": "string",
+          "type" : "string",
           "enum": [
             "left",
             "right"
           ],
-          "default": "right",
-          "description": "Control where to insert space to align different length operators (e.g. aligning = += *= ...)"
+          "default"     : "right",
+          "description" : "Control where to insert space to align different length operators (e.g. aligning = += *= ...)"
         },
         "betterAlignColumns.surroundSpace": {
-          "type": "object",
+          "type" : "object",
           "default": {
             "colon": [
               0,
@@ -69,53 +69,53 @@
               1,
               1
             ],
-            "comment": 2,
+            "comment" : 2,
             "from": [
               1,
               1
             ]
           },
-          "description": "Specify how many spaces to insert around the operator."
+          "description" : "Specify how many spaces to insert around the operator."
         },
         "betterAlignColumns.indentBase": {
-          "type": "string",
+          "type" : "string",
           "enum": [
             "firstline",
             "activeline",
             "dontchange"
           ],
-          "default": "firstline",
-          "description": "firstline: Change indent of all lines to the firstline.\n activeline: Change intent of all lines to the activeline.\n dontchange: Don't change line indent, only aligns those lines with same indentation."
+          "default"     : "firstline",
+          "description" : "firstline: Change indent of all lines to the firstline.\n activeline: Change intent of all lines to the activeline.\n dontchange: Don't change line indent, only aligns those lines with same indentation."
         },
         "betterAlignColumns.alignAfterTypeEnter": {
-          "type": "boolean",
-          "default": false,
-          "description": "Auto align current text near the cursor after type enter in editor"
+          "type"        : "boolean",
+          "default"     : false,
+          "description" : "Auto align current text near the cursor after type enter in editor"
         },
         "betterAlignColumns.languageConfigs": {
-          "type": "object",
-          "default": {},
-          "description": "Language-specific comment syntax configuration. Each key is a VS Code language ID, and the value defines comment styles.",
+          "type"        : "object",
+          "default"     : {},
+          "description" : "Language-specific comment syntax configuration. Each key is a VS Code language ID, and the value defines comment styles.",
           "additionalProperties": {
-            "type": "object",
+            "type" : "object",
             "properties": {
               "lineComments": {
-                "type": "array",
+                "type" : "array",
                 "items": {
-                  "type": "string"
+                  "type" : "string"
                 },
-                "description": "Array of line comment prefixes (e.g., ['#', '//'])"
+                "description" : "Array of line comment prefixes (e.g., ['#', '//'])"
               },
               "blockComments": {
-                "type": "array",
+                "type" : "array",
                 "items": {
-                  "type": "object",
+                  "type" : "object",
                   "properties": {
                     "start": {
-                      "type": "string"
+                      "type" : "string"
                     },
                     "end": {
-                      "type": "string"
+                      "type" : "string"
                     }
                   },
                   "required": [
@@ -123,7 +123,7 @@
                     "end"
                   ]
                 },
-                "description": "Array of block comment definitions (e.g., [{'start': '/*', 'end': '*/'}])"
+                "description" : "Array of block comment definitions (e.g., [{'start': '/*', 'end': '*/'}])"
               }
             }
           }
@@ -145,48 +145,48 @@
             1,
             1
           ],
-          "comment": 2
+          "comment" : 2
         }
       }
     },
     "keybindings": [
       {
-        "command": "vscode-better-align-columns.align",
-        "key": "alt+a",
-        "when": "editorTextFocus"
+        "command" : "vscode-better-align-columns.align",
+        "key"     : "alt+a",
+        "when"    : "editorTextFocus"
       }
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run package",
-    "compile": "webpack && npm run compile-web",
-    "watch": "webpack --watch",
-    "compile-web": "webpack --config webpack.web.config.js",
-    "package": "webpack --mode production --devtool hidden-source-map && npm run compile-web",
-    "compile-tests": "tsc -p . --outDir out",
-    "watch-tests": "tsc -p . -w --outDir out",
-    "pretest": "npm run compile-tests && npm run compile && npm run lint",
-    "lint": "eslint src --ext ts",
-    "test": "mocha --ui tdd out/test/suite/*.test.js",
-    "test:win": "node ./out/test/runTestWin.js"
+    "vscode:prepublish" : "npm run package",
+    "compile"           : "webpack && npm run compile-web",
+    "watch"             : "webpack --watch",
+    "compile-web"       : "webpack --config webpack.web.config.js",
+    "package"           : "webpack --mode production --devtool hidden-source-map && npm run compile-web",
+    "compile-tests"     : "tsc -p . --outDir out",
+    "watch-tests"       : "tsc -p . -w --outDir out",
+    "pretest"           : "npm run compile-tests && npm run compile && npm run lint",
+    "lint"              : "eslint src --ext ts",
+    "test"              : "mocha --ui tdd out/test/suite/*.test.js",
+    "test:win"          : "node ./out/test/runTestWin.js"
   },
   "devDependencies": {
-    "@types/glob": "^8.0.0",
-    "@types/mocha": "^9.1.1",
-    "@types/node": "18.x",
-    "@types/vscode": "^1.47.0",
-    "@typescript-eslint/eslint-plugin": "^5.48.1",
-    "@typescript-eslint/parser": "^5.45.0",
-    "@vscode/test-electron": "^2.2.2",
-    "@vscode/vsce": "^3.9.1",
-    "esbuild-loader": "^2.20.0",
-    "eslint": "^8.31.0",
-    "glob": "^8.0.3",
-    "mocha": "^10.0.0",
-    "ts-loader": "^9.4.1",
-    "typescript": "^4.9.4",
-    "webpack": "^5.73.0",
-    "webpack-cli": "^5.0.0"
+    "@types/glob"                      : "^8.0.0",
+    "@types/mocha"                     : "^9.1.1",
+    "@types/node"                      : "18.x",
+    "@types/vscode"                    : "^1.47.0",
+    "@typescript-eslint/eslint-plugin" : "^5.48.1",
+    "@typescript-eslint/parser"        : "^5.45.0",
+    "@vscode/test-electron"            : "^2.2.2",
+    "@vscode/vsce"                     : "^3.9.1",
+    "esbuild-loader"                   : "^2.20.0",
+    "eslint"                           : "^8.31.0",
+    "glob"                             : "^8.0.3",
+    "mocha"                            : "^10.0.0",
+    "ts-loader"                        : "^9.4.1",
+    "typescript"                       : "^4.9.4",
+    "webpack"                          : "^5.73.0",
+    "webpack-cli"                      : "^5.0.0"
   },
-  "dependencies": {}
+  "dependencies" : {}
 }
