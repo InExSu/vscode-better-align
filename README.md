@@ -123,7 +123,7 @@ $data = array(
 ## 🐛 Issues & Contribution
 
 - **Found a bug?** [Open an issue](https://github.com/InExSu/vscode-better-align-columns/issues)
-- **Want to contribute?** [Fork the repo](https://github.com/InExSu/vscode-better-align) and submit a pull request
+- **Want to contribute?** [Fork the repo](https://github.com/InExSu/vscode-better-align-columns) and submit a pull request
 
 ---
 
@@ -133,7 +133,6 @@ This work is licensed under the [Apache License 2.0](https://opensource.org/lice
 
 ---
 
-## 🙏 Credits
+## 🤝 Credits
 
-The codebase is based on [better-align](https://github.com/WarWithinMe/better-align).
-Special thanks to [@WarWithinMe](https://github.com/WarWithinMe).
+The codebase is based on [vscode-better-align](https://github.com/chouzz/vscode-better-align).

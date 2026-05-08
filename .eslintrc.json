@@ -1,9 +1,9 @@
 {
-    "root": true,
+    "root"  : true                       ,
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
         "ecmaVersion": 6,
-        "sourceType": "module"
+        "sourceType" : "module"
     },
     "plugins": [
         "@typescript-eslint"
@@ -28,11 +28,11 @@
                 ]
             }
         ],
-        "@typescript-eslint/semi": "off",
-        "curly": "error",
-        "eqeqeq": "error",
-        "no-throw-literal": "error",
-        "semi": "off"
+        "@typescript-eslint/semi": "off"  ,
+        "curly"                  : "error",
+        "eqeqeq"                 : "error",
+        "no-throw-literal"       : "error",
+        "semi"                   : "off"
     },
     "ignorePatterns": [
         "out",

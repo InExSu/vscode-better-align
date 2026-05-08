@@ -1,3 +1,21 @@
+# v2.0.1 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v2.0.1)
+
+- Add: Comprehensive test suite with 37 tests
+- Add: OpenBrace/Semicolon/Colon alignment tests
+- Add: String handling and block comment detection tests
+
+# v2.0.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v2.0.0)
+
+- Refactor: Complete rewrite of tokenizer with state machine architecture
+- Add: OpenBrace and OpenParen as significant alignment tokens
+- Add: Semicolon alignment inside code blocks
+- Add: Structural prefix key matching for block alignment
+- Add: Comma/semicolon column alignment (N-th occurrence)
+- Fix: PHP generics handling (`array<T>`, `Map<K,V>`)
+- Fix: Spaceship operator `<=>` support
+- Fix: Block comment start recognition (`/* */`)
+- Fix: URL detection (`://` not treated as comment)
+
 # v1.10.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v1.10.0)
 
 - Rename: Commands from `vscode-better-align` to `vscode-better-align-columns`
