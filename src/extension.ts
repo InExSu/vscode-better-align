@@ -737,7 +737,15 @@ export function activate(context: vscode.ExtensionContext): void {
         // Success
         const blockCount = ns.blocks?.length ?? 0
         const lineCount = ns.blocks?.reduce((sum: number, b: string[]) => sum + b.length, 0) ?? 0
-        vscode.window.showInformationMessage(`Aligned: ${blockCount} block(s), ${lineCount} line(s)`)
+        const alignChars = ns.data.config?.alignChars?.join(', ') ?? CONFIG.defaultAlignChars.join(', ')
+        
+        const allLines = ns.blocks.flat()
+        const sampleLines = allLines.slice(0, 3).map((l: string) => l.substring(0, 50)).join('\n')
+        const sampleMsg = allLines.length > 3 ? `\n\nSample:\n${sampleLines}...` : `\n\nSample:\n${sampleLines}`
+
+        vscode.window.showInformationMessage(
+            `Aligned: ${blockCount} block(s), ${lineCount} line(s) using [${alignChars}]${sampleMsg}`
+        )
     })
 
     context.subscriptions.push(alignSelection)

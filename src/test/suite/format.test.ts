@@ -1,6 +1,7 @@
 /// <reference types="mocha" />
 
-const assert = require('assert')
+import { suite, test } from 'mocha'
+import * as assert from 'assert'
 
 const CONFIG = {
     b_Debug: false,

@@ -1,3 +1,8 @@
+# v3.0.3 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v3.0.3)
+
+- Remove: Integration tests (no longer needed)
+- Improve: Show align chars and sample lines in success message
+
 # v3.0.2 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v3.0.2)
 
 - Add: Detailed step-by-step messages on align (Load/Validate/Process/Write)

@@ -2,7 +2,7 @@
   "name"        : "vscode-better-align-columns",
   "displayName" : "Better Align Columns",
   "description" : "Better vertical alignment with/without selection in any language for any characters or words.",
-  "version"     : "3.0.2",
+  "version"     : "3.0.3",
   "icon"        : "images/icon.png",
   "publisher"   : "inexsu",
   "license"     : "SEE LICENSE IN LICENSE",
@@ -168,6 +168,7 @@
     "pretest"           : "npm run compile-tests && npm run compile && npm run lint",
     "lint"              : "eslint src --ext ts",
     "test"              : "mocha --ui tdd out/test/suite/*.test.js",
+    
     "test:win"          : "node ./out/test/runTestWin.js"
   },
   "devDependencies": {
