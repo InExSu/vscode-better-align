@@ -1,6 +1,6 @@
-# v4.0.1 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v4.0.1)
+# v4.0.2 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v4.0.2)
 
-- Merge align algorithms into single extension.ts
+- Fix: Align full document when selecting entire file or no selection
 
 # v4.0.1 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v4.0.1)
 

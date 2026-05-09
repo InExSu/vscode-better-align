@@ -6,7 +6,7 @@ import * as vscode from 'vscode'
 // ============================================================================
 
 type AlignPoint = { pos: number; op: string }
-type Block = string[]
+type Block      = string[]
 
 interface LineCommentMarkers {
     lineCommentPos: number
@@ -72,8 +72,8 @@ function getLangConfig(lang: string): LanguageConfig {
 // ============================================================================
 
 function pure_SplitIntoBlocks(lines: string[]): Block[] {
-    const blocks: Block[] = []
-    let currentBlock: Block = []
+    const blocks                   : Block[] = []
+    let currentBlock               : Block = []
 
     for(const line of lines) {
         switch(line.trim().length === 0) {
@@ -148,8 +148,8 @@ function pure_IsInsideString(line: string, position: number, delimiters: string[
     let inString = false
     let currentDelimiter = ''
 
-    for(let i = 0; i <= position; i++) {
-        const char = line[i]!
+    for(let i          = 0; i <= position; i++) {
+        const char     = line[i]!
         const prevChar = i > 0 ? line[i - 1]! : ''
 
         switch(true) {
@@ -420,7 +420,7 @@ function pure_CalculateAlignColumns(
         const alignPoints = pure_FindAlignPoints(line, alignChars, lineCommentPos, config)
         const sequence = pure_ExtractOperatorSequence(alignPoints)
 
-        const alignMap = new Map<number, number>()
+        const alignMap  = new Map<number, number>()
         let prefixIndex = 0
 
         for(let i = 0; i < alignPoints.length && prefixIndex < commonPrefix.length; i++) {
@@ -444,7 +444,7 @@ function pure_CalculateAlignColumns(
 // ============================================================================
 
 function pure_ComputeMaxColumns(alignMaps: Map<number, number>[]): Map<number, number> {
-    const maxColumns = new Map<number, number>()
+    const maxColumns = new Map<number                , number>()
 
     for(const alignMap of alignMaps) {
         for(const [idx, pos] of alignMap) {
@@ -473,8 +473,8 @@ function pure_ApplyAlignment(
     }
 
     const sortedIndices = Array.from(alignMap.keys()).sort((a, b) => a - b)
-    let result = line
-    let offset = 0
+    let result          = line
+    let offset          = 0
 
     for(const idx of sortedIndices) {
         const originalPos = alignMap.get(idx)!
@@ -543,7 +543,7 @@ function alignBlock(
         case 0: return [...lines]
     }
 
-    const alignMaps = pure_CalculateAlignColumns(filteredBlock, config.alignChars, commonPrefix, config)
+    const alignMaps  = pure_CalculateAlignColumns(filteredBlock, config.alignChars, commonPrefix, config)
     const maxColumns = pure_ComputeMaxColumns(alignMaps)
 
     const alignedBlock: string[] = []
@@ -628,14 +628,49 @@ export function activate(ctx: vscode.ExtensionContext) {
             for(const sel of selections) {
                 const startLine = sel.start.line
                 const endLine = sel.end.line
+                const isEmpty = sel.isEmpty || (startLine === endLine && sel.start.character === 0 && sel.end.character === doc.lineAt(endLine).text.length)
 
-                switch(startLine === endLine && sel.isEmpty) {
+                switch(isEmpty) {
                     case true: {
                         const lineCount = doc.lineCount
+                        const lines: string[] = []
                         for(let i = 0; i < lineCount; i++) {
                             const line = doc.lineAt(i)
-                            logToChannel(`Line ${i}: ${line.text}`)
+                            lines.push(line.text)
                         }
+
+                        logToChannel(`Processing full document (${lines.length} lines)`)
+
+                        const langId = doc.languageId
+                        const config = getLangConfig(langId)
+
+                        const alignedLines = alignAll(lines, config)
+
+                        const eol  = doc.eol === vscode.EndOfLine.LF ? '\n' : '\r\n'
+                        const text = alignedLines.join(eol)
+
+                        editor.edit((editBuilder: vscode.TextEditorEdit) => {
+                            const range = new vscode.Range(
+                                0, 0,
+                                lineCount - 1, doc.lineAt(lineCount - 1).text.length
+                            )
+                            editBuilder.replace(range, text)
+                        }).then((success: boolean) => {
+                            switch(success) {
+                                case true: {
+                                    logToChannel('=== Done (full doc) ===')
+                                    vscode.window.showInformationMessage(
+                                        `Aligned ${alignedLines.length} line(s) in full document`
+                                    )
+                                    break
+                                }
+                                case false: {
+                                    logToChannel('ERROR: Failed to write changes')
+                                    vscode.window.showErrorMessage('Failed to write changes')
+                                    break
+                                }
+                            }
+                        })
                         break
                     }
                     default: {
@@ -652,7 +687,7 @@ export function activate(ctx: vscode.ExtensionContext) {
 
                         const alignedLines = alignAll(lines, config)
 
-                        const eol = doc.eol === vscode.EndOfLine.LF ? '\n' : '\r\n'
+                        const eol  = doc.eol === vscode.EndOfLine.LF ? '\n' : '\r\n'
                         const text = alignedLines.join(eol)
 
                         logToChannel(`Aligned ${alignedLines.length} lines`)
