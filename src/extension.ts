@@ -688,7 +688,7 @@ function data_Write_Decor(ns: NS): void {
 export function activate(context: vscode.ExtensionContext): void {
     const ns: NS = NS_Container(CONFIG)
 
-    const alignSelection = vscode.commands.registerCommand('codeAlign.alignSelection', () => {
+    const alignSelection = vscode.commands.registerCommand('vscode-better-align-columns.align', () => {
         a_Chain(ns)
         if(ns.s_Error) {
             vscode.window.showErrorMessage(ns.s_Error)

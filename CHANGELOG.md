@@ -1,5 +1,6 @@
-# v2.0.8 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v2.0.8)
+# v3.0.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v3.0.0)
 
+- Fix: Command name changed from codeAlign.alignSelection to vscode-better-align-columns.align
 - Refactor: Unified alignChars and multiCharOps for consistent operator alignment
 - Add: PHP language config with ->, <=>, ?? operators
 - Add: SRP-compliant pure functions with switch-based state machine
