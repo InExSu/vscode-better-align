@@ -1,115 +1,117 @@
-# Agent Instructions for Development
+```markdown
+# Инструкции для агента по разработке
 
-After making code changes, always verify by running:
+После внесения изменений в код всегда проверяйте их выполнение:
 
 ```bash
-npm run lint    # Check linter
-npm run test   # Run tests
+npm run lint    # Проверка линтера
+npm run test    # Запуск тестов
 ```
 
-## Bug Fix Process (TDD)
+## Процесс исправления ошибок (TDD)
 
-When user asks to fix a bug or error:
+Когда пользователь просит исправить ошибку:
 
-1. **Create failing test first** - Write a test in `test/align.test.ts` that reproduces the bug
-2. **Run test to confirm failure** - `npm run test` should show the new test failing
-3. **Fix the code** - Implement the fix in `src/extension.ts`
-4. **Run tests** - All tests should pass
-5. **Update lint** - `npm run lint` should pass
-6. **Package and test** - `npm run package` and test the extension
+1. **Сначала создайте падающий тест** - Напишите тест в `test/align.test.ts`, который воспроизводит ошибку
+2. **Запустите тест, чтобы подтвердить падение** - `npm run test` должен показывать, что новый тест падает
+3. **Исправьте код** - Реализуйте исправление в `src/extension.ts`
+4. **Запустите тесты** - Все тесты должны проходить
+5. **Обновите линтер** - `npm run lint` должен проходить
+6. **Соберите и протестируйте** - `npm run package` и протестируйте расширение
 
-This applies to ALL bug fixes, not just alignment issues.
+Это относится ко ВСЕМ исправлениям ошибок, не только к проблемам выравнивания.
 
-## Important Limits
+## Важные ограничения
 
-**If stuck after 3-5 iterations trying to fix a bug:**
-- Stop reasoning in circles
-- Report to user what the issue is and ask for guidance
-- Do NOT continue endless debugging loops
+**Если застряли после 3-5 итераций попыток исправить ошибку:**
+- Прекратите бесконечные рассуждения
+- Сообщите пользователю о проблеме и попросите руководства
+- НЕ продолжайте бесконечные циклы отладки
 
-**Time limit per fix:** If a simple fix isn't working after reasonable attempts, ask for clarification rather than continuing indefinitely.
+**Временное ограничение на исправление:** Если простое исправление не работает после нескольких попыток, попросите разъяснений, а не продолжайте бесконечно.
 
-# Agent Instructions for Release Process
+# Инструкции для агента по процессу релиза
 
-After successfully improving the code, follow these steps to release a new version:
+После успешного улучшения кода выполните следующие шаги для выпуска новой версии:
 
-## 1. Version Bump
+## 1. Увеличение версии
 
-Update version in `package.json`:
-- Change `"version": "X.Y.Z"` to the next version number
+Обновите версию в `package.json`:
+- Измените `"version": "X.Y.Z"` на следующий номер версии
 
-## 2. Update CHANGELOG.md
+## 2. Обновите CHANGELOG.md
 
-Add new section at the top of `CHANGELOG.md`:
+Добавьте новый раздел в начало `CHANGELOG.md`:
 
 ```markdown
 # vX.Y.Z [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/vX.Y.Z)
 
-- Brief description of the changes
+- Краткое описание изменений
 ```
 
-## 3. Build and Package
+## 3. Сборка и упаковка
 
-Remove old VSIX if exists:
+Удалите старый VSIX, если существует:
 ```bash
 rm -f vscode-better-align-columns-X.Y.Z.vsix
 ```
 
-Build and package the extension:
+Соберите и упакуйте расширение:
 ```bash
 npm run package
 ```
 
-Or use vsce:
+Или используйте vsce:
 ```bash
 npx vsce package
 ```
 
-4. **Verify Release by Installing and Reloading VS Code**
+## 4. Проверьте релиз, установив и перезагрузив VS Code
 
-To ensure the new version is working correctly as part of the release process, install the newly packaged extension and reload VS Code:
+Чтобы убедиться, что новая версия работает корректно как часть процесса релиза, установите только что упакованное расширение и перезагрузите VS Code:
 ```bash
 code --uninstall-extension inexsu.vscode-better-align-columns 2>/dev/null || true
 code --install-extension vscode-better-align-columns-X.Y.Z.vsix --force
 code --reload-window
 ```
 
-Reload VS Code after install (if auto-reload doesn't work):
+Перезагрузите VS Code после установки (если автоматическая перезагрузка не работает):
 ```bash
 osascript -e 'tell app "Code" to quit' && open -a "Visual Studio Code"
 ```
 
-## 5. Verify Extension
+## 5. Проверьте расширение
 
-After installation, verify the extension details in VS Code:
-- Open Extensions panel (Ctrl+Shift+X)
-- Search for "Better Align"
-- Check that version shows X.Y.Z and description is correct
+После установки проверьте детали расширения в VS Code:
+- Откройте панель расширений (Ctrl+Shift+X)
+- Найдите "Better Align"
+- Проверьте, что версия показывает X.Y.Z и описание корректно
 
-If description shows outdated info, rebuild with:
+Если описание показывает устаревшую информацию, пересоберите:
 ```bash
 npx vsce package
 ```
 
-## 6. Create Git Commit
+## 6. Создайте Git коммит
 
-Create a commit with all changes:
+Создайте коммит со всеми изменениями:
 ```bash
-git add -A && git commit -m "vX.Y.Z: Description of changes"
+git add -A && git commit -m "vX.Y.Z: Описание изменений"
 ```
 
-## Example
+## Пример
 
-For a fix improving the "Invalid array length" error handling:
+Для исправления, улучшающего обработку ошибки "Invalid array length":
 
-1. Update `package.json`: `"version": "X.Y.Z"`
-2. Add to `CHANGELOG.md`:
+1. Обновите `package.json`: `"version": "X.Y.Z"`
+2. Добавьте в `CHANGELOG.md`:
    ```markdown
    # vX.Y.Z [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/vX.Y.Z)
 
-   - Fix "Invalid array length" error on large alignments
+   - Исправлена ошибка "Invalid array length" при большом выравнивании
    ```
-3. Run: `npx vsce package`
-4. Install: `code --uninstall-extension inexsu.vscode-better-align-columns 2>/dev/null || true && code --install-extension vscode-better-align-columns-X.Y.Z.vsix --force && code --reload-window`
-5. Verify extension details in VS Code Extensions panel
-6. Commit: `git add -A && git commit -m "vX.Y.Z: Fix Invalid array length on large alignments"`
+3. Запустите: `npx vsce package`
+4. Установите: `code --uninstall-extension inexsu.vscode-better-align-columns 2>/dev/null || true && code --install-extension vscode-better-align-columns-X.Y.Z.vsix --force && code --reload-window`
+5. Проверьте детали расширения в панели расширений VS Code
+6. Зафиксируйте: `git add -A && git commit -m "vX.Y.Z: Исправлена ошибка Invalid array length при большом выравнивании"`
+```

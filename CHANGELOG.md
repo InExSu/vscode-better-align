@@ -1,3 +1,13 @@
+# v6.0.3 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.0.3)
+
+- Bug fixes and improvements
+
+# v6.0.2 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.0.2)
+
+- Fix: Refactored code to improve readability and maintainability.
+- Fix: Several bugs in the parsing and alignment logic.
+- Fix: Improved the FSM for parsing lines.
+
 # v6.0.1 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.0.1)
 
 - Fix: undefined vs null TypeScript error in editor_Get
@@ -124,7 +134,7 @@
 
 - Fix: Don't treat `://` (URLs) as line comments
 - Fix: Use actual whitespace character codes in tokenizer (not escaped string literals)
-- Fix: Track escape sequences properly in strings (handle `\\"` correctly)
+- Fix: Track escape sequences properly in strings (handle `"` correctly)
 - Fix: Handle brackets without backslash escaping
 - Fix: Improve `wordsBefore` logic for multi-word prefixes
 - Fix: Normalize surroundSpace values (no more negative indices)

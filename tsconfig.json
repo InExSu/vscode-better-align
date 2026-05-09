@@ -5,9 +5,11 @@
 		"lib"   : [
 			"ES2020"
 		],
-		"types": ["node", "mocha"],
+		"types": ["node", "mocha", "glob"],
 		"strictPropertyInitialization": false,
-		"sourceMap"                   : true,
-		"strict"                      : true
+		"sourceMap": true,
+				"strict": true,
+				"rootDir": "src",
+				"outDir": "out"
 	}
 }
