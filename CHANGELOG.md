@@ -1,3 +1,7 @@
+# v6.0.5 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.0.5)
+
+- Fix: "command not found" error by correcting the command name in the extension's activation logic.
+
 # v6.0.4 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.0.4)
 
 - Fix: "command not found" error by correcting the command name in the extension's activation logic.

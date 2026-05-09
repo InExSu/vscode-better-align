@@ -751,7 +751,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('CodeAlign.AlignSelection', runAlign),
+        vscode.commands.registerCommand('vscode-better-align-columns.align', runAlign),
         vscode.commands.registerCommand('CodeAlign.AlignBlock', runAlign),
         vscode.commands.registerCommand('CodeAlign.Configure', () => {
             vscode.commands.executeCommand(
