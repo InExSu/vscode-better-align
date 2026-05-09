@@ -1,8 +1,9 @@
-# v3.0.5 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v3.0.5)
+# v4.0.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v4.0.0)
 
-- Remove: unused debug code (timers, decor_Start/Finish, rwd, a_Chain)
+- Major refactor: Significant changes to extension.ts
+- Remove: Tests
 
-# v3.0.4 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v3.0.4)
+# v3.0.5 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v3.0.4)
 
 - Fix: Auto-expand full document when cursor has no selection
 - Add: VS Code Output Channel logging
