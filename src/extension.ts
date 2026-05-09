@@ -35,17 +35,17 @@ const DEFAULT_LANG             : Record<string, LanguageConfig> = {
     },
     typescript                 : {
         lineComments           : ['//'],
-        blockComments: [{ start: '/*', end: '*/' }]              ,
-        stringDelimiters       : ['"', "'", '`']                 ,
-        alignChars             : [':', '{', '=', ',']            ,
+        blockComments: [{ start: '/*', end: '*/' }],
+        stringDelimiters       : ['"', "'", '`'],
+        alignChars             : [':', '{', '=', ','],
         multiCharOps           : ['===', '!==', '==', '!=', '<=', '>=', '=>', '->']
-    }                                                            ,
+    },
     python                     : {
-        lineComments           : ['#']                           ,
-        blockComments          : []                              ,
-        stringDelimiters       : ['"', "'"]                      ,
-        alignChars             : ['=', ':', ',']                 ,
-        multiCharOps           : ['==', '!=', '<='               , '>=']
+        lineComments           : ['#'],
+        blockComments          : [],
+        stringDelimiters       : ['"', "'"],
+        alignChars             : ['=', ':', ','],
+        multiCharOps           : ['==', '!=', '<=', '>=']
     },
     php                        : {
         lineComments           : ['//', '#'],
@@ -148,7 +148,7 @@ function pure_IsInsideString(line: string, position: number, delimiters: string[
     let inString         = false
     let currentDelimiter = ''
 
-    for(let i = 0; i <= position; i++) {
+    for(let i          = 0; i <= position; i++) {
         const char     = line[i]!
         const prevChar = i > 0 ? line[i - 1]! : ''
 
@@ -314,15 +314,54 @@ function pure_ScanMultiCharOps(
 // PURE: Scan single-char align points
 // ============================================================================
 
+function pure_CountNestingAt(
+    line: string,
+    position: number,
+    config: LanguageConfig
+): number {
+    let depth = 0
+    let inString = false
+    let currentDelimiter = ''
+
+    for(let i = 0; i < position; i++) {
+        const ch = line[i]!
+        const prevChar = i > 0 ? line[i - 1]! : ''
+
+        switch(true) {
+            case prevChar === '\\':
+                break
+            case inString:
+                switch(ch === currentDelimiter) {
+                    case true: inString = false; break
+                }
+                break
+            case config.stringDelimiters.includes(ch):
+                inString = true
+                currentDelimiter = ch
+                break
+            case ch === '{' || ch === '[' || ch === '(':
+                depth++
+                break
+            case ch === '}' || ch === ']' || ch === ')':
+                depth--
+                break
+        }
+    }
+
+    return depth
+}
+
 function pure_ScanSingleCharAlignPoints(
     line          : string,
     alignChars    : string[],
     lineCommentPos: number,
     config        : LanguageConfig,
-    taken?        : Set<number>
+    taken?        : Set<number>,
+    targetDepth?  : number
 )                 : AlignPoint[] {
     const results : AlignPoint[] = []
     const delimiters = config.stringDelimiters
+    const depth = targetDepth ?? 0
 
     for(let i = 0; i < line.length; i++) {
         switch(taken?.has(i)) {
@@ -342,7 +381,12 @@ function pure_ScanSingleCharAlignPoints(
         switch(state) {
             case PositionState.Valid: {
                 switch(alignChars.includes(char)) {
-                    case true: results.push({ pos: i, op: char }); break
+                    case true: {
+                        switch(pure_CountNestingAt(line, i, config)) {
+                            case depth: results.push({ pos: i, op: char }); break
+                        }
+                        break
+                    }
                 }
                 break
             }
@@ -357,10 +401,10 @@ function pure_ScanSingleCharAlignPoints(
 // ============================================================================
 
 function pure_GetMultiCharOperatorPositions(
-    line: string,
+    line          : string,
     lineCommentPos: number,
-    config: LanguageConfig
-): Set<number> {
+    config        : LanguageConfig
+)                 : Set<number> {
     const taken = new Set<number>()
     const multiCharOps = [...(config.multiCharOps || [])].sort((a, b) => b.length - a.length)
 
@@ -404,14 +448,15 @@ function pure_GetMultiCharOperatorPositions(
 }
 
 function pure_FindAlignPoints(
-    line          : string                                                        ,
-    alignChars    : string[]                                                      ,
-    lineCommentPos: number                                                        ,
-    config        : LanguageConfig
+    line          : string                                                                ,
+    alignChars    : string[]                                                              ,
+    lineCommentPos: number                                                                ,
+    config        : LanguageConfig                                                        ,
+    targetDepth?  : number
 )                 : AlignPoint[] {
-    const multi  = pure_ScanMultiCharOps(line, lineCommentPos                             , config)
-    const taken  = pure_GetMultiCharOperatorPositions(line, lineCommentPos                , config)
-    const single = pure_ScanSingleCharAlignPoints(line, alignChars, lineCommentPos, config, taken)
+    const multi = pure_ScanMultiCharOps(line, lineCommentPos                              , config)
+    const taken = pure_GetMultiCharOperatorPositions(line, lineCommentPos                 , config)
+    const single = pure_ScanSingleCharAlignPoints(line, alignChars, lineCommentPos, config, taken, targetDepth)
 
     const combined = [...multi, ...single]
     return combined.sort((a, b) => a.pos - b.pos)
@@ -427,17 +472,17 @@ function pure_ExtractOperatorSequence(alignPoints: AlignPoint[]): string[] {
 
 function pure_FindCommonPrefix(sequences: string[][], minCoverage: number = 0.5): string[] {
     switch(sequences.length) {
-        case 0: return []
+        case 0                                                                  : return []
     }
 
-    const total = sequences.length
-    const minCount = Math.ceil(total * minCoverage)
+    const total            = sequences.length
+    const minCount         = Math.ceil(total * minCoverage)
     const prefix: string[] = []
 
     const maxSeqLength = Math.max(...sequences.map(s => s.length))
 
-    for(let i = 0; i < maxSeqLength; i++) {
-        const counts = new Map<string, number>()
+    for(let i          = 0; i < maxSeqLength; i++) {
+        const counts   = new Map<string, number>()
         let validCount = 0
 
         for(const seq of sequences) {
@@ -452,8 +497,8 @@ function pure_FindCommonPrefix(sequences: string[][], minCoverage: number = 0.5)
         }
 
         switch(validCount >= minCount) {
-            case true: {
-                const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1])
+            case true:                 {
+                const sorted     = Array.from(counts.entries()).sort((a, b) => b[1] - a[1])
                 const mostCommon = sorted[0]!
 
                 switch(mostCommon[1] >= minCount) {
@@ -692,9 +737,9 @@ export function activate(ctx: vscode.ExtensionContext) {
             }
 
             for(const sel of selections) {
-                const startLine                                                                                           = sel.start.line
-                const endLine                                                                                             = sel.end.line
-                const isEmpty = sel.isEmpty || (startLine === endLine && sel.start.character === 0 && sel.end.character === doc.lineAt(endLine).text.length)
+                const startLine = sel.start.line
+                const endLine   = sel.end.line
+                const isEmpty   = sel.isEmpty || (startLine === endLine && sel.start.character === 0 && sel.end.character === doc.lineAt(endLine).text.length)
 
                 switch(isEmpty) {
                     case true: {
@@ -712,8 +757,8 @@ export function activate(ctx: vscode.ExtensionContext) {
 
                         const alignedLines = alignAll(lines, config)
 
-                        const eol = doc.eol === vscode.EndOfLine.LF ? '\n' : '\r\n'
-                        const text            = alignedLines.join(eol)
+                        const eol  = doc.eol === vscode.EndOfLine.LF ? '\n' : '\r\n'
+                        const text = alignedLines.join(eol)
 
                         editor.edit((editBuilder: vscode.TextEditorEdit) => {
                             const range = new vscode.Range(
@@ -753,8 +798,8 @@ export function activate(ctx: vscode.ExtensionContext) {
 
                         const alignedLines = alignAll(lines, config)
 
-                        const eol = doc.eol === vscode.EndOfLine.LF ? '\n' : '\r\n'
-                        const text            = alignedLines.join(eol)
+                        const eol  = doc.eol === vscode.EndOfLine.LF ? '\n' : '\r\n'
+                        const text = alignedLines.join(eol)
 
                         logToChannel(`Aligned ${alignedLines.length} lines`)
 

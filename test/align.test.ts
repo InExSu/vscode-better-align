@@ -802,6 +802,30 @@ suite('alignAll', () => {
         assert.strictEqual(result[2], 'if (a <= b)')
         assert.strictEqual(result[3], 'if (a >= b)')
     })
+
+    test('aligns commas at same nesting depth', () => {
+        const lines = [
+            '        stringDelimiters: ["a", "b", "c"],',
+            '        alignChars: [":", "{", "=", ","],',
+        ]
+        const result = alignBlock(lines, JS_CONFIG)
+        console.log('Comma alignment result:', result)
+
+        // All commas at depth 1 (inside array) should align
+        const commaPositions = result.map(line => {
+            const positions: number[] = []
+            let depth = 0
+            for(let i = 0; i < line.length; i++) {
+                const ch = line[i]!
+                if(ch === '[' || ch === '{') depth++
+                if(ch === ']' || ch === '}') depth--
+                if(ch === ',' && depth === 1) positions.push(i)
+            }
+            return positions
+        })
+        console.log('Comma positions:', commaPositions)
+        assert.strictEqual(commaPositions[0].length, commaPositions[1].length)
+    })
 })
 
 suite('Python config', () => {

@@ -1,3 +1,8 @@
+# v4.0.5 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v4.0.5)
+
+- Add: Depth-based comma alignment - only align commas at the same nesting depth
+- Add: `pure_CountNestingAt` tracks bracket depth when scanning align points
+
 # v4.0.4 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v4.0.4)
 
 - Fix: Do not break multi-char operators (<=, >=, ===, etc.) during alignment
