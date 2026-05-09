@@ -68,7 +68,8 @@ const line   = (ch: string): string => ch.repeat(50)
 
 function decor_Start(name: string): void {
     timers.set(name, performance.now())
-    console.log(`\n${line('═')}`)
+    console.log(`
+${line('═')}`)
     console.log(`▶  ${name}`)
     console.log(`${line('─')}`)
 }
@@ -78,7 +79,8 @@ function decor_Finish(name: string): void {
     const duration = start ? (performance.now() - start).toFixed(2) : '?'
     console.log(`${line('─')}`)
     console.log(`◀  ${name} (${duration}ms)`)
-    console.log(`${line('═')}\n`)
+    console.log(`${line('═')}
+`)
     timers.delete(name)
 }
 
@@ -542,7 +544,7 @@ function parseLineIgnoringStrings(raw: string, rules: LanguageRules): ParsedLine
 
             case 'string_Double': {
                 if(i >= raw.length) { tokens.push({ kind: 'string', text: raw.slice(codeStart) }); break outerLoop }
-                if(raw[i] === '\\') { i += 2; continue outerLoop }
+                if(raw[i] === '') { i += 2; continue outerLoop }
                 if(raw[i] === '"') { i++; tokens.push({ kind: 'string', text: raw.slice(codeStart, i) }); codeStart = i; state = 'code_Reading'; continue outerLoop }
                 i++
                 break
@@ -550,7 +552,7 @@ function parseLineIgnoringStrings(raw: string, rules: LanguageRules): ParsedLine
 
             case 'string_Single': {
                 if(i >= raw.length) { tokens.push({ kind: 'string', text: raw.slice(codeStart) }); break outerLoop }
-                if(raw[i] === '\\') { i += 2; continue outerLoop }
+                if(raw[i] === '') { i += 2; continue outerLoop }
                 if(raw[i] === "'") { i++; tokens.push({ kind: 'string', text: raw.slice(codeStart, i) }); codeStart = i; state = 'code_Reading'; continue outerLoop }
                 i++
                 break
@@ -558,7 +560,7 @@ function parseLineIgnoringStrings(raw: string, rules: LanguageRules): ParsedLine
 
             case 'template_Backtick': {
                 if(i >= raw.length) { tokens.push({ kind: 'string', text: raw.slice(codeStart) }); break outerLoop }
-                if(raw[i] === '\\') { i += 2; continue outerLoop }
+                if(raw[i] === '') { i += 2; continue outerLoop }
                 if(raw[i] === '`') { i++; tokens.push({ kind: 'string', text: raw.slice(codeStart, i) }); codeStart = i; state = 'code_Reading'; continue outerLoop }
                 i++
                 break
@@ -597,24 +599,38 @@ function findAlignCharsGreedy(code: string, alignChars: string[], rules: Languag
     return parseLineIgnoringStrings(code, rulesWithChars).markers
 }
 
-// ── findCommonPrefix ──────────────────────────────────────────
+// ── findDominantPrefix ────────────────────────────────────────
 /**
- * Given an array of marker-symbol sequences (one per line in a block),
- * return the longest common prefix sequence.
- *
- * @example
- * findCommonPrefix([[':', '[', ','], [':', '[', '{']]) // => [':', '[']
+ * Given an array of marker-symbol sequences, find the most frequent
+ * non-empty sequence to use as the alignment prefix.
  */
-function findCommonPrefix(sequences: string[][]): string[] {
-    if(sequences.length === 0) { return [] }
-    const minLen = Math.min(...sequences.map(s => s.length))
-    const common: string[] = []
-    for(let i = 0; i < minLen; i++) {
-        const first = sequences[0][i]
-        if(sequences.every(seq => seq[i] === first)) { common.push(first) }
-        else { break }
+function findDominantPrefix(sequences: string[][]): string[] {
+    if (sequences.length === 0) { return []; }
+
+    const counts = new Map<string, { sequence: string[], count: number }>();
+    for (const seq of sequences) {
+        if (seq.length === 0) { continue; }
+        const key = JSON.stringify(seq);
+        const existing = counts.get(key);
+        if (existing) {
+            existing.count++;
+        } else {
+            counts.set(key, { sequence: seq, count: 1 });
+        }
     }
-    return common
+
+    if (counts.size === 0) { return []; }
+
+    let dominantSeq: string[] = [];
+    let maxCount = 0;
+    for (const { sequence, count } of counts.values()) {
+        if (count > maxCount) {
+            maxCount = count;
+            dominantSeq = sequence;
+        }
+    }
+
+    return dominantSeq;
 }
 
 // ── computeColumnPositionsWithLength ─────────────────────────
@@ -767,27 +783,21 @@ export function deactivate(): void { }
 
 // ── EXPORTS FOR TESTING ───────────────────────────────────────
 export {
-    ok                              , err,
-    NS_Container                    ,
-    a_Chain                         ,
-    findAlignCharsGreedy            ,
-    findCommonPrefix                ,
+    ok, err,
+    NS_Container,
+    a_Chain,
+    findAlignCharsGreedy,
+    findDominantPrefix,
     computeColumnPositionsWithLength,
-    applySpacingRespectingMultichar ,
-    parseLineIgnoringStrings        ,
-    findLineBlocks                  ,
-    alignBlock                      ,
-    detectLanguageRules             ,
-    prefixMatches                   ,
-    DEFAULT_LANGUAGE_RULES          ,
-    CONFIG                          ,
-}gth,
-    applySpacingRespectingMultichar ,
-    parseLineIgnoringStrings        ,
-    findLineBlocks                  ,
-    alignBlock                      ,
-    detectLanguageRules             ,
-    prefixMatches                   ,
-    DEFAULT_LANGUAGE_RULES          ,
-    CONFIG                          ,
+    applySpacingRespectingMultichar,
+    parseLineIgnoringStrings,
+    findLineBlocks,
+    alignBlock,
+    detectLanguageRules,
+    prefixMatches,
+    DEFAULT_LANGUAGE_RULES,
+    CONFIG,
+    LanguageRules,
+    ParsedLine,
+    Marker,
 }

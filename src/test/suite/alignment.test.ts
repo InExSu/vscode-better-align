@@ -5,7 +5,8 @@ import {
     findDominantPrefix,
     DEFAULT_LANGUAGE_RULES,
     LanguageRules,
-    ParsedLine
+    ParsedLine,
+    Marker
 } from '../../extension';
 
 suite('Alignment Logic', () => {
@@ -27,7 +28,7 @@ suite('Alignment Logic', () => {
         const rules: LanguageRules = { ...DEFAULT_LANGUAGE_RULES, alignChars: ['='] };
         const parsedLines: ParsedLine[] = lines.map(line => parseLineIgnoringStrings(line, rules));
 
-        const sequences = parsedLines.map(pl => pl.markers.map(m => m.symbol));
+        const sequences = parsedLines.map(pl => pl.markers.map((m: Marker) => m.symbol));
         const dominantPrefix = findDominantPrefix(sequences);
 
         const aligned = alignBlock(parsedLines, dominantPrefix, 10);
