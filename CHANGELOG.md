@@ -1,3 +1,7 @@
+# v2.0.8 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v2.0.8)
+
+- Add: Align call-site parentheses `word(` across multiple lines
+
 # v2.0.7 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v2.0.7)
 
 - Fix: User code fixes in src/extension.ts

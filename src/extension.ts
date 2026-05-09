@@ -109,7 +109,6 @@ const consumeGeneric = (text: string, pos: number): number => {
 }
 
 // ─── Tokeniser state machine ──────────────────────────────────────────────────
-// Шалыто-style switch automaton. Flat structure, explicit transitions.
 
 const enum State { Default, InString, InBlock, InLineComment, InBlockComment }
 const BRACKET_PAIR: Record<string, string> = { '{': '}', '[': ']', '(': ')' }
@@ -517,7 +516,6 @@ function tokenizeFlat(inner: string, cfg: LanguageSyntaxConfig): Token[] {
         }
     }
 
-    // Flush tail — each case handles its own cleanup, no fallthrough confusion
     switch(state) {
         case FlatState.Word           : flushWord(inner.length); break
         case FlatState.InString       : result.push({ type : TokenType.String, text  : inner.substring(start) }); break
@@ -704,7 +702,7 @@ function applyOperator(before: string, op: string, pad: string, bsp: number, asp
     return before + pad + ws(bsp) + op + ws(asp)
 }
 
-// ─── buildSemicolonAlignedLines — FIXED: no duplicate rendering ───────────────
+// ─── buildSemicolonAlignedLines ───────────────────────────────────────────────
 
 function buildSemicolonAlignedLines(
     infos : LineInfo[], indent : string, cfg : LanguageSyntaxConfig
@@ -712,7 +710,6 @@ function buildSemicolonAlignedLines(
     type Seg = Token[]
     type Row = { segs: Seg[]; seps: Token[]; rendered: boolean[] }
 
-    // Build flat token streams
     const flatRows = infos.map(info => {
         const expanded: Token[] = []
         for(const tok of info.tokens) {
@@ -728,7 +725,6 @@ function buildSemicolonAlignedLines(
         return expanded
     })
 
-    // Split at semicolons, track which segments are rendered
     const splitRows = flatRows.map(toks => {
         const segs: Seg[] = [], seps: Token[] = [], rendered: boolean[] = []
         let cur: Token[]  = []
@@ -745,7 +741,6 @@ function buildSemicolonAlignedLines(
     const results: string[] = infos.map(() => indent)
 
     for(let si = 0; si < numSeps; si++) {
-        // Step 1: align prefix before `;` and emit `;`
         const prefixLens = splitRows.map((row, li) => {
             if(si >= row.segs.length || row.rendered[si]) { return results[li]!.length }
             return results[li]!.length + renderSeg(row.segs[si]!).trimEnd().length
@@ -760,7 +755,6 @@ function buildSemicolonAlignedLines(
             row.rendered [si]  = true
         }
 
-        // Step 2: align first token after `;` (min 1 space)
         const afterCols = splitRows.map((row, li) => {
             if(si >= row.seps.length) { return 0 }
             const raw    = renderSeg(row.segs[si + 1] ?? [])
@@ -779,7 +773,6 @@ function buildSemicolonAlignedLines(
         }
     }
 
-    // Emit last segment — ONLY if not already rendered
     for(let li = 0; li < infos.length; li++) {
         const row     = splitRows[li]!
         const lastIdx = row.segs.length - 1
@@ -792,7 +785,7 @@ function buildSemicolonAlignedLines(
     return results
 }
 
-// ─── buildColonAlignedLines — FIXED: no duplicate rendering ───────────────────
+// ─── buildColonAlignedLines ───────────────────────────────────────────────────
 
 function buildColonAlignedLines(
     infos : LineInfo[], indent : string, cfg : LanguageSyntaxConfig
@@ -818,7 +811,6 @@ function buildColonAlignedLines(
     const results: string[] = infos.map(() => indent)
 
     for(let si = 0; si < numSeps; si++) {
-        // Align prefix before `:`
         const prefixLens = splitRows.map((row, li) => {
             if(si >= row.segs.length || row.rendered[si]) { return results[li]!.length }
             return results[li]!.length + renderSeg(row.segs[si]!).trimEnd().length
@@ -833,7 +825,6 @@ function buildColonAlignedLines(
             row.rendered [si]  = true
         }
 
-        // One space after `:`
         for(let li = 0; li < infos.length; li++) {
             const row = splitRows[li]!
             if(si >= row.seps.length) { continue }
@@ -843,7 +834,6 @@ function buildColonAlignedLines(
         }
     }
 
-    // Emit last segment — ONLY if not already rendered
     for(let li = 0; li < infos.length; li++) {
         const row     = splitRows[li]!
         const lastIdx = row.segs.length - 1
@@ -854,6 +844,119 @@ function buildColonAlignedLines(
     }
 
     return results
+}
+
+// ─── Call-site alignment — SRP post-processor ────────────────────────────────
+//
+// Responsibility: given a group of already-formatted lines that share the same
+// leading indent, find all positions where `word(` appears at the same nesting
+// depth on every line, and pad the word so all `(` land in one column.
+//
+// This runs AFTER buildLines and never touches the token model.
+// It only manipulates plain strings — no vscode API, no LineInfo.
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Find all `word(` positions at depth-0 in a plain string.
+ *  Returns array of { wordStart, parenPos } — positions of the `(` character. */
+function findCallSiteParens(line: string): { wordStart: number; parenPos: number }[] {
+    const result: { wordStart: number; parenPos: number }[] = []
+
+    const enum CS { Normal, InString, InLineComment, InBlockComment }
+    let state = CS.Normal
+    let depth = 0
+    let quote = ''
+    let i     = 0
+
+    while(i < line.length) {
+        const ch = line[i]!
+        const nx = line[i + 1] ?? ''
+
+        switch(state) {
+            case CS.InLineComment: i           = line.length; break
+            case CS.InBlockComment: line.startsWith('*/', i) ? (state = CS.Normal, i += 2) : i++; break
+            case CS.InString: ch === '\\' ? i += 2 : ch === quote ? (state = CS.Normal, i++) : i++; break
+
+            case CS.Normal: {
+                switch(ch) {
+                    case '/' : nx === '/' ? (state = CS.InLineComment, i += 2) : nx === '*' ? (state = CS.InBlockComment, i += 2) : i++; break
+                    case '"' : case "'"                                        : case '`'                                         : state = CS.InString; quote = ch; i++; break
+                    case '{' : case '['                                        : depth++; i++; break
+                    case '}' : case ']'                                        : depth--; i++; break
+                    case '(': {
+                        if(depth === 0) {
+                            // scan back to find the word
+                            let w = i - 1
+                            while(w >= 0 && /[\w$]/.test(line[w]!)) { w-- }
+                            const wordStart = w + 1
+                            if(wordStart < i) { result.push({ wordStart, parenPos: i }) }
+                        }
+                        depth++; i++
+                        break
+                    }
+                    case ')' : depth--; i++; break
+                    default  : i++
+                }
+                break
+            }
+        }
+    }
+
+    return result
+}
+
+/** True if every line has at least one call-site paren at depth-0 at position `slot`. */
+function allLinesHaveParenAtSlot(lines: string[], slot: number): boolean {
+    return lines.every(line => findCallSiteParens(line).some(p => p.wordStart <= slot && p.parenPos >= slot - 1))
+}
+
+/** Pad the `slot`-th call-site paren (0-indexed) across all lines so `(` aligns. */
+function alignCallSiteSlot(lines: string[], slot: number): string[] {
+    // Collect wordStart and parenPos for each line at this slot
+    const sites = lines.map(line => findCallSiteParens(line)[slot])
+    if(sites.some(s => s === undefined)) { return lines }
+
+    const maxParenPos = Math.max(...sites.map(s => s!.parenPos))
+
+    return lines.map((line, li) => {
+        const { wordStart, parenPos } = sites[li]!
+        if(parenPos === maxParenPos) { return line }
+        const pad = maxParenPos - parenPos
+        return line.slice(0, wordStart) + line.slice(wordStart, parenPos) + ws(pad) + line.slice(parenPos)
+    })
+}
+
+/**
+ * Post-processor : align call-site `(` across a group of lines.
+ *
+ * Rules : 
+ *  1. All lines must share the same leading whitespace(same indent group).
+ *  2. For each slot index(0, 1, 2, …) where every line has a depth-0 `word(`
+ *     with mismatched paren positions — pad the shorter words.
+ *  3. Stop at the first slot where not all lines have a paren (lines differ
+ *     structurally — don't force alignment).
+ */
+function alignCallSites(lines: string[]): string[] {
+    if(lines.length < 2) { return lines }
+
+    // All lines must share the same indent
+    const indentOf = (l: string) => l.match(/^(\s*)/)?.[1] ?? ''
+    const indent   = indentOf(lines[0]!)
+    if(lines.some(l => indentOf(l) !== indent)) { return lines }
+
+    let result = [...lines]
+
+    for(let slot = 0; ; slot++) {
+        // Collect sites for this slot on the current (possibly already padded) result
+        const sites = result.map(line => findCallSiteParens(line)[slot])
+        if(sites.some(s => s === undefined)) { break }   // not all lines have this slot → stop
+
+        const parenPositions = sites.map(s => s!.parenPos)
+        const allSame        = parenPositions.every(p => p === parenPositions[0])
+        if(!allSame) { result = alignCallSiteSlot(result, slot) }
+    }
+
+    return result
 }
 
 // ─── buildLines ───────────────────────────────────────────────────────────────
@@ -944,7 +1047,9 @@ function buildLines(range: LineRange, indent: string, cfg: ReturnType<typeof mak
             for(const t of remaining) { result[l] += t.text }
         }
     }
-    return result
+
+    // ── Post-process: align call-site `(` within this group ──────────────────
+    return alignCallSites(result)
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -1019,4 +1124,4 @@ export function activate(ctx: vscode.ExtensionContext) {
 }
 
 export function deactivate() { }
-export { ws, tokenizeLine, TokenType, LanguageSyntaxConfig, LineInfo, LineRange }
+export { ws, tokenizeLine, TokenType, LanguageSyntaxConfig, LineInfo, LineRange, alignCallSites }
