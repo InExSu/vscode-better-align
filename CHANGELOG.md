@@ -1,3 +1,11 @@
+# v4.0.1 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v4.0.1)
+
+- Merge align algorithms into single extension.ts
+
+# v4.0.1 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v4.0.1)
+
+- Merge align algorithms into single extension.ts
+
 # v4.0.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v4.0.0)
 
 - Major refactor: Significant changes to extension.ts
