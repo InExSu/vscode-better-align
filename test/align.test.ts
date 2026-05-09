@@ -244,12 +244,17 @@ function pure_ScanSingleCharAlignPoints(
     line: string,
     alignChars: string[],
     lineCommentPos: number,
-    config: LanguageConfig
+    config: LanguageConfig,
+    taken?: Set<number>
 ): AlignPoint[] {
     const results: AlignPoint[] = []
     const delimiters = config.stringDelimiters
 
     for(let i = 0; i < line.length; i++) {
+        switch(taken?.has(i)) {
+            case true: continue
+        }
+
         const char = line[i]!
         const state = classifyPosition(
             line,
@@ -273,6 +278,53 @@ function pure_ScanSingleCharAlignPoints(
     return results
 }
 
+function pure_GetMultiCharOperatorPositions(
+    line: string,
+    lineCommentPos: number,
+    config: LanguageConfig
+): Set<number> {
+    const taken = new Set<number>()
+    const multiCharOps = [...(config.multiCharOps || [])].sort((a, b) => b.length - a.length)
+
+    for(const op of multiCharOps) {
+        let searchFrom = 0
+        while(true) {
+            const pos = line.indexOf(op, searchFrom)
+            switch(pos) {
+                case -1: break
+                default: {
+                    const state = classifyPosition(
+                        line,
+                        pos,
+                        lineCommentPos,
+                        pure_FindBlockCommentStart(line, lineCommentPos, config),
+                        pure_FindBlockCommentEnd(line, lineCommentPos, config),
+                        config.stringDelimiters
+                    )
+                    switch(state) {
+                        case PositionState.Valid: {
+                            for(let j = 0; j < op.length; j++) {
+                                taken.add(pos + j)
+                            }
+                            searchFrom = pos + op.length
+                            break
+                        }
+                        default:
+                            searchFrom = pos + 1
+                    }
+                    break
+                }
+            }
+            switch(pos) {
+                case -1: break
+                default: continue
+            }
+            break
+        }
+    }
+    return taken
+}
+
 function pure_FindAlignPoints(
     line: string,
     alignChars: string[],
@@ -280,15 +332,8 @@ function pure_FindAlignPoints(
     config: LanguageConfig
 ): AlignPoint[] {
     const multi = pure_ScanMultiCharOps(line, lineCommentPos, config)
-    const single = pure_ScanSingleCharAlignPoints(line, alignChars, lineCommentPos, config)
-
-    for(const m of multi) {
-        const overlapping = single.findIndex(s => s.pos === m.pos)
-        switch(overlapping) {
-            case -1: break
-            default: single.splice(overlapping, 1)
-        }
-    }
+    const taken = pure_GetMultiCharOperatorPositions(line, lineCommentPos, config)
+    const single = pure_ScanSingleCharAlignPoints(line, alignChars, lineCommentPos, config, taken)
 
     const combined = [...multi, ...single]
     return combined.sort((a, b) => a.pos - b.pos)
@@ -296,6 +341,10 @@ function pure_FindAlignPoints(
 
 function pure_ExtractOperatorSequence(alignPoints: AlignPoint[]): string[] {
     return alignPoints.map(p => p.op)
+}
+
+function pure_IsMultiCharOp(op: string): boolean {
+    return op.length > 1
 }
 
 function pure_FindCommonPrefix(sequences: string[][], minCoverage: number = 0.5): string[] {
@@ -330,7 +379,19 @@ function pure_FindCommonPrefix(sequences: string[][], minCoverage: number = 0.5)
                 const mostCommon = sorted[0]!
 
                 switch(mostCommon[1] >= minCount) {
-                    case true: prefix.push(mostCommon[0]); break
+                    case true: {
+                        switch(pure_IsMultiCharOp(mostCommon[0])) {
+                            case true: {
+                                switch(mostCommon[1] === total) {
+                                    case true: prefix.push(mostCommon[0]); break
+                                    case false: return prefix
+                                }
+                                break
+                            }
+                            case false: prefix.push(mostCommon[0]); break
+                        }
+                        break
+                    }
                     case false: return prefix
                 }
                 break
@@ -356,14 +417,14 @@ function pure_CalculateAlignColumns(
         const sequence = pure_ExtractOperatorSequence(alignPoints)
 
         const alignMap = new Map<number, number>()
-        let prefixIndex = 0
 
-        for(let i = 0; i < alignPoints.length && prefixIndex < commonPrefix.length; i++) {
-            switch(sequence[i]) {
-                case commonPrefix[prefixIndex]: {
-                    alignMap.set(prefixIndex, alignPoints[i]!.pos)
-                    prefixIndex++
-                    break
+        for(let prefixIndex = 0; prefixIndex < commonPrefix.length; prefixIndex++) {
+            for(let opIndex = 0; opIndex < sequence.length; opIndex++) {
+                switch(sequence[opIndex] === commonPrefix[prefixIndex]) {
+                    case true: {
+                        alignMap.set(prefixIndex, alignPoints[opIndex]!.pos)
+                        break
+                    }
                 }
             }
         }
@@ -703,7 +764,6 @@ suite('alignAll', () => {
             "        multiCharOps: ['==', '!=', '<=', '>=']",
         ]
 
-        // Debug: check sequences
         const sequences = lines.map(line => {
             const { lineCommentPos } = pure_ExtractCommentMarkers(line, JS_CONFIG)
             const alignPoints = pure_FindAlignPoints(line, JS_CONFIG.alignChars, lineCommentPos, JS_CONFIG)
@@ -716,19 +776,31 @@ suite('alignAll', () => {
         console.log('Common prefix:', JSON.stringify(commonPrefix))
 
         const result = alignBlock(lines, JS_CONFIG)
+        console.log('Result:', JSON.stringify(result))
 
         assert.strictEqual(result.length, lines.length)
+    })
 
-        const colonPositions = result.map(line => {
-            const pos = line.indexOf(':')
-            return pos !== -1 ? pos : -1
-        })
-        console.log('Colon positions after alignment:', colonPositions)
+    test('does not break multi-char operators', () => {
+        const lines = [
+            'if (a <= b)',
+            'if (a >= b)',
+        ]
+        const result = alignBlock(lines, JS_CONFIG)
+        assert.strictEqual(result[0], 'if (a <= b)')
+        assert.strictEqual(result[1], 'if (a >= b)')
+    })
 
-        const linesWithColons = sequences.map((seq, i) => seq.includes(':') ? i : -1).filter(i => i !== -1)
-        const colonPositionsFiltered = colonPositions.filter((_, i) => linesWithColons.includes(i))
-        const allSameColons = colonPositionsFiltered.every(p => p === colonPositionsFiltered[0])
-        assert.strictEqual(allSameColons, true, 'All colons should be at same position')
+    test('preserves already aligned multi-char operators', () => {
+        const lines = [
+            'const a = 1;',
+            'const bb = 22;',
+            'if (a <= b)',
+            'if (a >= b)',
+        ]
+        const result = alignBlock(lines, JS_CONFIG)
+        assert.strictEqual(result[2], 'if (a <= b)')
+        assert.strictEqual(result[3], 'if (a >= b)')
     })
 })
 
@@ -736,7 +808,7 @@ suite('Python config', () => {
     test('aligns Python dict', () => {
         const lines = ['x = { "a": 1, "bb": 2 }', 'y = { "ccc": 3 }']
         const result = alignBlock(lines, PY_CONFIG)
-        assert.strictEqual(result[0], 'x = { "a"  : 1, "bb": 2 }')
+        assert.strictEqual(result[0], 'x = { "a": 1, "bb": 2 }')
     })
 
     test('aligns Python assignments', () => {

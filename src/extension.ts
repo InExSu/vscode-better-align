@@ -6,61 +6,61 @@ import * as vscode from 'vscode'
 // ============================================================================
 
 type AlignPoint = { pos: number; op: string }
-type Block = string[]
+type Block      = string[]
 
 interface LineCommentMarkers {
-    lineCommentPos: number
+    lineCommentPos : number
     blockCommentPos: number
 }
 
 interface LanguageConfig {
-    lineComments: string[]
+    lineComments                       : string[]
     blockComments: { start: string; end: string }[]
-    stringDelimiters: string[]
-    alignChars: string[]
-    multiCharOps: string[]
+    stringDelimiters                   : string[]
+    alignChars                         : string[]
+    multiCharOps                       : string[]
 }
 
 // ============================================================================
 // LANGUAGE CONFIG
 // ============================================================================
 
-const DEFAULT_LANG: Record<string, LanguageConfig> = {
-    javascript: {
-        lineComments: ['//'],
+const DEFAULT_LANG             : Record<string, LanguageConfig> = {
+    javascript                 : {
+        lineComments           : ['//'],
         blockComments: [{ start: '/*', end: '*/' }],
-        stringDelimiters: ['"', "'", '`'],
-        alignChars: [':', '{', '=', ','],
-        multiCharOps: ['===', '!==', '==', '!=', '<=', '>=', '=>', '->']
+        stringDelimiters       : ['"', "'", '`'],
+        alignChars             : [':', '{', '=', ','],
+        multiCharOps           : ['===', '!==', '==', '!=', '<=', '>=', '=>', '->']
     },
-    typescript: {
-        lineComments: ['//'],
+    typescript                 : {
+        lineComments           : ['//'],
+        blockComments: [{ start: '/*', end: '*/' }]              ,
+        stringDelimiters       : ['"', "'", '`']                 ,
+        alignChars             : [':', '{', '=', ',']            ,
+        multiCharOps           : ['===', '!==', '==', '!=', '<=', '>=', '=>', '->']
+    }                                                            ,
+    python                     : {
+        lineComments           : ['#']                           ,
+        blockComments          : []                              ,
+        stringDelimiters       : ['"', "'"]                      ,
+        alignChars             : ['=', ':', ',']                 ,
+        multiCharOps           : ['==', '!=', '<='               , '>=']
+    },
+    php                        : {
+        lineComments           : ['//', '#'],
         blockComments: [{ start: '/*', end: '*/' }],
-        stringDelimiters: ['"', "'", '`'],
-        alignChars: [':', '{', '=', ','],
-        multiCharOps: ['===', '!==', '==', '!=', '<=', '>=', '=>', '->']
-    },
-    python: {
-        lineComments: ['#'],
-        blockComments: [],
-        stringDelimiters: ['"', "'"],
-        alignChars: ['=', ':', ','],
-        multiCharOps: ['==', '!=', '<=', '>=']
-    },
-    php: {
-        lineComments: ['//', '#'],
-        blockComments: [{ start: '/*', end: '*/' }],
-        stringDelimiters: ['"', "'", '`'],
-        alignChars: [':', '{', '=', ',', '->'],
-        multiCharOps: ['===', '!==', '==', '!=', '<=', '>=', '=>', '->', '<=>', '??']
+        stringDelimiters       : ['"', "'", '`'],
+        alignChars             : [':', '{', '=', ',', '->'],
+        multiCharOps           : ['===', '!==', '==', '!=', '<=', '>=', '=>', '->', '<=>', '??']
     }
 }
-const FALLBACK: LanguageConfig = {
-    lineComments: ['//'],
-    blockComments: [{ start: '/*', end: '*/' }],
-    stringDelimiters: ['"', "'", '`'],
-    alignChars: [':', '{', '=', ','],
-    multiCharOps: ['===', '!==', '==', '!=', '<=', '>=', '=>', '->']
+const FALLBACK                 : LanguageConfig = {
+    lineComments               : ['//'],
+    blockComments: [{ start    : '/*', end: '*/' }],
+    stringDelimiters           : ['"', "'", '`'],
+    alignChars                 : [':', '{', '=', ','],
+    multiCharOps               : ['===', '!==', '==', '!=', '<=', '>=', '=>', '->']
 }
 
 function getLangConfig(lang: string): LanguageConfig {
@@ -72,8 +72,8 @@ function getLangConfig(lang: string): LanguageConfig {
 // ============================================================================
 
 function pure_SplitIntoBlocks(lines: string[]): Block[] {
-    const blocks: Block[] = []
-    let currentBlock: Block = []
+    const blocks                              : Block[] = []
+    let currentBlock                          : Block = []
 
     for(const line of lines) {
         switch(line.trim().length === 0) {
@@ -106,7 +106,7 @@ function pure_SplitIntoBlocks(lines: string[]): Block[] {
 // ============================================================================
 
 function pure_ExtractCommentMarkers(line: string, config: LanguageConfig): LineCommentMarkers {
-    let lineCommentPos = -1
+    let lineCommentPos  = -1
     let blockCommentPos = -1
 
     for(const marker of config.lineComments) {
@@ -145,11 +145,11 @@ function pure_ExtractCommentMarkers(line: string, config: LanguageConfig): LineC
 // ============================================================================
 
 function pure_IsInsideString(line: string, position: number, delimiters: string[]): boolean {
-    let inString = false
+    let inString         = false
     let currentDelimiter = ''
 
     for(let i = 0; i <= position; i++) {
-        const char = line[i]!
+        const char     = line[i]!
         const prevChar = i > 0 ? line[i - 1]! : ''
 
         switch(true) {
@@ -221,20 +221,20 @@ function pure_FindBlockCommentEnd(line: string, lineCommentPos: number, config: 
 // ============================================================================
 
 const enum PositionState {
-    Valid,
-    InsideLineComment,
+    Valid             ,
+    InsideLineComment ,
     InsideBlockComment,
     InsideString
 }
 
 function classifyPosition(
-    line: string,
-    pos: number,
-    lineCommentPos: number,
-    blockStartPos: number,
-    blockEndPos: number,
-    delimiters: string[]
-): PositionState {
+    line                                                   : string,
+    pos                                                    : number,
+    lineCommentPos                                         : number,
+    blockStartPos                                          : number,
+    blockEndPos                                            : number,
+    delimiters                                             : string[]
+)                                                          : PositionState {
     switch(true) {
         case lineCommentPos !== -1 && pos >= lineCommentPos:
             return PositionState.InsideLineComment
@@ -257,11 +257,11 @@ function classifyPosition(
 // ============================================================================
 
 function pure_ScanMultiCharOps(
-    line: string,
+    line          : string,
     lineCommentPos: number,
-    config: LanguageConfig
-): AlignPoint[] {
-    const results: AlignPoint[] = []
+    config        : LanguageConfig
+)                 : AlignPoint[] {
+    const results : AlignPoint[] = []
     const multiCharOps = [...(config.multiCharOps || [])].sort((a, b) => b.length - a.length)
     const delimiters = config.stringDelimiters
 
@@ -315,22 +315,27 @@ function pure_ScanMultiCharOps(
 // ============================================================================
 
 function pure_ScanSingleCharAlignPoints(
-    line: string,
-    alignChars: string[],
+    line          : string,
+    alignChars    : string[],
     lineCommentPos: number,
-    config: LanguageConfig
-): AlignPoint[] {
-    const results: AlignPoint[] = []
+    config        : LanguageConfig,
+    taken?        : Set<number>
+)                 : AlignPoint[] {
+    const results : AlignPoint[] = []
     const delimiters = config.stringDelimiters
 
     for(let i = 0; i < line.length; i++) {
+        switch(taken?.has(i)) {
+            case true: continue
+        }
+
         const char = line[i]!
         const state = classifyPosition(
-            line,
-            i,
-            lineCommentPos,
+            line                                                    ,
+            i                                                       ,
+            lineCommentPos                                          ,
             pure_FindBlockCommentStart(line, lineCommentPos, config),
-            pure_FindBlockCommentEnd(line, lineCommentPos, config),
+            pure_FindBlockCommentEnd(line, lineCommentPos, config)  ,
             delimiters
         )
 
@@ -351,22 +356,62 @@ function pure_ScanSingleCharAlignPoints(
 // PURE: Find all align points
 // ============================================================================
 
-function pure_FindAlignPoints(
+function pure_GetMultiCharOperatorPositions(
     line: string,
-    alignChars: string[],
     lineCommentPos: number,
     config: LanguageConfig
-): AlignPoint[] {
-    const multi = pure_ScanMultiCharOps(line, lineCommentPos, config)
-    const single = pure_ScanSingleCharAlignPoints(line, alignChars, lineCommentPos, config)
+): Set<number> {
+    const taken = new Set<number>()
+    const multiCharOps = [...(config.multiCharOps || [])].sort((a, b) => b.length - a.length)
 
-    for(const m of multi) {
-        const overlapping = single.findIndex(s => s.pos === m.pos)
-        switch(overlapping) {
-            case -1: break
-            default: single.splice(overlapping, 1)
+    for(const op of multiCharOps) {
+        let searchFrom = 0
+        while(true) {
+            const pos = line.indexOf(op, searchFrom)
+            switch(pos) {
+                case -1: break
+                default: {
+                    const state = classifyPosition(
+                        line,
+                        pos,
+                        lineCommentPos,
+                        pure_FindBlockCommentStart(line, lineCommentPos, config),
+                        pure_FindBlockCommentEnd(line, lineCommentPos, config),
+                        config.stringDelimiters
+                    )
+                    switch(state) {
+                        case PositionState.Valid: {
+                            for(let j = 0; j < op.length; j++) {
+                                taken.add(pos + j)
+                            }
+                            searchFrom = pos + op.length
+                            break
+                        }
+                        default:
+                            searchFrom = pos + 1
+                    }
+                    break
+                }
+            }
+            switch(pos) {
+                case -1: break
+                default: continue
+            }
+            break
         }
     }
+    return taken
+}
+
+function pure_FindAlignPoints(
+    line          : string                                                        ,
+    alignChars    : string[]                                                      ,
+    lineCommentPos: number                                                        ,
+    config        : LanguageConfig
+)                 : AlignPoint[] {
+    const multi  = pure_ScanMultiCharOps(line, lineCommentPos                             , config)
+    const taken  = pure_GetMultiCharOperatorPositions(line, lineCommentPos                , config)
+    const single = pure_ScanSingleCharAlignPoints(line, alignChars, lineCommentPos, config, taken)
 
     const combined = [...multi, ...single]
     return combined.sort((a, b) => a.pos - b.pos)
@@ -379,10 +424,6 @@ function pure_FindAlignPoints(
 function pure_ExtractOperatorSequence(alignPoints: AlignPoint[]): string[] {
     return alignPoints.map(p => p.op)
 }
-
-// ============================================================================
-// PURE: Find common prefix (with minimum coverage threshold)
-// ============================================================================
 
 function pure_FindCommonPrefix(sequences: string[][], minCoverage: number = 0.5): string[] {
     switch(sequences.length) {
@@ -433,15 +474,15 @@ function pure_FindCommonPrefix(sequences: string[][], minCoverage: number = 0.5)
 // ============================================================================
 
 function pure_CalculateAlignColumns(
-    lines: string[],
-    alignChars: string[],
-    commonPrefix: string[],
-    config: LanguageConfig
-): Map<number, number>[] {
+    lines          : string[]  ,
+    alignChars     : string[]  ,
+    commonPrefix   : string[]  ,
+    config         : LanguageConfig
+)                  : Map<number, number>[] {
     const alignMaps: Map<number, number>[] = []
 
     for(const line of lines) {
-        const { lineCommentPos } = pure_ExtractCommentMarkers(line, config)
+        const                { lineCommentPos } = pure_ExtractCommentMarkers(line, config)
         const alignPoints = pure_FindAlignPoints(line, alignChars, lineCommentPos, config)
         const sequence = pure_ExtractOperatorSequence(alignPoints)
 
@@ -469,7 +510,7 @@ function pure_CalculateAlignColumns(
 // ============================================================================
 
 function pure_ComputeMaxColumns(alignMaps: Map<number, number>[]): Map<number, number> {
-    const maxColumns = new Map<number, number>()
+    const maxColumns = new Map<number                                        , number>()
 
     for(const alignMap of alignMaps) {
         for(const [idx, pos] of alignMap) {
@@ -488,23 +529,23 @@ function pure_ComputeMaxColumns(alignMaps: Map<number, number>[]): Map<number, n
 // ============================================================================
 
 function pure_ApplyAlignment(
-    line: string,
-    alignMap: Map<number, number>,
+    line      : string,
+    alignMap  : Map<number, number>,
     maxColumns: Map<number, number>,
     alignChars: string[]
-): string {
+)             : string {
     switch(alignMap.size) {
         case 0: return line
     }
 
     const sortedIndices = Array.from(alignMap.keys()).sort((a, b) => a - b)
-    let result = line
-    let offset = 0
+    let result          = line
+    let offset          = 0
 
     for(const idx of sortedIndices) {
         const originalPos = alignMap.get(idx)!
-        const targetPos = maxColumns.get(idx)!
-        const currentPos = originalPos + offset
+        const targetPos   = maxColumns.get(idx)!
+        const currentPos  = originalPos + offset
 
         switch(currentPos < targetPos) {
             case true: {
@@ -540,9 +581,9 @@ function pure_FilterPureComments(lines: string[], config: LanguageConfig): strin
 // ============================================================================
 
 function alignBlock(
-    lines: string[],
-    config: LanguageConfig
-): string[] {
+    lines     : string[],
+    config    : LanguageConfig
+)             : string[] {
     switch(lines.length) {
         case 0: return []
         case 1: return [...lines]
@@ -568,7 +609,7 @@ function alignBlock(
         case 0: return [...lines]
     }
 
-    const alignMaps = pure_CalculateAlignColumns(filteredBlock, config.alignChars, commonPrefix, config)
+    const alignMaps  = pure_CalculateAlignColumns(filteredBlock, config.alignChars, commonPrefix, config)
     const maxColumns = pure_ComputeMaxColumns(alignMaps)
 
     const alignedBlock: string[] = []
@@ -583,7 +624,7 @@ function alignBlock(
 function alignAll(lines: string[], config: LanguageConfig): string[] {
     const blocks = pure_SplitIntoBlocks(lines)
     const alignedBlocks = blocks.map(block => alignBlock(block, config))
-    const result: string[] = []
+    const result                                          : string[] = []
 
     for(let i = 0; i < alignedBlocks.length; i++) {
         result.push(...alignedBlocks[i]!)
@@ -600,25 +641,25 @@ function alignAll(lines: string[], config: LanguageConfig): string[] {
 // ============================================================================
 
 export {
-    pure_SplitIntoBlocks,
-    pure_ExtractCommentMarkers,
-    pure_IsInsideString,
-    pure_FindBlockCommentStart,
-    pure_FindBlockCommentEnd,
-    pure_ScanMultiCharOps,
+    pure_SplitIntoBlocks          ,
+    pure_ExtractCommentMarkers    ,
+    pure_IsInsideString           ,
+    pure_FindBlockCommentStart    ,
+    pure_FindBlockCommentEnd      ,
+    pure_ScanMultiCharOps         ,
     pure_ScanSingleCharAlignPoints,
-    pure_FindAlignPoints,
-    pure_ExtractOperatorSequence,
-    pure_FindCommonPrefix,
-    pure_CalculateAlignColumns,
-    pure_ComputeMaxColumns,
-    pure_ApplyAlignment,
-    pure_FilterPureComments,
-    alignBlock,
-    alignAll,
-    AlignPoint,
-    Block,
-    LineCommentMarkers,
+    pure_FindAlignPoints          ,
+    pure_ExtractOperatorSequence  ,
+    pure_FindCommonPrefix         ,
+    pure_CalculateAlignColumns    ,
+    pure_ComputeMaxColumns        ,
+    pure_ApplyAlignment           ,
+    pure_FilterPureComments       ,
+    alignBlock                    ,
+    alignAll                      ,
+    AlignPoint                    ,
+    Block                         ,
+    LineCommentMarkers            ,
     LanguageConfig
 }
 
@@ -634,10 +675,10 @@ export function activate(ctx: vscode.ExtensionContext) {
         outputChannel.appendLine(msg)
     }
 
-    const alignCommand = vscode.commands.registerTextEditorCommand(
+    const alignCommand       = vscode.commands.registerTextEditorCommand(
         'vscode-better-align-columns.align',
         (editor: vscode.TextEditor) => {
-            const doc = editor.document
+            const doc        = editor.document
             const selections = editor.selections
 
             logToChannel('=== Align started ===')
@@ -651,8 +692,8 @@ export function activate(ctx: vscode.ExtensionContext) {
             }
 
             for(const sel of selections) {
-                const startLine = sel.start.line
-                const endLine = sel.end.line
+                const startLine                                                                                           = sel.start.line
+                const endLine                                                                                             = sel.end.line
                 const isEmpty = sel.isEmpty || (startLine === endLine && sel.start.character === 0 && sel.end.character === doc.lineAt(endLine).text.length)
 
                 switch(isEmpty) {
@@ -672,7 +713,7 @@ export function activate(ctx: vscode.ExtensionContext) {
                         const alignedLines = alignAll(lines, config)
 
                         const eol = doc.eol === vscode.EndOfLine.LF ? '\n' : '\r\n'
-                        const text = alignedLines.join(eol)
+                        const text            = alignedLines.join(eol)
 
                         editor.edit((editBuilder: vscode.TextEditorEdit) => {
                             const range = new vscode.Range(
@@ -713,7 +754,7 @@ export function activate(ctx: vscode.ExtensionContext) {
                         const alignedLines = alignAll(lines, config)
 
                         const eol = doc.eol === vscode.EndOfLine.LF ? '\n' : '\r\n'
-                        const text = alignedLines.join(eol)
+                        const text            = alignedLines.join(eol)
 
                         logToChannel(`Aligned ${alignedLines.length} lines`)
 

@@ -1,3 +1,9 @@
+# v4.0.4 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v4.0.4)
+
+- Fix: Do not break multi-char operators (<=, >=, ===, etc.) during alignment
+- Add: `pure_GetMultiCharOperatorPositions` marks all positions of multi-char operators as taken
+- Add: `pure_IsMultiCharOp` helper for multi-char operator detection
+
 # v4.0.3 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v4.0.3)
 
 - Fix: Align mixed object literals with partial common prefix (e.g., `lineComments:` and `python:`)
