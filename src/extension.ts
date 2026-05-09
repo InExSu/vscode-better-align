@@ -15,45 +15,6 @@ const ns_Error = (ns: NS): boolean => ns.result.ok === false
 const ns_SetError = (ns: NS, e: string): void => { ns.result = err(e); ns.s_Error = e }
 
 // ============================================================================
-// RWD
-// ============================================================================
-const timers = new Map<string, number>()
-
-function line(char: string, len: number = 60): string {
-    return char.repeat(len)
-}
-
-function decor_Start(name: string): void {
-    timers.set(name, performance.now())
-    console.log(`\n${line('═')}`)
-    console.log(`▶  ${name}`)
-    console.log(`${line('─')}`)
-}
-
-function decor_Finish(name: string): void {
-    const start = timers.get(name)
-    const duration = start ? (performance.now() - start).toFixed(2) : '?'
-    console.log(`${line('─')}`)
-    console.log(`◀  ${name} (${duration}ms)`)
-    console.log(`${line('═')}\n`)
-    timers.delete(name)
-}
-
-function rwd(fn: (ns: NS) => void, ns: NS): void {
-    if(ns_Error(ns)) { return }
-    decor_Start(fn.name)
-    fn(ns)
-    decor_Finish(fn.name)
-}
-
-function a_Chain(ns: NS): void {
-    rwd(data_Load_Decor, ns)
-    rwd(data_Validate_Decor, ns)
-    rwd(data_Process_Decor, ns)
-    rwd(data_Write_Decor, ns)
-}
-
-// ============================================================================
 // CONFIG
 // ============================================================================
 const CONFIG = {
@@ -564,11 +525,10 @@ function data_Load_Decor(ns: NS): void {
         const editor = vscode.window.activeTextEditor
         if(!editor) { throw new Error('No active editor') }
 
-        const selection = editor.selection
+        const selection = ns.selection!
         const config = vscode.workspace.getConfiguration('codeAlign')
 
         ns.editor = editor
-        ns.selection = selection
         ns.data.config = {
             alignChars: config.get('alignChars', CONFIG.defaultAlignChars),
             maxBlockSize: config.get('maxBlockSize', CONFIG.maxBlockSize),
@@ -701,54 +661,94 @@ function data_Write_Decor(ns: NS): void {
 // ============================================================================
 export function activate(context: vscode.ExtensionContext): void {
     const ns: NS = NS_Container(CONFIG)
+    const outputChannel = vscode.window.createOutputChannel('Better Align')
 
-    const alignSelection = vscode.commands.registerCommand('vscode-better-align-columns.align', () => {
+    const log = (msg: string) => {
+        outputChannel.appendLine(msg)
+    }
+
+    const alignSelection = vscode.commands.registerTextEditorCommand('vscode-better-align-columns.align', (editor, edit) => {
         ns.s_Error = ''
         ns.result = ok({})
 
+        log('=== Align started ===')
+        vscode.window.showInformationMessage('Aligning...')
+
+        const doc = editor.document
+        const selection = editor.selection
+
+        let finalSelection: vscode.Selection
+        if(selection.isEmpty) {
+            finalSelection = new vscode.Selection(0, 0, doc.lineCount - 1, doc.lineAt(doc.lineCount - 1).text.length)
+            log('Selection empty - using full document')
+        } else {
+            finalSelection = selection
+            log(`Selection: ${selection.start.line}:${selection.start.character} - ${selection.end.line}:${selection.end.character}`)
+        }
+
+        ns.editor = editor
+        ns.selection = finalSelection
+
         // Step 1: Load
+        log('[1/4] Load...')
         data_Load_Decor(ns)
         if(ns_Error(ns)) {
+            log(`ERROR Load: ${ns.s_Error}`)
             vscode.window.showErrorMessage(`[Load] ${ns.s_Error}`)
             return
         }
+        log('[1/4] Load OK')
 
         // Step 2: Validate
+        log('[2/4] Validate...')
         data_Validate_Decor(ns)
         if(ns_Error(ns)) {
+            log(`ERROR Validate: ${ns.s_Error}`)
             vscode.window.showErrorMessage(`[Validate] ${ns.s_Error}`)
             return
         }
+        log(`[2/4] Validate OK, language: ${ns.languageId}`)
 
         // Step 3: Process
+        log('[3/4] Process...')
         data_Process_Decor(ns)
         if(ns_Error(ns)) {
+            log(`ERROR Process: ${ns.s_Error}`)
             vscode.window.showErrorMessage(`[Process] ${ns.s_Error}`)
             return
         }
+        const blockCount = ns.blocks?.length ?? 0
+        const lineCount = ns.blocks?.reduce((sum: number, b: string[]) => sum + b.length, 0) ?? 0
+        log(`[3/4] Process OK, blocks: ${blockCount}, lines: ${lineCount}`)
 
         // Step 4: Write
+        log('[4/4] Write...')
         data_Write_Decor(ns)
         if(ns_Error(ns)) {
+            log(`ERROR Write: ${ns.s_Error}`)
             vscode.window.showErrorMessage(`[Write] ${ns.s_Error}`)
             return
         }
+        log('[4/4] Write OK')
 
         // Success
-        const blockCount = ns.blocks?.length ?? 0
-        const lineCount = ns.blocks?.reduce((sum: number, b: string[]) => sum + b.length, 0) ?? 0
-        const alignChars = ns.data.config?.alignChars?.join(', ') ?? CONFIG.defaultAlignChars.join(', ')
-        
-        const allLines = ns.blocks.flat()
-        const sampleLines = allLines.slice(0, 3).map((l: string) => l.substring(0, 50)).join('\n')
-        const sampleMsg = allLines.length > 3 ? `\n\nSample:\n${sampleLines}...` : `\n\nSample:\n${sampleLines}`
+        if(blockCount === 0 || lineCount === 0) {
+            log('Nothing to align')
+            vscode.window.showInformationMessage('Nothing to align')
+            return
+        }
 
+        const alignChars = ns.data.config?.alignChars?.join(', ') ?? CONFIG.defaultAlignChars.join(', ')
+        const allLines = ns.blocks.flat()
+        const sampleLines = allLines.slice(0, 2).map((l: string) => l.substring(0, 40)).join('\n')
+
+        log(`=== Done: ${blockCount} blocks, ${lineCount} lines, chars: [${alignChars}] ===`)
         vscode.window.showInformationMessage(
-            `Aligned: ${blockCount} block(s), ${lineCount} line(s) using [${alignChars}]${sampleMsg}`
+            `Aligned: ${blockCount} block(s), ${lineCount} line(s)\nChars: [${alignChars}]\n${sampleLines}`
         )
     })
 
-    context.subscriptions.push(alignSelection)
+    context.subscriptions.push(alignSelection, outputChannel)
 }
 
 export function deactivate(): void { }
