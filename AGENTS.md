@@ -20,6 +20,15 @@ When user asks to fix a bug or error:
 
 This applies to ALL bug fixes, not just alignment issues.
 
+## Important Limits
+
+**If stuck after 3-5 iterations trying to fix a bug:**
+- Stop reasoning in circles
+- Report to user what the issue is and ask for guidance
+- Do NOT continue endless debugging loops
+
+**Time limit per fix:** If a simple fix isn't working after reasonable attempts, ask for clarification rather than continuing indefinitely.
+
 # Agent Instructions for Release Process
 
 After successfully improving the code, follow these steps to release a new version:

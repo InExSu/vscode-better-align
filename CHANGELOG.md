@@ -1,3 +1,11 @@
+# v6.0.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.0.0)
+
+- Refactor: Complete rewrite following AI Prompt.md architecture
+- Add: FSM-based state machines with noun_Verb naming
+- Add: Result type pattern with ok/err
+- Add: Railway programming with rwd/a_Chain
+- Fix: Alignment skips content inside strings
+
 # v5.0.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v5.0.0)
 
 - Add: Universal position-based alignment - aligns any delimiter count per line without prefix matching
