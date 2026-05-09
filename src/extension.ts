@@ -14,53 +14,53 @@ interface LineCommentMarkers {
 }
 
 interface LanguageConfig {
-    lineComments                       : string[]
-    blockComments: { start: string; end: string }[]
-    stringDelimiters                   : string[]
-    alignChars                         : string[]
-    multiCharOps                       : string[]
+    lineComments    : string[]
+    blockComments   : { start: string; end: string }[]
+    stringDelimiters: string[]
+    alignChars      : string[]
+    multiCharOps    : string[]
 }
 
 // ============================================================================
 // LANGUAGE CONFIG
 // ============================================================================
 
-const DEFAULT_LANG             : Record<string, LanguageConfig> = {
-    javascript                 : {
-        lineComments           : ['//'],
-        blockComments: [{ start: '/*', end: '*/' }],
-        stringDelimiters       : ['"', "'", '`'],
-        alignChars             : [':', '{', '=', ','],
-        multiCharOps           : ['===', '!==', '==', '!=', '<=', '>=', '=>', '->']
+const DEFAULT_LANG      : Record<string, LanguageConfig> = {
+    javascript          : {
+        lineComments    : ['//'],
+        blockComments   : [{ start: '/*', end: '*/' }],
+        stringDelimiters: ['"', "'", '`'],
+        alignChars      : [':', '{', '=', ','],
+        multiCharOps    : ['===', '!==', '==', '!=', '<=', '>=', '=>', '->']
     },
-    typescript                 : {
-        lineComments           : ['//'],
-        blockComments: [{ start: '/*', end: '*/' }],
-        stringDelimiters       : ['"', "'", '`'],
-        alignChars             : [':', '{', '=', ','],
-        multiCharOps           : ['===', '!==', '==', '!=', '<=', '>=', '=>', '->']
+    typescript          : {
+        lineComments    : ['//'],
+        blockComments   : [{ start: '/*', end: '*/' }],
+        stringDelimiters: ['"', "'", '`'],
+        alignChars      : [':', '{', '=', ','],
+        multiCharOps    : ['===', '!==', '==', '!=', '<=', '>=', '=>', '->']
     },
-    python                     : {
-        lineComments           : ['#'],
-        blockComments          : [],
-        stringDelimiters       : ['"', "'"],
-        alignChars             : ['=', ':', ','],
-        multiCharOps           : ['==', '!=', '<=', '>=']
+    python              : {
+        lineComments    : ['#'],
+        blockComments   : [],
+        stringDelimiters: ['"', "'"],
+        alignChars      : ['=', ':', ','],
+        multiCharOps    : ['==', '!=', '<=', '>=']
     },
-    php                        : {
-        lineComments           : ['//', '#'],
-        blockComments: [{ start: '/*', end: '*/' }],
-        stringDelimiters       : ['"', "'", '`'],
-        alignChars             : [':', '{', '=', ',', '->'],
-        multiCharOps           : ['===', '!==', '==', '!=', '<=', '>=', '=>', '->', '<=>', '??']
+    php                 : {
+        lineComments    : ['//', '#'],
+        blockComments   : [{ start: '/*', end: '*/' }],
+        stringDelimiters: ['"', "'", '`'],
+        alignChars      : [':', '{', '=', ',', '->'],
+        multiCharOps    : ['===', '!==', '==', '!=', '<=', '>=', '=>', '->', '<=>', '??']
     }
 }
-const FALLBACK                 : LanguageConfig = {
-    lineComments               : ['//'],
-    blockComments: [{ start    : '/*', end: '*/' }],
-    stringDelimiters           : ['"', "'", '`'],
-    alignChars                 : [':', '{', '=', ','],
-    multiCharOps               : ['===', '!==', '==', '!=', '<=', '>=', '=>', '->']
+const FALLBACK          : LanguageConfig = {
+    lineComments        : ['//'],
+    blockComments       : [{ start: '/*', end: '*/' }],
+    stringDelimiters    : ['"', "'", '`'],
+    alignChars          : [':', '{', '=', ','],
+    multiCharOps        : ['===', '!==', '==', '!=', '<=', '>=', '=>', '->']
 }
 
 function getLangConfig(lang: string): LanguageConfig {
@@ -148,7 +148,7 @@ function pure_IsInsideString(line: string, position: number, delimiters: string[
     let inString         = false
     let currentDelimiter = ''
 
-    for(let i          = 0; i <= position; i++) {
+    for(let i = 0; i <= position; i++) {
         const char     = line[i]!
         const prevChar = i > 0 ? line[i - 1]! : ''
 
@@ -234,7 +234,7 @@ function classifyPosition(
     blockStartPos                                          : number,
     blockEndPos                                            : number,
     delimiters                                             : string[]
-)                                                          : PositionState {
+): PositionState {
     switch(true) {
         case lineCommentPos !== -1 && pos >= lineCommentPos:
             return PositionState.InsideLineComment
@@ -260,7 +260,7 @@ function pure_ScanMultiCharOps(
     line          : string,
     lineCommentPos: number,
     config        : LanguageConfig
-)                 : AlignPoint[] {
+): AlignPoint[] {
     const results : AlignPoint[] = []
     const multiCharOps = [...(config.multiCharOps || [])].sort((a, b) => b.length - a.length)
     const delimiters = config.stringDelimiters
@@ -324,7 +324,7 @@ function pure_CountNestingAt(
     let currentDelimiter = ''
 
     for(let i = 0; i < position; i++) {
-        const ch = line[i]!
+        const ch       = line[i]!
         const prevChar = i > 0 ? line[i - 1]! : ''
 
         switch(true) {
@@ -358,13 +358,13 @@ function pure_ScanSingleCharAlignPoints(
     config        : LanguageConfig,
     taken?        : Set<number>,
     targetDepth?  : number
-)                 : AlignPoint[] {
+): AlignPoint[] {
     const results : AlignPoint[] = []
     const delimiters = config.stringDelimiters
     const depth = targetDepth ?? 0
 
     for(let i = 0; i < line.length; i++) {
-        switch(taken?.has(i)) {
+        switch(taken?.has(i))            {
             case true: continue
         }
 
@@ -401,10 +401,10 @@ function pure_ScanSingleCharAlignPoints(
 // ============================================================================
 
 function pure_GetMultiCharOperatorPositions(
-    line          : string,
+    line: string,
     lineCommentPos: number,
-    config        : LanguageConfig
-)                 : Set<number> {
+    config: LanguageConfig
+): Set<number> {
     const taken = new Set<number>()
     const multiCharOps = [...(config.multiCharOps || [])].sort((a, b) => b.length - a.length)
 
@@ -448,14 +448,14 @@ function pure_GetMultiCharOperatorPositions(
 }
 
 function pure_FindAlignPoints(
-    line          : string                                                                ,
-    alignChars    : string[]                                                              ,
-    lineCommentPos: number                                                                ,
-    config        : LanguageConfig                                                        ,
+    line          : string,
+    alignChars    : string[],
+    lineCommentPos: number,
+    config        : LanguageConfig,
     targetDepth?  : number
-)                 : AlignPoint[] {
-    const multi = pure_ScanMultiCharOps(line, lineCommentPos                              , config)
-    const taken = pure_GetMultiCharOperatorPositions(line, lineCommentPos                 , config)
+): AlignPoint[] {
+    const multi = pure_ScanMultiCharOps(line, lineCommentPos, config)
+    const taken = pure_GetMultiCharOperatorPositions(line, lineCommentPos, config)
     const single = pure_ScanSingleCharAlignPoints(line, alignChars, lineCommentPos, config, taken, targetDepth)
 
     const combined = [...multi, ...single]
@@ -481,7 +481,7 @@ function pure_FindCommonPrefix(sequences: string[][], minCoverage: number = 0.5)
 
     const maxSeqLength = Math.max(...sequences.map(s => s.length))
 
-    for(let i          = 0; i < maxSeqLength; i++) {
+    for(let i = 0; i < maxSeqLength; i++) {
         const counts   = new Map<string, number>()
         let validCount = 0
 
@@ -523,7 +523,7 @@ function pure_CalculateAlignColumns(
     alignChars     : string[]  ,
     commonPrefix   : string[]  ,
     config         : LanguageConfig
-)                  : Map<number, number>[] {
+): Map<number, number>[] {
     const alignMaps: Map<number, number>[] = []
 
     for(const line of lines) {
@@ -578,7 +578,7 @@ function pure_ApplyAlignment(
     alignMap  : Map<number, number>,
     maxColumns: Map<number, number>,
     alignChars: string[]
-)             : string {
+): string {
     switch(alignMap.size) {
         case 0: return line
     }
@@ -628,7 +628,7 @@ function pure_FilterPureComments(lines: string[], config: LanguageConfig): strin
 function alignBlock(
     lines     : string[],
     config    : LanguageConfig
-)             : string[] {
+): string[] {
     switch(lines.length) {
         case 0: return []
         case 1: return [...lines]

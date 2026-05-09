@@ -7,6 +7,19 @@ npm run lint    # Check linter
 npm run test   # Run tests
 ```
 
+## Bug Fix Process (TDD)
+
+When user asks to fix a bug or error:
+
+1. **Create failing test first** - Write a test in `test/align.test.ts` that reproduces the bug
+2. **Run test to confirm failure** - `npm run test` should show the new test failing
+3. **Fix the code** - Implement the fix in `src/extension.ts`
+4. **Run tests** - All tests should pass
+5. **Update lint** - `npm run lint` should pass
+6. **Package and test** - `npm run package` and test the extension
+
+This applies to ALL bug fixes, not just alignment issues.
+
 # Agent Instructions for Release Process
 
 After successfully improving the code, follow these steps to release a new version:
