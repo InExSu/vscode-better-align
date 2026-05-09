@@ -1,6 +1,9 @@
 # v2.0.8 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v2.0.8)
 
-- Add: Align call-site parentheses `word(` across multiple lines
+- Refactor: Unified alignChars and multiCharOps for consistent operator alignment
+- Add: PHP language config with ->, <=>, ?? operators
+- Add: SRP-compliant pure functions with switch-based state machine
+- Add: 82 tests covering alignment logic, block comments, multi-char operators
 
 # v2.0.7 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v2.0.7)
 

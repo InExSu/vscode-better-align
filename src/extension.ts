@@ -1,1127 +1,703 @@
-'use strict'
 import * as vscode from 'vscode'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ============================================================================
+// TYPE RESULT
+// ============================================================================
+type Result<T, E = string> = { ok: true; value: T } | { ok: false; error: E }
+const ok = <T,>(v: T): Result<T> => ({ ok: true, value: v })
+const err = <E,>(e: E): Result<never, E> => ({ ok: false, error: e })
 
-const enum TokenType {
-    Arrow         = 'Arrow'        ,
-    Assignment    = 'Assignment'   ,
-    Block         = 'Block'        ,   // `[...]` — opaque
-    Colon         = 'Colon'        ,
-    Comma         = 'Comma'        ,
-    CommaAsWord   = 'CommaAsWord'  ,
-    Comment       = 'Comment'      ,
-    Comparison    = 'Comparison'   ,
-    EndOfBlock    = 'EndOfBlock'   ,
-    From          = 'From'         ,
-    Insertion     = 'Insertion'    ,
-    Invalid       = 'Invalid'      ,
-    OpenBrace     = 'OpenBrace'    ,   // `{`  — significant alignment token
-    OpenParen     = 'OpenParen'    ,   // `(`  — significant alignment token
-    PartialBlock  = 'PartialBlock' ,
-    PartialString = 'PartialString',
-    PHPShortEcho  = 'PHPShortEcho' ,
-    Semicolon     = 'Semicolon'    ,   // `;`  — significant alignment token
-    Spaceship     = 'Spaceship'    ,
-    String        = 'String'       ,
-    Whitespace    = 'Whitespace'   ,
-    Word          = 'Word'         ,
+// ============================================================================
+// TYPE NS
+// ============================================================================
+type NS = { result: Result<any>; s_Error: string;[k: string]: any }
+const ns_Error = (ns: NS): boolean => ns.result.ok === false
+const ns_SetError = (ns: NS, e: string): void => { ns.result = err(e); ns.s_Error = e }
+
+// ============================================================================
+// RWD
+// ============================================================================
+const timers = new Map<string, number>()
+
+function line(char: string, len: number = 60): string {
+    return char.repeat(len)
 }
 
-interface Token                { type: TokenType; text: string }
-interface BlockComment         { start: string; end: string }
-interface LanguageSyntaxConfig { lineComments: string[]; blockComments: BlockComment[] }
-interface TextLine             { text: string; lineNumber: number }
-interface LineInfo             { line: TextLine; sgfntTokenType: TokenType; sgfntTokens: TokenType[]; tokens: Token[] }
-interface LineRange            { anchor: number; infos: LineInfo[] }
-
-// ─── Language config ──────────────────────────────────────────────────────────
-
-const DEFAULT_LANG: Record<string, LanguageSyntaxConfig> = {
-    bash        : { lineComments : ['#'], blockComments       : [] },
-    c           : { lineComments : ['//'], blockComments      : [{ start: '/*', end: '*/' }] },
-    cpp         : { lineComments : ['//'], blockComments      : [{ start: '/*', end: '*/' }] },
-    csharp      : { lineComments : ['//'], blockComments      : [{ start: '/*', end: '*/' }] },
-    dockerfile  : { lineComments : ['#'], blockComments       : [] },
-    go          : { lineComments : ['//'], blockComments      : [{ start: '/*', end: '*/' }] },
-    html        : { lineComments : [], blockComments          : [{ start: '<!--', end: '-->' }] },
-    java        : { lineComments : ['//'], blockComments      : [{ start: '/*', end: '*/' }] },
-    javascript  : { lineComments : ['//'], blockComments      : [{ start: '/*', end: '*/' }] },
-    julia       : { lineComments : ['#'], blockComments       : [{ start: '#=', end: '=#' }] },
-    php         : { lineComments : ['//', '#'], blockComments : [{ start: '/*', end: '*/' }] },
-    python      : { lineComments : ['#'], blockComments       : [] },
-    ruby        : { lineComments : ['#'], blockComments       : [] },
-    rust        : { lineComments : ['//'], blockComments      : [{ start: '/*', end: '*/' }] },
-    shellscript : { lineComments : ['#'], blockComments       : [] },
-    sql         : { lineComments : ['--'], blockComments      : [{ start: '/*', end: '*/' }] },
-    typescript  : { lineComments : ['//'], blockComments      : [{ start: '/*', end: '*/' }] },
-    yaml        : { lineComments : ['#'], blockComments       : [] },
+function decor_Start(name: string): void {
+    timers.set(name, performance.now())
+    console.log(`\n${line('═')}`)
+    console.log(`▶  ${name}`)
+    console.log(`${line('─')}`)
 }
-const FALLBACK: LanguageSyntaxConfig = { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }] }
 
-const getLangConfig = (lang: string, overrides: Record<string, LanguageSyntaxConfig> = {}) =>
-    overrides[lang] ?? DEFAULT_LANG[lang] ?? FALLBACK
+function decor_Finish(name: string): void {
+    const start = timers.get(name)
+    const duration = start ? (performance.now() - start).toFixed(2) : '?'
+    console.log(`${line('─')}`)
+    console.log(`◀  ${name} (${duration}ms)`)
+    console.log(`${line('═')}\n`)
+    timers.delete(name)
+}
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+function rwd(fn: (ns: NS) => void, ns: NS): void {
+    if(ns_Error(ns)) { return }
+    decor_Start(fn.name)
+    fn(ns)
+    decor_Finish(fn.name)
+}
 
-const ws = (n: number) => n <= 0 ? '' : ' '.repeat(Math.min(n, 1e6))
+function a_Chain(ns: NS): void {
+    rwd(data_Load_Decor, ns)
+    rwd(data_Validate_Decor, ns)
+    rwd(data_Process_Decor, ns)
+    rwd(data_Write_Decor, ns)
+}
 
-const sortByLenDesc = <T extends string | { start: string }>(arr: T[]): T[] =>
-    [...arr].sort((a, b) => {
-        const len = (x: T) => typeof x === 'string' ? x.length : (x as BlockComment).start.length
-        return len(b) - len(a)
-    })
-
-const matchPrefix = (text: string, pos: number, markers: string[]): string | null => {
-    for(const m of sortByLenDesc(markers)) {
-        if(text.startsWith(m, pos)) { return m }
+// ============================================================================
+// CONFIG
+// ============================================================================
+const CONFIG = {
+    b_Debug: false,
+    defaultAlignChars: [':', '{', '=', ','],
+    maxBlockSize: 500,
+    preserveComments: true,
+    preserveStrings: true,
+    alignMultilineBlocks: false,
+    skipTemplates: true,
+    languageConfigs: {
+        javascript: {
+            lineComments: ['//'],
+            blockComments: [{ start: '/*', end: '*/' }],
+            stringDelimiters: ['"', "'", '`'],
+            alignChars: [':', '{', '=', ','],
+            multiCharOps: ['===', '!==', '==', '!=', '<=', '>=', '=>', '->']
+        },
+        typescript: {
+            lineComments: ['//'],
+            blockComments: [{ start: '/*', end: '*/' }],
+            stringDelimiters: ['"', "'", '`'],
+            alignChars: [':', '{', '=', ','],
+            multiCharOps: ['===', '!==', '==', '!=', '<=', '>=', '=>', '->']
+        },
+        python: {
+            lineComments: ['#'],
+            blockComments: [{ start: '"""', end: '"""' }, { start: "'''", end: "'''" }],
+            stringDelimiters: ['"', "'"],
+            alignChars: ['=', ':', ','],
+            multiCharOps: ['==', '!=', '<=', '>=']
+        },
+        php: {
+            lineComments: ['//', '#'],
+            blockComments: [{ start: '/*', end: '*/' }],
+            stringDelimiters: ['"', "'", '`'],
+            alignChars: [':', '{', '=', ',', '->'],
+            multiCharOps: ['===', '!==', '==', '!=', '<=', '>=', '=>', '->', '<=>', '??']
+        }
     }
-    return null
 }
 
-const findLineComment = (text: string, pos: number, cfg: LanguageSyntaxConfig): string | null => {
-    const m = matchPrefix(text, pos, cfg.lineComments)
-    return m === '//' && pos > 0 && text[pos - 1] === ':' ? null : m
-}
-
-const findBlockCommentStart = (text: string, pos: number, cfg: LanguageSyntaxConfig): string | null => {
-    for(const bc of sortByLenDesc(cfg.blockComments)) {
-        if(text.startsWith(bc.start, pos)) { return bc.end }
+function NS_Container(cfg: typeof CONFIG): NS {
+    return {
+        result: ok({}),
+        s_Error: '',
+        config: cfg,
+        data: {},
+        selection: null,
+        editor: null,
+        languageId: '',
+        blocks: [],
+        alignedLines: []
     }
-    return null
 }
 
-// ─── PHP / generic helpers ────────────────────────────────────────────────────
+// ============================================================================
+// PURE FUNCTIONS
+// ============================================================================
 
-const isGenericOpen = (text: string, pos: number): boolean =>
-    pos > 0 && /[\w>\\]/.test(text[pos - 1]!)
+/**
+ * Pure : extracts line comments and block comments start positions
+ */
+function pure_ExtractCommentMarkers(line: string, languageConfig: any): { lineCommentPos: number; blockCommentPos: number } {
+    let lineCommentPos = -1
+    let blockCommentPos = -1
 
-const consumeGeneric = (text: string, pos: number): number => {
-    let depth = 0, i = pos
-    while(i < text.length) {
-        switch(text[i]) {
-            case '<' : depth++; i++; break
-            case '>' : depth--; i++; if(depth === 0) { return i } break
-            default  : i++
+    for(const marker of languageConfig.lineComments) {
+        const pos = line.indexOf(marker)
+        if(pos !== -1 && (lineCommentPos === -1 || pos < lineCommentPos)) {
+            lineCommentPos = pos
+        }
+    }
+
+    for(const block of languageConfig.blockComments) {
+        const pos = line.indexOf(block.start)
+        if(pos !== -1 && (blockCommentPos === -1 || pos < blockCommentPos)) {
+            blockCommentPos = pos
+        }
+    }
+
+    return { lineCommentPos, blockCommentPos }
+}
+
+/**
+ * Pure : checks if position is inside string literal
+ */
+function pure_IsInsideString(line: string, position: number, delimiters: string[]): boolean {
+    let inString = false
+    let currentDelimiter = ''
+
+    for(let i = 0; i < position; i++) {
+        const char = line[i]
+        const prevChar = i > 0 ? line[i - 1] : ''
+
+        if(delimiters.includes(char) && prevChar !== '\\') {
+            if(!inString) {
+                inString = true
+                currentDelimiter = char
+            } else if(char === currentDelimiter) {
+                inString = false
+                currentDelimiter = ''
+            }
+        }
+    }
+
+    return inString
+}
+
+/**
+ * Pure : finds align character positions in line (ignoring strings and comments)
+ */
+function pure_FindMultiCharOps(line: string, lineCommentPos: number, languageConfig: any): { pos: number; op: string }[] {
+    const results: { pos: number; op: string }[] = []
+    const multiCharOps = languageConfig.multiCharOps || []
+    const sortedOps = [...multiCharOps].sort((a: string, b: string) => b.length - a.length)
+
+    for(const op of sortedOps) {
+        let searchFrom = 0
+        while(true) {
+            const pos = line.indexOf(op, searchFrom)
+            if(pos === -1) { break }
+            if(lineCommentPos !== -1 && pos >= lineCommentPos) { break }
+            if(pure_IsInsideString(line, pos, languageConfig.stringDelimiters)) {
+                searchFrom = pos + 1
+                continue
+            }
+            const startBlock = pure_FindBlockCommentStart(line, lineCommentPos, languageConfig)
+            const endBlock = pure_FindBlockCommentEnd(line, lineCommentPos, languageConfig)
+            if(startBlock !== -1 && endBlock !== -1 && pos >= startBlock && pos < endBlock) {
+                searchFrom = pos + 1
+                continue
+            }
+            results.push({ pos, op })
+            searchFrom = pos + op.length
+        }
+    }
+    return results
+}
+
+// ============================================================================
+// TYPES FOR ALIGNMENT
+// ============================================================================
+interface AlignPoint {
+    pos: number
+    op: string
+}
+
+// ============================================================================
+// PURE FUNCTIONS: BLOCK COMMENT HELPERS
+// ============================================================================
+function pure_FindBlockCommentStart(line: string, lineCommentPos: number, languageConfig: any): number {
+    for(const block of languageConfig.blockComments) {
+        const startPos = line.indexOf(block.start)
+        if(startPos !== -1 && (lineCommentPos === -1 || startPos < lineCommentPos)) {
+            return startPos
         }
     }
     return -1
 }
 
-// ─── Tokeniser state machine ──────────────────────────────────────────────────
-
-const enum State { Default, InString, InBlock, InLineComment, InBlockComment }
-const BRACKET_PAIR: Record<string, string> = { '{': '}', '[': ']', '(': ')' }
-
-function classifyAtDefault(
-    text : string, pos : number, cfg : LanguageSyntaxConfig
-): { type: TokenType; advance: number } {
-    const ch = text[pos] ?? ''
-    const nx = text[pos + 1] ?? ''
-    const rd = text[pos + 2] ?? ''
-
-    switch(ch) {
-        case ' ' : case '\t' : case '\n' : case '\r' : 
-            return { type: TokenType.Whitespace, advance: 1 }
-
-        case '"' : case "'" : case '`' : 
-            return { type: TokenType.String, advance: 1 }
-
-        case '{' : return { type : TokenType.OpenBrace, advance : 1 }
-        case '(' : return { type : TokenType.OpenParen, advance : 1 }
-        case '[' : return { type : TokenType.Block, advance     : 1 }
-
-        case '}' : case ')' : case ']' : 
-            return { type: TokenType.EndOfBlock, advance: 1 }
-
-        case ';' : return { type : TokenType.Semicolon, advance : 1 }
-        case ',' : return { type : TokenType.Comma, advance     : 1 }
-
-        case '<': {
-            if(nx === '?') {
-                let end = pos + 2
-                while(end < text.length && /[a-zA-Z]/.test(text[end]!)) { end++ }
-                return { type: TokenType.Word, advance: end - pos }
+function pure_FindBlockCommentEnd(line: string, lineCommentPos: number, languageConfig: any): number {
+    for(const block of languageConfig.blockComments) {
+        const startPos = line.indexOf(block.start)
+        if(startPos !== -1 && (lineCommentPos === -1 || startPos < lineCommentPos)) {
+            const endPos = line.indexOf(block.end, startPos + block.start.length)
+            if(endPos !== -1) {
+                return endPos + block.end.length
             }
-            switch(true) {
-                case nx === '=' && rd === '>': return { type: TokenType.Spaceship, advance: 3 }
-                case nx === '=' && rd === '=': return { type: TokenType.Comparison, advance: 3 }
-                case nx === '=': return { type: TokenType.Comparison, advance: 2 }
-            }
-            if(isGenericOpen(text, pos)) {
-                const end = consumeGeneric(text, pos)
-                if(end !== -1) { return { type: TokenType.Word, advance: end - pos } }
-            }
-            return { type: TokenType.Comparison, advance: 1 }
         }
-
-        case '>' : 
-            switch(true) {
-                case nx === '=' && rd === '=' : return { type : TokenType.Comparison, advance : 3 }
-                case nx === '='               : return { type : TokenType.Comparison, advance : 2 }
-                default                       : return { type : TokenType.Comparison, advance : 1 }
-            }
-
-        case '!' : 
-            switch(true) {
-                case nx === '=' && rd === '=' : return { type : TokenType.Comparison, advance : 3 }
-                case nx === '='               : return { type : TokenType.Comparison, advance : 2 }
-                default                       : return { type : TokenType.Word, advance       : 1 }
-            }
-
-        case '=' : 
-            switch(true) {
-                case nx === '>'               : return { type : TokenType.Arrow, advance      : 2 }
-                case nx === '=' && rd === '=' : return { type : TokenType.Comparison, advance : 3 }
-                case nx === '='               : return { type : TokenType.Comparison, advance : 2 }
-                default                       : return { type : TokenType.Assignment, advance : 1 }
-            }
-
-        case '-' : 
-            switch(true) {
-                case nx === '>' : return { type : TokenType.Word, advance       : 2 }
-                case nx === '=' : return { type : TokenType.Assignment, advance : 2 }
-                default         : return { type : TokenType.Word, advance       : 1 }
-            }
-
-        case '+' : case '*' : case '%' : case '~' : 
-        case '|' : case '^' : case '.' : case '&' : 
-            return nx === '=' ? { type: TokenType.Assignment, advance: 2 }
-                 : { type : TokenType.Word, advance : 1 }
-
-        case '/' : 
-            if(findLineComment(text, pos, cfg)) { return { type: TokenType.Comment, advance: 1 } }
-            if(findBlockCommentStart(text, pos, cfg)) { return { type: TokenType.Comment, advance: 1 } }
-            if(nx === '=') { return { type: TokenType.Assignment, advance: 2 } }
-            return { type: TokenType.Word, advance: 1 }
-
-        case ':' : 
-            switch(true) {
-                case nx === ':' : return { type : TokenType.Word, advance       : 2 }
-                case nx === '=' : return { type : TokenType.Assignment, advance : 2 }
-                default         : return { type : TokenType.Colon, advance      : 1 }
-            }
     }
-
-    if(findLineComment(text, pos, cfg)) { return { type: TokenType.Comment, advance: 1 } }
-    if(findBlockCommentStart(text, pos, cfg)) { return { type: TokenType.Comment, advance: 1 } }
-    return { type: TokenType.Word, advance: 1 }
+    return -1
 }
 
-function nextStateFor(
-    type : TokenType, text : string, pos : number, cfg : LanguageSyntaxConfig
-): { state: State; quote: string; open: string; blockEnd: string } {
-    switch(type) {
-        case TokenType.String : 
-            return { state: State.InString, quote: text[pos] ?? '', open: '', blockEnd: '' }
-        case TokenType.Block : 
-            return { state: State.InBlock, quote: '', open: text[pos] ?? '', blockEnd: '' }
-        case TokenType.OpenBrace : 
-            return { state: State.InBlock, quote: '', open: '{', blockEnd: '' }
-        case TokenType.OpenParen : 
-            return { state: State.InBlock, quote: '', open: '(', blockEnd: '' }
-        case TokenType.Comment: {
-            if(findLineComment(text, pos, cfg)) { return { state: State.InLineComment, quote: '', open: '', blockEnd: '' } }
-            const end = findBlockCommentStart(text, pos, cfg)
-            if(end) { return { state: State.InBlockComment, quote: '', open: '', blockEnd: end } }
-            return { state: State.Default, quote: '', open: '', blockEnd: '' }
-        }
-        default : 
-            return { state: State.Default, quote: '', open: '', blockEnd: '' }
-    }
+// ============================================================================
+// PURE FUNCTIONS: POSITION VALIDATION
+// ============================================================================
+enum PositionState {
+    Valid,
+    InsideLineComment,
+    InsideBlockComment,
+    InsideString
 }
 
-function tokenizeLine(ln: { text: string }, cfg: LanguageSyntaxConfig, lang: string): {
-    tokens : Token[]; sgfntTokens : TokenType[]
-} {
-    const text            = ln.text
-    const tokens: Token[] = []
-    let state             = State.Default
-    let tokenStart        = -1
-    let lastType          = TokenType.Invalid
-    let quote             = ''
-    let open              = ''
-    let blockDepth        = 0
-    let blockEnd          = ''
-
-    const flush = (upTo: number, overrideType?: TokenType) => {
-        if         (tokenStart === -1) { return }
-        tokens.push({ type: overrideType ?? lastType, text: text.substring(tokenStart, upTo) })
-        tokenStart = -1
+function classifyPosition(
+    line: string,
+    pos: number,
+    lineCommentPos: number,
+    blockStartPos: number,
+    blockEndPos: number,
+    delimiters: string[]
+): PositionState {
+    // Проверяем line comment
+    switch(true) {
+        case lineCommentPos !== -1 && pos >= lineCommentPos:
+            return PositionState.InsideLineComment
     }
 
-    let pos = 0
-    while(pos < text.length) {
-        switch(state) {
-            case State.InString: {
-                if(text[pos] === quote) {
-                    let backslashes = 0, k = pos - 1
-                    while(k >= 0 && text[k] === '\\') { backslashes++; k-- }
-                    if   (backslashes % 2 === 0) { pos++; flush(pos); state = State.Default; break }
-                }
-                pos++
-                break
-            }
+    // Проверяем block comment
+    switch(true) {
+        case blockStartPos !== -1 && blockEndPos !== -1 && pos >= blockStartPos && pos < blockEndPos:
+            return PositionState.InsideBlockComment
+    }
 
-            case State.InBlock: {
-                switch(text[pos]) {
-                    case undefined : pos++; break
-                    case (open)    : blockDepth++; pos++; break
-                    case (BRACKET_PAIR[open]): {
-                        pos++; blockDepth--
-                        if(blockDepth === 0) { flush(pos); state = State.Default }
-                        break
+    // Проверяем string
+    switch(pure_IsInsideString(line, pos, delimiters)) {
+        case true: return PositionState.InsideString
+    }
+
+    return PositionState.Valid
+}
+
+// ============================================================================
+// PURE FUNCTIONS: MULTI-CHAR OPERATOR SCANNER
+// ============================================================================
+function pure_ScanMultiCharOps(
+    line: string,
+    lineCommentPos: number,
+    languageConfig: any
+): { pos: number; op: string }[] {
+    const results: { pos: number; op: string }[] = []
+    const multiCharOps = languageConfig.multiCharOps || []
+    const delimiters = languageConfig.stringDelimiters
+
+    for(const op of multiCharOps) {
+        let searchFrom = 0
+        while(true) {
+            const pos = line.indexOf(op, searchFrom)
+            switch(pos) {
+                case -1: break
+
+                default: {
+                    const state = classifyPosition(
+                        line, pos, lineCommentPos,
+                        pure_FindBlockCommentStart(line, lineCommentPos, languageConfig),
+                        pure_FindBlockCommentEnd(line, lineCommentPos, languageConfig),
+                        delimiters
+                    )
+                    switch(state) {
+                        case PositionState.Valid:
+                            results.push({ pos, op })
+                            searchFrom = pos + op.length
+                            break
+                        default:
+                            searchFrom = pos + 1
                     }
-                    default : pos++
-                }
-                break
-            }
-
-            case State.InLineComment : { pos = text.length; flush(text.length); break }
-
-            case State.InBlockComment: {
-                if(text.startsWith(blockEnd, pos)) { pos += blockEnd.length; flush(pos); state = State.Default }
-                else { pos++ }
-                break
-            }
-
-            case State.Default: {
-                const { type, advance } = classifyAtDefault(text, pos, cfg)
-
-                if(advance > 1 && type === TokenType.Word) {
-                    flush      (pos)
-                    tokens.push({ type: TokenType.Word, text: text.substring(pos, pos + advance) })
-                    lastType = TokenType.Word; tokenStart = -1; pos += advance
                     break
                 }
-
-                if(type !== lastType) {
-                    flush(pos)
-                    lastType   = type
-                    tokenStart = pos
-                    const ns   = nextStateFor(type, text, pos, cfg)
-                    state      = ns.state; quote = ns.quote; open = ns.open; blockEnd = ns.blockEnd
-                    blockDepth = state === State.InBlock ? 1 : 0
-                } else if(tokenStart === -1) {
-                    tokenStart = pos
-                    const ns   = nextStateFor(type, text, pos, cfg)
-                    state      = ns.state; quote = ns.quote; open = ns.open; blockEnd = ns.blockEnd
-                    blockDepth = state === State.InBlock ? 1 : 0
-                }
-                pos += advance
-                break
             }
-        }
-    }
-
-    if(tokenStart !== -1) {
-        const partialType = 
-            state === State.InString ? TokenType.PartialString :
-            state === State.InBlock ? TokenType.PartialBlock : lastType
-        flush(text.length, partialType)
-    }
-
-    // Split {…} and (…) tokens into Open + Block(inner) + EndOfBlock
-    const split: Token[] = []
-    for(const tok of tokens) {
-        const ch = tok.text[0]
-        if((tok.type === TokenType.Block || tok.type === TokenType.OpenBrace || tok.type === TokenType.OpenParen) && tok.text.length >= 2 && (ch === '{' || ch === '(')) {
-            const opType = ch === '{' ? TokenType.OpenBrace : TokenType.OpenParen
-            split.push({ type: opType, text: ch })
-            split.push({ type: TokenType.Block, text: tok.text.slice(1, -1) })
-            split.push({ type: TokenType.EndOfBlock, text: BRACKET_PAIR[ch]! })
-        } else {
-            split.push(tok)
-        }
-    }
-
-    const finalTokens = split
-
-    // Refine Comma → CommaAsWord
-    for(let i = 0; i < finalTokens.length; i++) {
-        if(finalTokens[i]!.type !== TokenType.Comma) { continue }
-        const nonWsBefore = finalTokens.slice(0, i).some(t => t.type !== TokenType.Whitespace)
-        if(!nonWsBefore) { finalTokens[i] = { ...finalTokens[i]!, type: TokenType.CommaAsWord } }
-        break
-    }
-
-    // Refine Word → From (JS-like langs)
-    const JS_LIKE = new Set(['javascript', 'typescript', 'javascriptreact', 'typescriptreact'])
-    if(JS_LIKE.has(lang)) {
-        for(const t of finalTokens) {
-            if(t.type === TokenType.Word && t.text === 'from') { t.type = TokenType.From }
-        }
-    }
-
-    const SIG = new Set([
-        TokenType.Assignment, TokenType.Colon, TokenType.Arrow,
-        TokenType.Comment, TokenType.From, TokenType.Comparison,
-        TokenType.OpenBrace, TokenType.OpenParen, TokenType.Semicolon,
-    ])
-    const sgfntTokens: TokenType[] = []
-    for(const t of finalTokens) {
-        if(SIG.has(t.type) && !sgfntTokens.includes(t.type)) { sgfntTokens.push(t.type) }
-    }
-
-    return { tokens: finalTokens, sgfntTokens }
-}
-
-// ─── tokenizeFlat — transparent recursion for { and ( ─────────────────────────
-
-const enum FlatState { Word, InString, InBracket, InLineComment, InBlockComment }
-
-function tokenizeFlat(inner: string, cfg: LanguageSyntaxConfig): Token[] {
-    const result: Token[] = []
-    let state             = FlatState.Word
-    let pos               = 0, start = 0, quote = '', depth = 0, bcEnd = ''
-
-    const flushWord = (upTo: number) => {
-        if(start < upTo) { result.push({ type: TokenType.Word, text: inner.substring(start, upTo) }) }
-    }
-
-    while(pos < inner.length) {
-        const ch = inner[pos]!
-        switch(state) {
-            case FlatState.InString: {
-                if(ch === quote) {
-                    let backslashes = 0, k = pos - 1
-                    while(k >= 0 && inner[k] === '\\') { backslashes++; k-- }
-                    if(backslashes % 2 === 0) {
-                        pos++
-                        result.push({ type: TokenType.String, text: inner.substring(start, pos) })
-                        start = pos; state = FlatState.Word
-                } else { pos++ }
-                } else { pos++ }
-                break
-            }
-
-            case FlatState.InBracket: {
-                switch(ch) {
-                    case '[' : depth++; pos++; break
-                    case ']': {
-                        depth--; pos++
-                        if(depth === 0) {
-                            result.push({ type: TokenType.Block, text: inner.substring(start, pos) })
-                            start = pos; state = FlatState.Word
-                        }
-                        break
-                    }
-                    default : pos++
-                }
-                break
-            }
-
-            case FlatState.InLineComment: {
-                pos = inner.length
-                result.push({ type: TokenType.Comment, text: inner.substring(start, pos) })
-                start = pos
-                break
-            }
-
-            case FlatState.InBlockComment: {
-                if(inner.startsWith(bcEnd, pos)) {
-                    pos += bcEnd.length
-                    result.push({ type: TokenType.Comment, text: inner.substring(start, pos) })
-                    start = pos; state = FlatState.Word
-                } else { pos++ }
-                break
-            }
-
-            case FlatState.Word: {
-                switch(ch) {
-                    case '"': case "'": case '`': {
-                        flushWord(pos)
-                        start = pos; quote = ch; state = FlatState.InString; pos++
-                        break
-                    }
-                    case '[': {
-                        flushWord(pos)
-                        start = pos; depth = 1; state = FlatState.InBracket; pos++
-                        break
-                    }
-                    case '{': {
-                        flushWord  (pos)
-                        result.push({ type: TokenType.OpenBrace, text: '{' })
-                        pos++
-                        let d = 1, s = pos
-                        while(pos < inner.length && d > 0) {
-                            switch(inner[pos]) {
-                                case '{' : d++; pos++; break
-                                case '}' : d--; if(d > 0) { pos++ }; break
-                                default  : pos++
-                            }
-                        }
-                        result.push(...tokenizeFlat(inner.substring(s, pos), cfg))
-                        result.push({ type: TokenType.EndOfBlock, text: '}' })
-                        if         (pos < inner.length) { pos++ }
-                        start = pos
-                        break
-                    }
-                    case '(': {
-                        flushWord(pos)
-                        result.push({ type: TokenType.OpenParen, text: '(' })
-                        pos++
-                        let d = 1, s = pos
-                        while(pos < inner.length && d > 0) {
-                            switch(inner[pos]) {
-                                case '(' : d++; pos++; break
-                                case ')' : d--; if(d > 0) { pos++ }; break
-                                default  : pos++
-                            }
-                        }
-                        result.push(...tokenizeFlat(inner.substring(s, pos), cfg))
-                        result.push({ type: TokenType.EndOfBlock, text: ')' })
-                        if(pos < inner.length) { pos++ }
-                        start = pos
-                        break
-                    }
-                    case ';': {
-                        flushWord  (pos)
-                        result.push({ type: TokenType.Semicolon, text: ';' })
-                        pos++; start = pos
-                        break
-                    }
-                    case ',': {
-                        flushWord  (pos)
-                        result.push({ type: TokenType.Comma, text: ',' })
-                        pos++; start = pos
-                        break
-                    }
-                    case ':': {
-                        const nx = inner[pos + 1]
-                        if         (nx === ':' || nx === '=') { pos += 2; break }
-                        flushWord  (pos)
-                        result.push({ type: TokenType.Colon, text: ':' })
-                        pos++; start = pos
-                        break
-                    }
-                    default: {
-                        const lc = findLineComment(inner, pos, cfg)
-                        if(lc) {
-                            flushWord(pos)
-                            start = pos; state = FlatState.InLineComment; pos++
-                            break
-                        }
-                        const be = findBlockCommentStart(inner, pos, cfg)
-                        if(be) {
-                            flushWord(pos)
-                            start = pos; bcEnd = be; state = FlatState.InBlockComment; pos++
-                            break
-                        }
-                        pos++
-                    }
-                }
-                break
-            }
-        }
-    }
-
-    switch(state) {
-        case FlatState.Word           : flushWord(inner.length); break
-        case FlatState.InString       : result.push({ type : TokenType.String, text  : inner.substring(start) }); break
-        case FlatState.InBracket      : result.push({ type : TokenType.Block, text   : inner.substring(start) }); break
-        case FlatState.InLineComment  : 
-        case FlatState.InBlockComment : result.push({ type : TokenType.Comment, text : inner.substring(start) }); break
-    }
-
-    return result.filter(t => t.text.length > 0)
-}
-
-// ─── Range collection ─────────────────────────────────────────────────────────
-
-const hasPartial = (info: LineInfo) =>
-    info.tokens.some(t => t.type === TokenType.PartialBlock || t.type === TokenType.PartialString)
-
-const sameIndent = (a: LineInfo, b: LineInfo) => {
-    const t1 = a.tokens[0], t2 = b.tokens[0]
-    return t1?.type === TokenType.Whitespace ? t1.text === t2?.text : t2?.type !== TokenType.Whitespace
-}
-
-const intersect = (a: TokenType[], b: TokenType[]) => {
-    const set = new Set(a)
-    return b.filter(t => set.has(t))
-}
-
-const SIG_BLOCK = new Set([TokenType.OpenBrace, TokenType.OpenParen, TokenType.Semicolon])
-
-function prefixKey(tokens: Token[], type: TokenType): string {
-    const parts: string[] = []
-    for(const t of tokens) {
-        if(t.type === type) { break }
-        if(t.type === TokenType.Whitespace) { continue }
-        switch(t.type) {
-            case TokenType.Word : case TokenType.String : case TokenType.Block : case TokenType.CommaAsWord : 
-                parts.push(t.type); break
-            default : parts.push(t.text)
-        }
-    }
-    return parts.join('|')
-}
-
-function intersectWithStructure(anchor: LineInfo, candidate: LineInfo): TokenType[] {
-    const common     = intersect(anchor.sgfntTokens, candidate.sgfntTokens)
-    const blockTypes = common.filter(t => SIG_BLOCK.has(t))
-    const otherTypes = common.filter(t => !SIG_BLOCK.has(t))
-    const result     = [...otherTypes]
-    for(const bt of blockTypes) {
-        if(prefixKey(anchor.tokens, bt) === prefixKey(candidate.tokens, bt)) { result.push(bt) }
-    }
-    return result
-}
-
-function collectRange(
-    doc  : vscode.TextDocument, start : number, end                                           : number, anchor : number,
-    lang : string, overrides          : Record<string, LanguageSyntaxConfig>, indentImportant : boolean
-): LineRange {
-    const tokenize = (ln: number): LineInfo => {
-        const tl                      = doc.lineAt(ln)
-        const { tokens, sgfntTokens } = tokenizeLine(tl, getLangConfig(lang, overrides), lang)
-        return { line: tl, sgfntTokenType: TokenType.Invalid, sgfntTokens, tokens }
-    }
-
-    const anchorInfo       = tokenize(anchor)
-    const range: LineRange = { anchor, infos: [anchorInfo] }
-    let types              = anchorInfo.sgfntTokens
-
-    if(!types.length || hasPartial(anchorInfo)) { return range }
-
-    for(let i = anchor - 1; i >= start; i--) {
-        const info = tokenize(i)
-        if(hasPartial(info)) { break }
-        const tt = intersectWithStructure(anchorInfo, info)
-        if(!tt.length) { break }
-        if(indentImportant && !sameIndent(anchorInfo, info)) { break }
-        types = tt
-        range.infos.unshift(info)
-    }
-
-    for(let i = anchor + 1; i <= end; i++) {
-        const info = tokenize(i)
-        if(hasPartial(info)) { break }
-        const tt = intersectWithStructure(anchorInfo, info)
-        if(!tt.length) { break }
-        if(indentImportant && !sameIndent(anchorInfo, info)) { break }
-        types = tt
-        range.infos.push(info)
-    }
-
-    const sgt = types.includes(TokenType.Assignment) ? TokenType.Assignment : types[0]!
-    for(const info of range.infos) { info.sgfntTokenType = sgt }
-    return range
-}
-
-// ─── Formatting helpers ───────────────────────────────────────────────────────
-
-const isOnlyComments = (range: LineRange) =>
-    range.infos.every(info => {
-        const nonWs = info.tokens.filter(t => t.type !== TokenType.Whitespace)
-        return nonWs.length === 1 && nonWs[0]?.type === TokenType.Comment
-    })
-
-function extractIndent(infos: LineInfo[]): string {
-    let min = Infinity, wsChar = ' '
-    for(const info of infos) {
-        const firstNonWs = info.line.text.search(/\S/)
-        min              = Math.min(min, firstNonWs === -1 ? 0 : firstNonWs)
-        if(info.tokens[0]?.type === TokenType.Whitespace) {
-            wsChar = info.tokens[0].text[0] ?? ' '
-            info.tokens.shift()
-        }
-        if(info.tokens.at(-1)?.type === TokenType.Whitespace) { info.tokens.pop() }
-    }
-    return wsChar.repeat(min === Infinity ? 0 : min)
-}
-
-function padFirstWord(infos: LineInfo[]): void {
-    const wordsBefore = (info: LineInfo): number => {
-        let count = 0
-        for(const t of info.tokens) {
-            if(t.type === info.sgfntTokenType) { return count }
-            if(t.type !== TokenType.Whitespace && t.type !== TokenType.Block) { count++ }
-        }
-        return count
-    }
-    const counts   = infos.map(wordsBefore)
-    const maxCount = Math.max(...counts)
-    if(maxCount <= 1) { return }
-    for(let i = 0; i < infos.length; i++) {
-        const info = infos[i]!, count = counts[i]!
-        if(count >= maxCount) { continue }
-        const firstNonWsIdx = info.tokens.findIndex(t => t.type !== TokenType.Whitespace)
-        if(firstNonWsIdx === -1) { continue }
-        if(info.tokens[firstNonWsIdx + 1]?.type !== TokenType.Whitespace) {
-            info.tokens.splice(firstNonWsIdx + 1, 0, { type: TokenType.Insertion, text: ' ' })
-        }
-    }
-}
-
-function stripOperatorWhitespace(infos: LineInfo[]): void {
-    for(const info of infos) {
-        for(let i = 0; i < info.tokens.length; i++) {
-            const t = info.tokens[i]
-            if(t?.type !== info.sgfntTokenType && t?.type !== TokenType.Comma) { continue }
-            if(t.type === TokenType.Comma && i === 0) { continue }
-            if(i > 0 && info.tokens[i - 1]?.type === TokenType.Whitespace) { info.tokens.splice(i - 1, 1); i-- }
-            if(info.tokens[i + 1]?.type === TokenType.Whitespace) { info.tokens.splice(i + 1, 1) }
-        }
-        for(let i = 0; i < info.tokens.length - 1; i++) {
-            if(info.tokens[i]?.type === TokenType.Whitespace && info.tokens[i + 1]?.type === TokenType.Whitespace) {
-                info.tokens[i] = { type: TokenType.Whitespace, text: info.tokens[i]!.text + info.tokens[i + 1]!.text }
-                info.tokens.splice(i + 1, 1); i--
-            }
-        }
-    }
-}
-
-function stripBracketWhitespace(infos: LineInfo[]): void {
-    for(const info of infos) {
-        const sgt = info.sgfntTokenType
-        if(sgt !== TokenType.OpenBrace && sgt !== TokenType.OpenParen) { continue }
-        for(let i = 0; i < info.tokens.length; i++) {
-            if(info.tokens[i]?.type !== sgt) { continue }
-            if(i > 0 && info.tokens[i - 1]?.type === TokenType.Whitespace) { info.tokens.splice(i - 1, 1); i-- }
-        }
-    }
-}
-
-// ─── DEFAULT_SURROUND ─────────────────────────────────────────────────────────
-
-const DEFAULT_SURROUND: Record<string, [number, number]> = {
-    colon : [1, 1], assignment : [1, 1], comment   : [2, 0], arrow     : [1, 1],
-    from  : [1, 1], comparison : [1, 1], openbrace : [1, 0], openparen : [0, 0], semicolon : [0, 1],
-}
-
-function normaliseSurround(raw: number | number[] | undefined, key: string): [number, number] {
-    const def = DEFAULT_SURROUND[key] ?? [1, 1]
-    if(raw === undefined) { return def }
-    if(typeof raw === 'number') { return [Math.max(0, raw), 0] }
-    return [Math.max(0, raw[0] ?? def[0]), Math.max(0, raw[1] ?? def[1])]
-}
-
-function applyOperator(before: string, op: string, pad: string, bsp: number, asp: number): string {
-    return before + pad + ws(bsp) + op + ws(asp)
-}
-
-// ─── buildSemicolonAlignedLines ───────────────────────────────────────────────
-
-function buildSemicolonAlignedLines(
-    infos : LineInfo[], indent : string, cfg : LanguageSyntaxConfig
-): string[] {
-    type Seg = Token[]
-    type Row = { segs: Seg[]; seps: Token[]; rendered: boolean[] }
-
-    const flatRows = infos.map(info => {
-        const expanded: Token[] = []
-        for(const tok of info.tokens) {
-            switch(tok.type) {
-                case TokenType.OpenBrace : case TokenType.OpenParen : case TokenType.EndOfBlock : 
-                    expanded.push(tok); break
-                case TokenType.Block : 
-                    expanded.push(...tokenizeFlat(tok.text, cfg)); break
-                default : 
-                    expanded.push(tok)
-            }
-        }
-        return expanded
-    })
-
-    const splitRows = flatRows.map(toks => {
-        const segs: Seg[] = [], seps: Token[] = [], rendered: boolean[] = []
-        let cur: Token[]  = []
-        for(const t of toks) {
-            if(t.type === TokenType.Semicolon) { segs.push(cur); rendered.push(false); seps.push(t); cur = [] }
-            else { cur.push(t) }
-        }
-        segs.push(cur); rendered.push(false)
-        return { segs, seps, rendered }
-    })
-
-    const numSeps           = Math.max(...splitRows.map(r => r.seps.length))
-    const renderSeg         = (seg: Seg) => seg.map(t => t.text).join('')
-    const results: string[] = infos.map(() => indent)
-
-    for(let si = 0; si < numSeps; si++) {
-        const prefixLens = splitRows.map((row, li) => {
-            if(si >= row.segs.length || row.rendered[si]) { return results[li]!.length }
-            return results[li]!.length + renderSeg(row.segs[si]!).trimEnd().length
-        })
-        const maxPrefix = Math.max(...prefixLens.filter((_, li) => si < splitRows[li]!.seps.length && !splitRows[li]!.rendered[si]))
-
-        for(let li = 0; li < infos.length; li++) {
-            const row = splitRows[li]!
-            if(si >= row.segs.length || row.rendered[si]) { continue }
-            const segText      = renderSeg(row.segs[si]!).trimEnd()
-            results [li]      += segText + ws(maxPrefix - results[li]!.length - segText.length) + ';'
-            row.rendered [si]  = true
-        }
-
-        const afterCols = splitRows.map((row, li) => {
-            if(si >= row.seps.length) { return 0 }
-            const raw    = renderSeg(row.segs[si + 1] ?? [])
-            const spaces = raw.length - raw.trimStart().length
-            return results[li]!.length + Math.max(1, spaces)
-        })
-        const targetCol = Math.max(...afterCols.filter((_, li) => si < splitRows[li]!.seps.length))
-
-        for(let li = 0; li < infos.length; li++) {
-            const row = splitRows[li]!
-            if(si >= row.seps.length) { continue }
-            const nextSeg      = row.segs[si + 1] ?? []
-            const trimmed      = renderSeg(nextSeg).trimStart()
-            results [li]      += ws(targetCol - results[li]!.length)
-            row.segs [si + 1]  = [{ type: TokenType.Word, text: trimmed }]
-        }
-    }
-
-    for(let li = 0; li < infos.length; li++) {
-        const row     = splitRows[li]!
-        const lastIdx = row.segs.length - 1
-        if(!row.rendered[lastIdx]) {
-            const lastSeg  = row.segs[lastIdx] ?? []
-            results [li]  += renderSeg(lastSeg)
         }
     }
 
     return results
 }
 
-// ─── buildColonAlignedLines ───────────────────────────────────────────────────
+// ============================================================================
+// PURE FUNCTIONS: SINGLE CHAR ALIGN POINTS
+// ============================================================================
+function pure_ScanSingleCharAlignPoints(
+    line: string,
+    alignChars: string[],
+    lineCommentPos: number,
+    languageConfig: any
+): AlignPoint[] {
+    const results: AlignPoint[] = []
+    const delimiters = languageConfig.stringDelimiters
 
-function buildColonAlignedLines(
-    infos : LineInfo[], indent : string, cfg : LanguageSyntaxConfig
-): string[] {
-    type Seg = Token[]
-    type Row = { segs: Seg[]; seps: Token[]; rendered: boolean[] }
-
-    const flatRows = infos.map(info => tokenizeFlat(info.tokens.map(t => t.text).join(''), cfg))
-
-    const splitRows = flatRows.map(toks => {
-        const segs: Seg[] = [], seps: Token[] = [], rendered: boolean[] = []
-        let cur: Token[]  = []
-        for(const t of toks) {
-            if(t.type === TokenType.Colon) { segs.push(cur); rendered.push(false); seps.push(t); cur = [] }
-            else { cur.push(t) }
-        }
-        segs.push(cur); rendered.push(false)
-        return { segs, seps, rendered }
-    })
-
-    const numSeps           = Math.max(...splitRows.map(r => r.seps.length))
-    const renderSeg         = (seg: Seg) => seg.map(t => t.text).join('')
-    const results: string[] = infos.map(() => indent)
-
-    for(let si = 0; si < numSeps; si++) {
-        const prefixLens = splitRows.map((row, li) => {
-            if(si >= row.segs.length || row.rendered[si]) { return results[li]!.length }
-            return results[li]!.length + renderSeg(row.segs[si]!).trimEnd().length
-        })
-        const maxPrefix = Math.max(...prefixLens.filter((_, li) => si < splitRows[li]!.seps.length && !splitRows[li]!.rendered[si]))
-
-        for(let li = 0; li < infos.length; li++) {
-            const row = splitRows[li]!
-            if(si >= row.seps.length || row.rendered[si]) { results[li] += renderSeg(row.segs[si] ?? []); row.rendered[si] = true; continue }
-            const segText      = renderSeg(row.segs[si]!).trimEnd()
-            results [li]      += segText + ws(maxPrefix - results[li]!.length - segText.length) + ' :'
-            row.rendered [si]  = true
-        }
-
-        for(let li = 0; li < infos.length; li++) {
-            const row = splitRows[li]!
-            if(si >= row.seps.length) { continue }
-            const nextSeg     = row.segs[si + 1] ?? []
-            const trimmed     = renderSeg(nextSeg).trimStart()
-            row.segs [si + 1] = [{ type: TokenType.Word, text: ' ' + trimmed }]
-        }
-    }
-
-    for(let li = 0; li < infos.length; li++) {
-        const row     = splitRows[li]!
-        const lastIdx = row.segs.length - 1
-        if(!row.rendered[lastIdx]) {
-            const lastSeg  = row.segs[lastIdx] ?? []
-            results [li]  += renderSeg(lastSeg)
-        }
-    }
-
-    return results
-}
-
-// ─── Call-site alignment — SRP post-processor ────────────────────────────────
-//
-// Responsibility: given a group of already-formatted lines that share the same
-// leading indent, find all positions where `word(` appears at the same nesting
-// depth on every line, and pad the word so all `(` land in one column.
-//
-// This runs AFTER buildLines and never touches the token model.
-// It only manipulates plain strings — no vscode API, no LineInfo.
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Find all `word(` positions at depth-0 in a plain string.
- *  Returns array of { wordStart, parenPos } — positions of the `(` character. */
-function findCallSiteParens(line: string): { wordStart: number; parenPos: number }[] {
-    const result: { wordStart: number; parenPos: number }[] = []
-
-    const enum CS { Normal, InString, InLineComment, InBlockComment }
-    let state = CS.Normal
-    let depth = 0
-    let quote = ''
-    let i     = 0
-
-    while(i < line.length) {
-        const ch = line[i]!
-        const nx = line[i + 1] ?? ''
+    for(let i = 0; i < line.length; i++) {
+        const char = line[i]
+        const state = classifyPosition(
+            line, i, lineCommentPos,
+            pure_FindBlockCommentStart(line, lineCommentPos, languageConfig),
+            pure_FindBlockCommentEnd(line, lineCommentPos, languageConfig),
+            delimiters
+        )
 
         switch(state) {
-            case CS.InLineComment: i           = line.length; break
-            case CS.InBlockComment: line.startsWith('*/', i) ? (state = CS.Normal, i += 2) : i++; break
-            case CS.InString: ch === '\\' ? i += 2 : ch === quote ? (state = CS.Normal, i++) : i++; break
-
-            case CS.Normal: {
-                switch(ch) {
-                    case '/' : nx === '/' ? (state = CS.InLineComment, i += 2) : nx === '*' ? (state = CS.InBlockComment, i += 2) : i++; break
-                    case '"' : case "'"                                        : case '`'                                         : state = CS.InString; quote = ch; i++; break
-                    case '{' : case '['                                        : depth++; i++; break
-                    case '}' : case ']'                                        : depth--; i++; break
-                    case '(': {
-                        if(depth === 0) {
-                            // scan back to find the word
-                            let w = i - 1
-                            while(w >= 0 && /[\w$]/.test(line[w]!)) { w-- }
-                            const wordStart = w + 1
-                            if(wordStart < i) { result.push({ wordStart, parenPos: i }) }
-                        }
-                        depth++; i++
-                        break
-                    }
-                    case ')' : depth--; i++; break
-                    default  : i++
+            case PositionState.Valid: {
+                switch(alignChars.includes(char)) {
+                    case true: results.push({ pos: i, op: char }); break
                 }
                 break
             }
         }
     }
 
-    return result
+    return results
 }
 
-/** True if every line has at least one call-site paren at depth-0 at position `slot`. */
-function allLinesHaveParenAtSlot(lines: string[], slot: number): boolean {
-    return lines.every(line => findCallSiteParens(line).some(p => p.wordStart <= slot && p.parenPos >= slot - 1))
+// ============================================================================
+// PURE FUNCTIONS: FIND ALIGN POSITIONS (NUMBERS ONLY)
+// ============================================================================
+function pure_FindAlignPositions(
+    line: string,
+    alignChars: string[],
+    lineCommentPos: number,
+    languageConfig: any
+): number[] {
+    return pure_FindAlignPoints(line, alignChars, lineCommentPos, languageConfig)
+        .map(p => p.pos)
 }
 
-/** Pad the `slot`-th call-site paren (0-indexed) across all lines so `(` aligns. */
-function alignCallSiteSlot(lines: string[], slot: number): string[] {
-    // Collect wordStart and parenPos for each line at this slot
-    const sites = lines.map(line => findCallSiteParens(line)[slot])
-    if(sites.some(s => s === undefined)) { return lines }
-
-    const maxParenPos = Math.max(...sites.map(s => s!.parenPos))
-
-    return lines.map((line, li) => {
-        const { wordStart, parenPos } = sites[li]!
-        if(parenPos === maxParenPos) { return line }
-        const pad = maxParenPos - parenPos
-        return line.slice(0, wordStart) + line.slice(wordStart, parenPos) + ws(pad) + line.slice(parenPos)
-    })
-}
-
+// ============================================================================
+// PURE FUNCTIONS: EXTRACT CHAR SEQUENCE
+// ============================================================================
 /**
- * Post-processor : align call-site `(` across a group of lines.
- *
- * Rules : 
- *  1. All lines must share the same leading whitespace(same indent group).
- *  2. For each slot index(0, 1, 2, …) where every line has a depth-0 `word(`
- *     with mismatched paren positions — pad the shorter words.
- *  3. Stop at the first slot where not all lines have a paren (lines differ
- *     structurally — don't force alignment).
+ * Pure : extracts sequence of operators at positions
  */
-function alignCallSites(lines: string[]): string[] {
-    if(lines.length < 2) { return lines }
+function pure_ExtractCharSequence(line: string, positions: number[]): string[] {
+    const sequence: string[] = []
+    for(const pos of positions) {
+        if(pos < line.length) {
+            sequence.push(line[pos])
+        }
+    }
+    return sequence
+}
 
-    // All lines must share the same indent
-    const indentOf = (l: string) => l.match(/^(\s*)/)?.[1] ?? ''
-    const indent   = indentOf(lines[0]!)
-    if(lines.some(l => indentOf(l) !== indent)) { return lines }
+// ============================================================================
+// PURE FUNCTIONS: EXTRACT OPERATOR SEQUENCE FROM ALIGN POINTS
+// ============================================================================
+function pure_ExtractOperatorSequence(alignPoints: AlignPoint[]): string[] {
+    return alignPoints.map(p => p.op)
+}
 
-    let result = [...lines]
+// ============================================================================
+// PURE FUNCTIONS: COMMON PREFIX FOR OPERATORS
+// ============================================================================
+function pure_FindCommonPrefix(sequences: string[][]): string[] {
+    if(sequences.length === 0) { return [] }
 
-    for(let slot = 0; ; slot++) {
-        // Collect sites for this slot on the current (possibly already padded) result
-        const sites = result.map(line => findCallSiteParens(line)[slot])
-        if(sites.some(s => s === undefined)) { break }   // not all lines have this slot → stop
+    const minLength = Math.min(...sequences.map(s => s.length))
+    const prefix: string[] = []
 
-        const parenPositions = sites.map(s => s!.parenPos)
-        const allSame        = parenPositions.every(p => p === parenPositions[0])
-        if(!allSame) { result = alignCallSiteSlot(result, slot) }
+    for(let i = 0; i < minLength; i++) {
+        const char = sequences[0][i]
+        switch(sequences.every(seq => seq[i] === char)) {
+            case true: prefix.push(char); break
+            case false: break
+        }
+    }
+
+    return prefix
+}
+
+// ============================================================================
+// PURE FUNCTIONS: CALCULATE ALIGN COLUMNS
+// ============================================================================
+function pure_CalculateAlignColumns(
+    lines: string[],
+    alignChars: string[],
+    commonPrefix: string[],
+    languageConfig: any
+): Map<number, number>[] {
+    const alignMaps: Map<number, number>[] = []
+
+    for(const line of lines) {
+        const { lineCommentPos } = pure_ExtractCommentMarkers(line, languageConfig)
+        const alignPoints = pure_FindAlignPoints(line, alignChars, lineCommentPos, languageConfig)
+        const sequence = pure_ExtractOperatorSequence(alignPoints)
+
+        const alignMap = new Map<number, number>()
+        let prefixIndex = 0
+
+        for(let i = 0; i < alignPoints.length && prefixIndex < commonPrefix.length; i++) {
+            switch(sequence[i]) {
+                case commonPrefix[prefixIndex]:
+                    alignMap.set(prefixIndex, alignPoints[i].pos)
+                    prefixIndex++
+                    break
+                default:
+                    break
+            }
+        }
+
+        alignMaps.push(alignMap)
+    }
+
+    return alignMaps
+}
+
+// ============================================================================
+// PURE FUNCTIONS: COMPUTE MAX COLUMNS
+// ============================================================================
+function pure_ComputeMaxColumns(alignMaps: Map<number, number>[]): Map<number, number> {
+    const maxColumns = new Map<number, number>()
+
+    for(const alignMap of alignMaps) {
+        for(const [idx, pos] of alignMap) {
+            const current = maxColumns.get(idx) || 0
+            switch(pos > current) {
+                case true: maxColumns.set(idx, pos); break
+                case false: break
+            }
+        }
+    }
+
+    return maxColumns
+}
+
+// ============================================================================
+// PURE FUNCTIONS: APPLY ALIGNMENT
+// ============================================================================
+function pure_ApplyAlignment(
+    line: string,
+    alignMap: Map<number, number>,
+    maxColumns: Map<number, number>,
+    alignChars: string[]
+): string {
+    switch(alignMap.size) {
+        case 0: return line
+    }
+
+    const sortedIndices = Array.from(alignMap.keys()).sort((a, b) => a - b)
+    let result = line
+    let offset = 0
+
+    for(const idx of sortedIndices) {
+        const originalPos = alignMap.get(idx)!
+        const targetPos = maxColumns.get(idx)!
+        const currentPos = originalPos + offset
+
+        switch(currentPos < targetPos) {
+            case true: {
+                const spaces = ' '.repeat(targetPos - currentPos)
+                result = result.slice(0, currentPos) + spaces + result.slice(currentPos)
+                offset += spaces.length
+                break
+            }
+        }
     }
 
     return result
 }
 
-// ─── buildLines ───────────────────────────────────────────────────────────────
+// ============================================================================
+// PURE FUNCTIONS: SPLIT INTO BLOCKS
+// ============================================================================
+function pure_SplitIntoBlocks(lines: string[]): string[][] {
+    const blocks: string[][] = []
+    let currentBlock: string[] = []
 
-function buildLines(range: LineRange, indent: string, cfg: ReturnType<typeof makeConfig>): string[] {
-    if(isOnlyComments(range)) { return range.infos.map(i => i.line.text) }
-
-    const sgt     = range.infos[0]?.sgfntTokenType
-    const langId  = (range.infos[0]?.line as unknown as { languageId?: string })?.languageId ?? 'typescript'
-    const langCfg = getLangConfig(langId)
-
-    switch(sgt) {
-        case TokenType.Semicolon : return buildSemicolonAlignedLines(range.infos, indent, langCfg)
-        case TokenType.Colon     : return buildColonAlignedLines(range.infos, indent, langCfg)
-        case TokenType.OpenBrace : case TokenType.OpenParen : stripBracketWhitespace(range.infos); break
-    }
-
-    padFirstWord           (range.infos)
-    stripOperatorWhitespace(range.infos)
-
-    const sttKey                = String(range.infos[0]!.sgfntTokenType).toLowerCase()
-    const surrounds             = cfg('surroundSpace', {}) as Record<string, number | number[]>
-    const rawSurround           = surrounds[sttKey] ?? DEFAULT_SURROUND[sttKey]
-    const [before_sp, after_sp] = normaliseSurround(rawSurround, sttKey)
-
-    const rawCommentGap = surrounds['comment'] ?? DEFAULT_SURROUND['comment']
-    const commentGap    = typeof rawCommentGap === 'number' ? Math.max(0, rawCommentGap) : Math.max(0, (rawCommentGap as number[])[0] ?? 2)
-
-    const opAlign          = cfg('operatorPadding', 'right') as string
-    const infos            = range.infos, size = infos.length
-    const col: number[]    = new Array(size).fill(0)
-    const result: string[] = new Array(size).fill(indent)
-
-    let done = 0
-    while(done < size) {
-        let maxOpLen = 0, maxCol = 0
-        for(let l = 0; l < size; l++) {
-            if(col[l] === -1) { continue }
-            const info = infos[l]!, toks = info.tokens
-            const end  = toks.length > 1 && toks.at(-1)?.type === TokenType.Comment
-                ?(toks.at(-2)?.type === TokenType.Whitespace ? toks.length - 2 : toks.length - 1)
-                 : toks.length
-            let cur = result[l]!, j = col[l]!
-            for(; j < end; j++) {
-                const t = toks[j]!
-                if(t.type === info.sgfntTokenType || (t.type === TokenType.Comma && j !== 0)) {
-                    maxOpLen = Math.max(maxOpLen, t.text.length)
-                    maxCol   = Math.max(maxCol, cur.length)
-                    break
+    for(const line of lines) {
+        switch(line.trim().length === 0) {
+            case true: {
+                switch(currentBlock.length > 0) {
+                    case true:
+                        blocks.push(currentBlock)
+                        currentBlock = []
+                        break
                 }
-                cur += t.text
+                break
             }
-            result[l] = cur
-            if(j === end) { done++; col[l] = -1; toks.splice(0, end) }
-            else { col[l] = j }
-        }
-
-        for(let l = 0; l < size; l++) {
-            const j = col[l]!
-            if(j === -1) { continue }
-            const info = infos[l]!, toks = info.tokens, cur = result[l]!
-            const pad  = ws(maxCol - cur.length)
-            let opText = toks[j]!.text
-            if(opText.length < maxOpLen) {
-                opText = opAlign === 'right' ? ws(maxOpLen - opText.length) + opText : opText + ws(maxOpLen - opText.length)
+            case false: {
+                currentBlock.push(line)
+                break
             }
-            switch(toks[j]!.type) {
-                case TokenType.Comma : result[l] = cur + pad + opText + (j < toks.length - 1 ? ' ' : ''); break
-                default              : 
-                    if(toks.length === 1 && toks[0]!.type === TokenType.Comment) { done++ }
-                    else { result[l] = applyOperator(cur, opText, pad, before_sp, after_sp) }
-            }
-            let next = j + 1
-            if(toks[next]?.type === TokenType.Whitespace) { next++ }
-            col[l] = next
         }
     }
 
-    const maxLen = result.reduce((m, r) => Math.max(m, r.length), 0)
-    for(let l = 0; l < size; l++) {
-        const remaining = infos[l]!.tokens
-        if(remaining.length === 0) { continue }
-        const trailing = remaining[remaining.length - 1]
-        if(trailing?.type === TokenType.Comment) {
-            for(let k = 0; k < remaining.length - 1; k++) { result[l] += remaining[k]!.text }
-            result[l] += ws(maxLen - result[l]!.length + commentGap) + trailing.text
+    switch(currentBlock.length > 0) {
+        case true: blocks.push(currentBlock); break
+    }
+
+    return blocks
+}
+
+// ============================================================================
+// PURE FUNCTIONS: FILTER PURE COMMENTS
+// ============================================================================
+function pure_FilterPureComments(lines: string[], languageConfig: any): string[] {
+    return lines.filter(line => {
+        const trimmed = line.trim()
+        for(const marker of languageConfig.lineComments) {
+            switch(trimmed.startsWith(marker)) {
+                case true: return false
+            }
+        }
+        return true
+    })
+}
+
+// ============================================================================
+// _DECOR FUNCTIONS
+// ============================================================================
+function data_Load_Decor(ns: NS): void {
+    if(CONFIG.b_Debug) {
+        ns.data = { ...ns.config.testData }
+        ns.result = ok(ns.data)
+        return
+    }
+
+    try {
+        const editor = vscode.window.activeTextEditor
+        if(!editor) { throw new Error('No active editor') }
+
+        const selection = editor.selection
+        const config = vscode.workspace.getConfiguration('codeAlign')
+
+        ns.editor = editor
+        ns.selection = selection
+        ns.data.config = {
+            alignChars: config.get('alignChars', CONFIG.defaultAlignChars),
+            maxBlockSize: config.get('maxBlockSize', CONFIG.maxBlockSize),
+            preserveComments: config.get('preserveComments', CONFIG.preserveComments),
+            preserveStrings: config.get('preserveStrings', CONFIG.preserveStrings)
+        }
+
+        ns.result = ok(ns.data)
+    } catch(e) {
+        ns_SetError(ns, e instanceof Error ? e.message : 'Load failed')
+    }
+}
+
+function data_Validate_Decor(ns: NS): void {
+    if(CONFIG.b_Debug) {
+        ns.languageId = 'javascript'
+        ns.result = ok({})
+        return
+    }
+
+    try {
+        if(!ns.editor) { throw new Error('Editor not available') }
+
+        ns.languageId = ns.editor.document.languageId
+        const languageConfig = CONFIG.languageConfigs[ns.languageId as keyof typeof CONFIG.languageConfigs]
+
+        if(!languageConfig) { throw new Error(`Unsupported language: ${ns.languageId}`) }
+
+        ns.data.languageConfig = languageConfig
+        ns.result = ok({})
+    } catch(e) {
+        ns_SetError(ns, e instanceof Error ? e.message : 'Validation failed')
+    }
+}
+
+function data_Process_Decor(ns: NS): void {
+    if(CONFIG.b_Debug) {
+        const testLines = ['const x = 1;', 'const xx = 22;', 'const xxx = { a: 1, b: 2 };']
+        ns.blocks = [testLines]
+        ns.result = ok({})
+        return
+    }
+
+    try {
+        if(!ns.editor || !ns.selection) { throw new Error('Editor or selection not available') }
+
+        const text = ns.editor.document.getText(ns.selection)
+        const lines = text.split('\n')
+        const rawBlocks = pure_SplitIntoBlocks(lines)
+
+        ns.blocks = []
+        const alignChars = ns.data.config.alignChars
+        const languageConfig = ns.data.languageConfig
+
+        for(const block of rawBlocks) {
+            if(block.length > ns.data.config.maxBlockSize) {
+                ns.blocks.push(block)
+                continue
+            }
+
+            const filteredBlock = ns.data.config.preserveComments
+                ? pure_FilterPureComments(block, languageConfig)
+                : block
+
+            if(filteredBlock.length === 0) {
+                ns.blocks.push(block)
+                continue
+            }
+
+            const sequences: string[][] = []
+
+            for(const line of filteredBlock) {
+                const { lineCommentPos } = pure_ExtractCommentMarkers(line, languageConfig)
+                const alignPoints = pure_FindAlignPoints(line, alignChars, lineCommentPos, languageConfig)
+                const sequence = pure_ExtractOperatorSequence(alignPoints)
+                sequences.push(sequence)
+            }
+
+            const commonPrefix = pure_FindCommonPrefix(sequences)
+
+            if(commonPrefix.length === 0) {
+                ns.blocks.push(block)
+                continue
+            }
+
+            const alignMaps = pure_CalculateAlignColumns(filteredBlock, alignChars, commonPrefix, languageConfig)
+            const maxColumns = pure_ComputeMaxColumns(alignMaps)
+
+            const alignedBlock: string[] = []
+            for(let i = 0; i < filteredBlock.length; i++) {
+                const aligned = pure_ApplyAlignment(filteredBlock[i], alignMaps[i], maxColumns, alignChars)
+                alignedBlock.push(aligned)
+            }
+
+            ns.blocks.push(alignedBlock)
+        }
+
+        ns.result = ok({})
+    } catch(e) {
+        ns_SetError(ns, e instanceof Error ? e.message : 'Processing failed')
+    }
+}
+
+function data_Write_Decor(ns: NS): void {
+    if(CONFIG.b_Debug) {
+        console.log('Debug mode: skipping write')
+        ns.result = ok({})
+        return
+    }
+
+    try {
+        if(!ns.editor || !ns.selection) { throw new Error('Editor or selection not available') }
+
+        const alignedText = ns.blocks.map((block: string[]) => block.join('\n')).join('\n\n')
+
+        ns.editor.edit((editBuilder: vscode.TextEditorEdit) => {
+            editBuilder.replace(ns.selection!, alignedText)
+        }).then((success: boolean) => {
+            if(!success) { ns_SetError(ns, 'Failed to write changes') }
+        })
+
+        ns.result = ok({})
+    } catch(e) {
+        ns_SetError(ns, e instanceof Error ? e.message : 'Write failed')
+    }
+}
+
+// ============================================================================
+// ACTIVATE / DEACTIVATE
+// ============================================================================
+export function activate(context: vscode.ExtensionContext): void {
+    const ns: NS = NS_Container(CONFIG)
+
+    const alignSelection = vscode.commands.registerCommand('codeAlign.alignSelection', () => {
+        a_Chain(ns)
+        if(ns.s_Error) {
+            vscode.window.showErrorMessage(ns.s_Error)
         } else {
-            for(const t of remaining) { result[l] += t.text }
-        }
-    }
-
-    // ── Post-process: align call-site `(` within this group ──────────────────
-    return alignCallSites(result)
-}
-
-// ─── Config ───────────────────────────────────────────────────────────────────
-
-type ConfigFn = (key: string, defaultValue?: unknown) => unknown
-
-function makeConfig(doc: vscode.TextDocument): ConfigFn {
-    const base                               = vscode.workspace.getConfiguration('betterAlignColumns')
-    let lang: Record<string, unknown> | null = null
-    try { lang = vscode.workspace.getConfiguration().get<Record<string, unknown>>(`[${doc.languageId}]`) ?? null } catch { }
-    return(key, def) => lang?.[`betterAlignColumns.${key}`] ?? base.get(key, def)
-}
-
-// ─── Main ─────────────────────────────────────────────────────────────────────
-
-function process(editor: vscode.TextEditor): void {
-    const doc                 = editor.document
-    const cfg                 = makeConfig(doc)
-    const overrides           = cfg('languageConfigs', {}) as Record<string, LanguageSyntaxConfig>
-    const ranges: LineRange[] = []
-
-    for(const sel of editor.selections) {
-        const indentImportant = cfg('indentBase', 'firstline') === 'dontchange'
-        if(sel.isSingleLine) {
-            ranges.push(collectRange(doc, 0, doc.lineCount - 1, sel.active.line, doc.languageId, overrides, indentImportant))
-            continue
-        }
-        let start = sel.start.line, end = sel.end.line
-        while(start <= end) {
-            const r    = collectRange(doc, start, end, start, doc.languageId, overrides, indentImportant)
-            const last = r.infos.at(-1)!
-            if(last.line.lineNumber > end) { break }
-            if(r.infos[0]?.sgfntTokenType !== TokenType.Invalid) { ranges.push(r) }
-            if(last.line.lineNumber === end) { break }
-            start = last.line.lineNumber + 1
-        }
-    }
-
-    const outputs = ranges.map(r => {
-        const indent = isOnlyComments(r) ? '' : extractIndent(r.infos)
-        return buildLines(r, indent, cfg)
-    })
-
-    editor.edit(b => {
-        const eol = doc.eol === vscode.EndOfLine.LF ? '\n' : '\r\n'
-        for(let i = 0; i < ranges.length; i++) {
-            const infos = ranges[i]!.infos, last = infos.at(-1)!.line
-            const loc   = new vscode.Range(infos[0]!.line.lineNumber, 0, last.lineNumber, last.text.length)
-            const text  = outputs[i]!.join(eol)
-            if(doc.getText(loc) !== text) { b.replace(loc, text) }
+            vscode.window.showInformationMessage('Code aligned successfully')
         }
     })
+
+    context.subscriptions.push(alignSelection)
 }
 
-// ─── Extension lifecycle ──────────────────────────────────────────────────────
-
-export function activate(ctx: vscode.ExtensionContext) {
-    let alignOnEnter = vscode.workspace.getConfiguration('betterAlignColumns').get<boolean>('alignAfterTypeEnter')
-    ctx.subscriptions.push(
-        vscode.commands.registerTextEditorCommand('vscode-better-align-columns.align', process),
-        vscode.workspace.onDidChangeTextDocument(e => {
-            if(alignOnEnter && e.contentChanges.some(c => c.text.includes('\n'))) {
-                vscode.commands.executeCommand('vscode-better-align-columns.align')
-            }
-        }),
-        vscode.workspace.onDidChangeConfiguration(e => {
-            if(e.affectsConfiguration('betterAlignColumns')) {
-                alignOnEnter = vscode.workspace.getConfiguration('betterAlignColumns').get<boolean>('alignAfterTypeEnter')
-            }
-        }),
-    )
-}
-
-export function deactivate() { }
-export { ws, tokenizeLine, TokenType, LanguageSyntaxConfig, LineInfo, LineRange, alignCallSites }
+export function deactivate(): void { }
