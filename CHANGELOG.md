@@ -22,6 +22,10 @@
 
 - Fix: Improved alignment logic to correctly handle blocks with lines that do not contain alignment markers.
 
+# v6.0.7 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.0.7)
+
+- Fix: Improved alignment logic to correctly handle blocks with lines that do not contain alignment markers.
+
 # v6.0.6 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.0.6)
 
 - Fix: Correctly handle compound assignment operators (e.g., `+=`, `-=`) to prevent them from being split during alignment.
