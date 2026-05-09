@@ -101,17 +101,17 @@ function a_Chain(ns: NS): void {
 
 // ── 5. CONFIG ────────────────────────────────────────────────
 const CONFIG = {
-    b_Debug: false,
-    defaultAlignChars: ['===', '!==', '<=>', '=>', '->', '==', '!=', '>=', '<=', '+=', '-=', '*=', '/=', '%=', '**=', ':', '{', '=', ','],
-    maxBlockSize     : 500,
-    preserveComments : true,
-    preserveStrings  : true,
+    b_Debug             : false,
+    defaultAlignChars   : ['===', '!==', '<=>', '=>', '->', '==', '!=', '>=', '<=', '+=', '-=', '*=', '/=', '%=', '**=', ':', '{', '=', ','],
+    maxBlockSize        : 500,
+    preserveComments    : true,
+    preserveStrings     : true,
     alignMultilineBlocks: false,
-    skipTemplates    : true,
-    greedyMatch      : true,
-    minColumns       : 1,
-    maxSpaces        : 10,
-    testData         : {} as Record<string, unknown>,
+    skipTemplates       : true,
+    greedyMatch         : true,
+    minColumns          : 1,
+    maxSpaces           : 10,
+    testData            : {} as Record<string, unknown>,
 }
 
 // ── 6. NS_Container ──────────────────────────────────────────
@@ -127,7 +127,7 @@ function NS_Container(cfg: typeof CONFIG): NS {
             parsedLines  : []   ,
             commonPrefix : []   ,
             alignedLines : []   ,
-        }          ,
+        }              ,
         ...cfg.testData,
     }
 }
@@ -147,9 +147,9 @@ const LANGUAGE_RULES: Record<string, LanguageRules> = {
         alignChars      : CONFIG.defaultAlignChars,
     },
     python: {
-        lineComments    : ['#']    ,
-        blockComments   : []       ,
-        stringDelimiters: ['"'     , "'"],
+        lineComments    : ['#']                   ,
+        blockComments   : []                      ,
+        stringDelimiters: ['"'                    , "'"],
         alignChars      : CONFIG.defaultAlignChars,
     },
     rust: {
@@ -286,7 +286,7 @@ function pattern_Compute_Decor(ns: NS): void {
     try {
         ns.data.commonPrefix = ns.data.parsedLines.map(blockLines => {
             const sequences = blockLines.map(pl => pl.markers.map(m => m.symbol))
-            return findCommonPrefix(sequences)
+            return findDominantPrefix(sequences)
         })
         ns.result = ok(ns.data.commonPrefix)
     } catch(e) {
@@ -343,12 +343,12 @@ function loadConfig(
     defaults  : typeof CONFIG
 ): Partial<typeof CONFIG> {
     return {
-        defaultAlignChars: alignChars          ,
-        maxBlockSize     : vsConfig.get<number>('maxBlockSize', defaults.maxBlockSize),
+        defaultAlignChars: alignChars                              ,
+        maxBlockSize     : vsConfig.get<number>('maxBlockSize'     , defaults.maxBlockSize),
         preserveComments : vsConfig.get<boolean>('preserveComments', defaults.preserveComments),
-        preserveStrings  : vsConfig.get<boolean>('preserveStrings', defaults.preserveStrings),
-        maxSpaces        : vsConfig.get<number>('maxSpaces', defaults.maxSpaces),
-        greedyMatch      : vsConfig.get<boolean>('greedyMatch', defaults.greedyMatch),
+        preserveStrings  : vsConfig.get<boolean>('preserveStrings' , defaults.preserveStrings),
+        maxSpaces        : vsConfig.get<number>('maxSpaces'        , defaults.maxSpaces),
+        greedyMatch      : vsConfig.get<boolean>('greedyMatch'     , defaults.greedyMatch),
     }
 }
 
@@ -752,8 +752,8 @@ export function activate(context: vscode.ExtensionContext): void {
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-better-align-columns.align', runAlign),
-        vscode.commands.registerCommand('CodeAlign.AlignBlock'         , runAlign),
-        vscode.commands.registerCommand('CodeAlign.Configure'          , () => {
+        vscode.commands.registerCommand('CodeAlign.AlignBlock'             , runAlign),
+        vscode.commands.registerCommand('CodeAlign.Configure'              , () => {
             vscode.commands.executeCommand(
                 'workbench.action.openSettings',
                 'codeAlign'
@@ -767,18 +767,27 @@ export function deactivate(): void { }
 
 // ── EXPORTS FOR TESTING ───────────────────────────────────────
 export {
-    ok          , err,
-    NS_Container,
-    a_Chain     ,
-    findAlignCharsGreedy,
-    findCommonPrefix,
+    ok                              , err,
+    NS_Container                    ,
+    a_Chain                         ,
+    findAlignCharsGreedy            ,
+    findCommonPrefix                ,
     computeColumnPositionsWithLength,
-    applySpacingRespectingMultichar,
-    parseLineIgnoringStrings,
-    findLineBlocks,
-    alignBlock  ,
-    detectLanguageRules,
-    prefixMatches,
-    DEFAULT_LANGUAGE_RULES,
-    CONFIG      ,
+    applySpacingRespectingMultichar ,
+    parseLineIgnoringStrings        ,
+    findLineBlocks                  ,
+    alignBlock                      ,
+    detectLanguageRules             ,
+    prefixMatches                   ,
+    DEFAULT_LANGUAGE_RULES          ,
+    CONFIG                          ,
+}gth,
+    applySpacingRespectingMultichar ,
+    parseLineIgnoringStrings        ,
+    findLineBlocks                  ,
+    alignBlock                      ,
+    detectLanguageRules             ,
+    prefixMatches                   ,
+    DEFAULT_LANGUAGE_RULES          ,
+    CONFIG                          ,
 }
