@@ -1,3 +1,7 @@
+# v6.0.1 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.0.1)
+
+- Fix: undefined vs null TypeScript error in editor_Get
+
 # v6.0.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.0.0)
 
 - Refactor: Complete rewrite following AI Prompt.md architecture
