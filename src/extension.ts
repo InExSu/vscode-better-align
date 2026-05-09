@@ -88,7 +88,7 @@ function NS_Container(cfg: typeof CONFIG): NS {
 // ============================================================================
 
 function rwd(fn: (ns: NS) => void, ns: NS): void {
-    if (ns_Error(ns)) {return}
+    if(ns_Error(ns)) { return }
     fn(ns)
 }
 
@@ -113,12 +113,12 @@ function pure_IsInsideString(line: string, pos: number, delimiters: string[]): b
     let state: 'default_Scanning' | 'string_Opening' | 'string_Reading' | 'string_Closing' = 'default_Scanning'
     let delimiter = ''
 
-    outerLoop: while (true) {
-        switch (state) {
+    outerLoop: while(true) {
+        switch(state) {
             case 'default_Scanning': {
-                if (pos <= 0) {break outerLoop}
+                if(pos <= 0) { break outerLoop }
                 const ch = line[pos - 1]
-                if (delimiters.includes(ch)) {
+                if(delimiters.includes(ch)) {
                     state = 'string_Opening'
                 }
                 pos--
@@ -131,9 +131,9 @@ function pure_IsInsideString(line: string, pos: number, delimiters: string[]): b
                 continue
             }
             case 'string_Reading': {
-                if (pos <= 0) {break outerLoop}
+                if(pos <= 0) { break outerLoop }
                 const ch = line[pos - 1]
-                if (ch === delimiter) {
+                if(ch === delimiter) {
                     state = 'string_Closing'
                 }
                 pos--
@@ -161,16 +161,16 @@ function pure_FindAlignPoints(line: string, config: LanguageConfig): AlignPoint[
 
     const sortedOps = [...config.multiCharOps].sort((a, b) => b.length - a.length)
 
-    outerLoop: while (true) {
+    outerLoop: while(true) {
         let foundPos = -1
         let foundOp = ''
 
-        for (const op of sortedOps) {
+        for(const op of sortedOps) {
             const pos = line.indexOf(op)
-            if (pos !== -1) {
-                if (!pure_IsInsideString(line, pos, config.stringDelimiters)) {
+            if(pos !== -1) {
+                if(!pure_IsInsideString(line, pos, config.stringDelimiters)) {
                     const overlaps = takenPositions.has(pos)
-                    if (!overlaps) {
+                    if(!overlaps) {
                         foundPos = pos
                         foundOp = op
                         break
@@ -179,20 +179,20 @@ function pure_FindAlignPoints(line: string, config: LanguageConfig): AlignPoint[
             }
         }
 
-        if (foundPos === -1) {break}
+        if(foundPos === -1) { break }
 
-        for (let i = 0; i < foundOp.length; i++) {
+        for(let i = 0; i < foundOp.length; i++) {
             takenPositions.add(foundPos + i)
         }
         results.push({ pos: foundPos, op: foundOp })
     }
 
-    for (let i = 0; i < line.length; i++) {
-        if (takenPositions.has(i)) {continue}
-        if (pure_IsInsideString(line, i, config.stringDelimiters)) {continue}
+    for(let i = 0; i < line.length; i++) {
+        if(takenPositions.has(i)) { continue }
+        if(pure_IsInsideString(line, i, config.stringDelimiters)) { continue }
 
         const ch = line[i]
-        if (config.alignChars.includes(ch)) {
+        if(config.alignChars.includes(ch)) {
             results.push({ pos: i, op: ch })
             takenPositions.add(i)
         }
@@ -217,7 +217,7 @@ function pure_ExtractSequence(alignPoints: AlignPoint[]): string[] {
  * States: prefix_Init, prefix_Compare, prefix_Collect, prefix_Finish
  */
 function pure_FindCommonPrefix(sequences: string[][], minCoverage: number = 0.5): string[][] {
-    if (sequences.length === 0) {return []}
+    if(sequences.length === 0) { return [] }
 
     const total = sequences.length
     const minCount = Math.ceil(total * minCoverage)
@@ -226,31 +226,31 @@ function pure_FindCommonPrefix(sequences: string[][], minCoverage: number = 0.5)
     const maxSeqLength = Math.max(...sequences.map(s => s.length))
 
     let seqIdx = 0
-    outerPrefixLoop: while (seqIdx < maxSeqLength) {
+    outerPrefixLoop: while(seqIdx < maxSeqLength) {
         const counts = new Map<string, number>()
 
         let validCount = 0
-        for (const seq of sequences) {
-            if (seq.length > seqIdx) {
+        for(const seq of sequences) {
+            if(seq.length > seqIdx) {
                 const char = seq[seqIdx]
                 counts.set(char, (counts.get(char) || 0) + 1)
                 validCount++
             }
         }
 
-        if (validCount < minCount) {break}
+        if(validCount < minCount) { break }
 
         const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1])
-        if (sorted.length === 0) {break}
+        if(sorted.length === 0) { break }
 
         const [mostCommon, count] = sorted[0]
 
-        if (count < minCount) {break}
+        if(count < minCount) { break }
 
         const currentPrefix: string[] = []
-        for (const seq of sequences) {
-            if (seq.length > seqIdx && seq[seqIdx] === mostCommon) {
-                if (currentPrefix.length === 0) {
+        for(const seq of sequences) {
+            if(seq.length > seqIdx && seq[seqIdx] === mostCommon) {
+                if(currentPrefix.length === 0) {
                     currentPrefix.push(...prefix.slice(-1)[0] || [])
                 }
             }
@@ -272,11 +272,11 @@ function pure_SplitIntoBlocks(lines: string[]): Block[] {
     let currentBlock: Block = []
 
     let idx = 0
-    outerLoop: while (idx < lines.length) {
+    outerLoop: while(idx < lines.length) {
         const line = lines[idx]
-        switch (line.trim().length === 0) {
+        switch(line.trim().length === 0) {
             case true: {
-                if (currentBlock.length > 0) {
+                if(currentBlock.length > 0) {
                     blocks.push(currentBlock)
                     currentBlock = []
                 }
@@ -290,7 +290,7 @@ function pure_SplitIntoBlocks(lines: string[]): Block[] {
         idx++
     }
 
-    if (currentBlock.length > 0) {
+    if(currentBlock.length > 0) {
         blocks.push(currentBlock)
     }
 
@@ -305,11 +305,11 @@ function pure_SplitIntoBlocks(lines: string[]): Block[] {
  * States: align_Init, align_Collect, align_Compute, align_Apply, align_Finish
  */
 function pure_AlignBlock(lines: string[], config: LanguageConfig): string[] {
-    if (lines.length === 0) {return []}
-    if (lines.length === 1) {return [...lines]}
+    if(lines.length === 0) { return [] }
+    if(lines.length === 1) { return [...lines] }
 
     const allAlignPoints: AlignPoint[][] = []
-    for (const line of lines) {
+    for(const line of lines) {
         const points = pure_FindAlignPoints(line, config)
         allAlignPoints.push(points)
     }
@@ -317,15 +317,15 @@ function pure_AlignBlock(lines: string[], config: LanguageConfig): string[] {
     const sequences = allAlignPoints.map(p => pure_ExtractSequence(p))
     const prefixResult = pure_FindCommonPrefix(sequences)
 
-    if (prefixResult.length === 0) {return [...lines]}
+    if(prefixResult.length === 0) { return [...lines] }
 
     const maxSlot = Math.max(...allAlignPoints.map(p => p.length))
-    if (maxSlot === 0) {return [...lines]}
+    if(maxSlot === 0) { return [...lines] }
 
     const slotPositions: number[][] = Array.from({ length: maxSlot }, () => [])
 
-    for (const points of allAlignPoints) {
-        for (let slot = 0; slot < maxSlot; slot++) {
+    for(const points of allAlignPoints) {
+        for(let slot = 0; slot < maxSlot; slot++) {
             const p = points[slot]
             slotPositions[slot].push(p ? p.pos : -1)
         }
@@ -337,29 +337,29 @@ function pure_AlignBlock(lines: string[], config: LanguageConfig): string[] {
         let offset = 0
 
         let slot = 0
-        outerSlotLoop: while (slot < maxSlot) {
+        outerSlotLoop: while(slot < maxSlot) {
             const slotMax = Math.max(...slotPositions[slot].filter(p => p !== -1))
             const thisPoint = points[slot]
 
-            if (thisPoint === undefined) {
+            if(thisPoint === undefined) {
                 slot++
                 continue
             }
 
             const currentPos = thisPoint.pos + offset
 
-            if (currentPos < slotMax) {
+            if(currentPos < slotMax) {
                 const targetPos = slotMax
                 let canAlign = true
 
-                for (let p = thisPoint.pos; p < targetPos; p++) {
-                    if (pure_IsInsideString(line, p, config.stringDelimiters)) {
+                for(let p = thisPoint.pos; p < targetPos; p++) {
+                    if(pure_IsInsideString(line, p, config.stringDelimiters)) {
                         canAlign = false
                         break
                     }
                 }
 
-                if (canAlign) {
+                if(canAlign) {
                     const spaces = ' '.repeat(targetPos - currentPos)
                     result = result.slice(0, currentPos) + spaces + result.slice(currentPos)
                     offset += targetPos - currentPos
@@ -384,10 +384,10 @@ function pure_AlignAll(lines: string[], config: LanguageConfig): string[] {
     const result: string[] = []
 
     let blockIdx = 0
-    outerBlockLoop: while (blockIdx < blocks.length) {
+    outerBlockLoop: while(blockIdx < blocks.length) {
         const aligned = pure_AlignBlock(blocks[blockIdx], config)
         result.push(...aligned)
-        if (blockIdx < blocks.length - 1) {
+        if(blockIdx < blocks.length - 1) {
             result.push('')
         }
         blockIdx++
@@ -401,9 +401,9 @@ function pure_AlignAll(lines: string[], config: LanguageConfig): string[] {
 // ============================================================================
 
 function editor_Get(ns: NS): void {
-    const editor = vscode.window.activeTextEditor
+    const editor = vscode.window.activeTextEditor ?? null
     ns.data.editor = editor
-    if (!editor) {
+    if(!editor) {
         ns_SetError(ns, 'No active editor')
         return
     }
@@ -415,14 +415,14 @@ function editor_Get(ns: NS): void {
 // ============================================================================
 
 function lines_Collect(ns: NS): void {
-    if (CONFIG.b_Debug) {return}
+    if(CONFIG.b_Debug) { return }
     const editor = ns.data.editor
-    if (!editor) {
+    if(!editor) {
         ns_SetError(ns, 'No editor')
         return
     }
     const lines: string[] = []
-    for (let i = 0; i < editor.document.lineCount; i++) {
+    for(let i = 0; i < editor.document.lineCount; i++) {
         lines.push(editor.document.lineAt(i).text)
     }
     ns.data.lines = lines
@@ -465,9 +465,9 @@ function lines_Parse(ns: NS): void {
     const parsedLines: AlignPoint[][][] = []
 
     let blockIdx = 0
-    outerBlockLoop: while (blockIdx < blocks.length) {
+    outerBlockLoop: while(blockIdx < blocks.length) {
         const blockPoints: AlignPoint[][] = []
-        for (const line of blocks[blockIdx]) {
+        for(const line of blocks[blockIdx]) {
             blockPoints.push(pure_FindAlignPoints(line, langConfig))
         }
         parsedLines.push(blockPoints)
@@ -489,7 +489,7 @@ function pattern_Compute(ns: NS): void {
     )
 
     const allPrefixes: string[][] = []
-    for (const blockSeq of sequences) {
+    for(const blockSeq of sequences) {
         const prefix = pure_FindCommonPrefix(blockSeq)
         allPrefixes.push(...prefix)
     }
@@ -522,9 +522,9 @@ function alignment_Apply(ns: NS): void {
 // ============================================================================
 
 function text_Replace(ns: NS): void {
-    if (CONFIG.b_Debug) {return}
+    if(CONFIG.b_Debug) { return }
     const editor = ns.data.editor
-    if (!editor) {
+    if(!editor) {
         ns_SetError(ns, 'No editor')
         return
     }
@@ -552,7 +552,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
     const ns: NS = NS_Container(CONFIG)
     a_Chain(ns)
 
-    if (ns.s_Error) {
+    if(ns.s_Error) {
         vscode.window.showErrorMessage(ns.s_Error)
     } else {
         vscode.window.showInformationMessage('Better Align: aligned successfully')
@@ -563,7 +563,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
             'vscode-better-align-columns.align',
             (editor: vscode.TextEditor) => {
                 const lines: string[] = []
-                for (let i = 0; i < editor.document.lineCount; i++) {
+                for(let i = 0; i < editor.document.lineCount; i++) {
                     lines.push(editor.document.lineAt(i).text)
                 }
 
@@ -587,7 +587,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
 
                 editor.edit(e => e.replace(fullRange, text)).then(
                     (success: boolean) => {
-                        if (success) {
+                        if(success) {
                             vscode.window.showInformationMessage(`Aligned ${aligned.length} line(s)`)
                         }
                     }
@@ -597,4 +597,4 @@ export function activate(ctx: vscode.ExtensionContext): void {
     )
 }
 
-export function deactivate(): void {}
+export function deactivate(): void { }
