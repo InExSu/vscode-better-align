@@ -6,7 +6,7 @@ import * as vscode from 'vscode'
 // ============================================================================
 
 type AlignPoint = { pos: number; op: string }
-type Block      = string[]
+type Block = string[]
 
 interface LineCommentMarkers {
     lineCommentPos: number
@@ -72,8 +72,8 @@ function getLangConfig(lang: string): LanguageConfig {
 // ============================================================================
 
 function pure_SplitIntoBlocks(lines: string[]): Block[] {
-    const blocks                   : Block[] = []
-    let currentBlock               : Block = []
+    const blocks: Block[] = []
+    let currentBlock: Block = []
 
     for(const line of lines) {
         switch(line.trim().length === 0) {
@@ -148,8 +148,8 @@ function pure_IsInsideString(line: string, position: number, delimiters: string[
     let inString = false
     let currentDelimiter = ''
 
-    for(let i          = 0; i <= position; i++) {
-        const char     = line[i]!
+    for(let i = 0; i <= position; i++) {
+        const char = line[i]!
         const prevChar = i > 0 ? line[i - 1]! : ''
 
         switch(true) {
@@ -381,22 +381,47 @@ function pure_ExtractOperatorSequence(alignPoints: AlignPoint[]): string[] {
 }
 
 // ============================================================================
-// PURE: Find common prefix
+// PURE: Find common prefix (with minimum coverage threshold)
 // ============================================================================
 
-function pure_FindCommonPrefix(sequences: string[][]): string[] {
+function pure_FindCommonPrefix(sequences: string[][], minCoverage: number = 0.5): string[] {
     switch(sequences.length) {
         case 0: return []
     }
 
-    const minLength = Math.min(...sequences.map(s => s.length))
+    const total = sequences.length
+    const minCount = Math.ceil(total * minCoverage)
     const prefix: string[] = []
 
-    for(let i = 0; i < minLength; i++) {
-        const char = sequences[0]![i]!
-        switch(sequences.every(seq => seq[i] === char)) {
-            case true: prefix.push(char); break
-            case false: break
+    const maxSeqLength = Math.max(...sequences.map(s => s.length))
+
+    for(let i = 0; i < maxSeqLength; i++) {
+        const counts = new Map<string, number>()
+        let validCount = 0
+
+        for(const seq of sequences) {
+            switch(seq.length > i) {
+                case true: {
+                    const char = seq[i]!
+                    counts.set(char, (counts.get(char) || 0) + 1)
+                    validCount++
+                    break
+                }
+            }
+        }
+
+        switch(validCount >= minCount) {
+            case true: {
+                const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1])
+                const mostCommon = sorted[0]!
+
+                switch(mostCommon[1] >= minCount) {
+                    case true: prefix.push(mostCommon[0]); break
+                    case false: return prefix
+                }
+                break
+            }
+            case false: return prefix
         }
     }
 
@@ -420,15 +445,15 @@ function pure_CalculateAlignColumns(
         const alignPoints = pure_FindAlignPoints(line, alignChars, lineCommentPos, config)
         const sequence = pure_ExtractOperatorSequence(alignPoints)
 
-        const alignMap  = new Map<number, number>()
-        let prefixIndex = 0
+        const alignMap = new Map<number, number>()
 
-        for(let i = 0; i < alignPoints.length && prefixIndex < commonPrefix.length; i++) {
-            switch(sequence[i]) {
-                case commonPrefix[prefixIndex]: {
-                    alignMap.set(prefixIndex, alignPoints[i]!.pos)
-                    prefixIndex++
-                    break
+        for(let prefixIndex = 0; prefixIndex < commonPrefix.length; prefixIndex++) {
+            for(let opIndex = 0; opIndex < sequence.length; opIndex++) {
+                switch(sequence[opIndex] === commonPrefix[prefixIndex]) {
+                    case true: {
+                        alignMap.set(prefixIndex, alignPoints[opIndex]!.pos)
+                        break
+                    }
                 }
             }
         }
@@ -444,7 +469,7 @@ function pure_CalculateAlignColumns(
 // ============================================================================
 
 function pure_ComputeMaxColumns(alignMaps: Map<number, number>[]): Map<number, number> {
-    const maxColumns = new Map<number                , number>()
+    const maxColumns = new Map<number, number>()
 
     for(const alignMap of alignMaps) {
         for(const [idx, pos] of alignMap) {
@@ -473,8 +498,8 @@ function pure_ApplyAlignment(
     }
 
     const sortedIndices = Array.from(alignMap.keys()).sort((a, b) => a - b)
-    let result          = line
-    let offset          = 0
+    let result = line
+    let offset = 0
 
     for(const idx of sortedIndices) {
         const originalPos = alignMap.get(idx)!
@@ -543,7 +568,7 @@ function alignBlock(
         case 0: return [...lines]
     }
 
-    const alignMaps  = pure_CalculateAlignColumns(filteredBlock, config.alignChars, commonPrefix, config)
+    const alignMaps = pure_CalculateAlignColumns(filteredBlock, config.alignChars, commonPrefix, config)
     const maxColumns = pure_ComputeMaxColumns(alignMaps)
 
     const alignedBlock: string[] = []
@@ -646,7 +671,7 @@ export function activate(ctx: vscode.ExtensionContext) {
 
                         const alignedLines = alignAll(lines, config)
 
-                        const eol  = doc.eol === vscode.EndOfLine.LF ? '\n' : '\r\n'
+                        const eol = doc.eol === vscode.EndOfLine.LF ? '\n' : '\r\n'
                         const text = alignedLines.join(eol)
 
                         editor.edit((editBuilder: vscode.TextEditorEdit) => {
@@ -687,7 +712,7 @@ export function activate(ctx: vscode.ExtensionContext) {
 
                         const alignedLines = alignAll(lines, config)
 
-                        const eol  = doc.eol === vscode.EndOfLine.LF ? '\n' : '\r\n'
+                        const eol = doc.eol === vscode.EndOfLine.LF ? '\n' : '\r\n'
                         const text = alignedLines.join(eol)
 
                         logToChannel(`Aligned ${alignedLines.length} lines`)

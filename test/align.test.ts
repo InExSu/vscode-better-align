@@ -298,19 +298,44 @@ function pure_ExtractOperatorSequence(alignPoints: AlignPoint[]): string[] {
     return alignPoints.map(p => p.op)
 }
 
-function pure_FindCommonPrefix(sequences: string[][]): string[] {
+function pure_FindCommonPrefix(sequences: string[][], minCoverage: number = 0.5): string[] {
     switch(sequences.length) {
         case 0: return []
     }
 
-    const minLength = Math.min(...sequences.map(s => s.length))
+    const total = sequences.length
+    const minCount = Math.ceil(total * minCoverage)
     const prefix: string[] = []
 
-    for(let i = 0; i < minLength; i++) {
-        const char = sequences[0]![i]!
-        switch(sequences.every(seq => seq[i] === char)) {
-            case true: prefix.push(char); break
-            case false: break
+    const maxSeqLength = Math.max(...sequences.map(s => s.length))
+
+    for(let i = 0; i < maxSeqLength; i++) {
+        const counts = new Map<string, number>()
+        let validCount = 0
+
+        for(const seq of sequences) {
+            switch(seq.length > i) {
+                case true: {
+                    const char = seq[i]!
+                    counts.set(char, (counts.get(char) || 0) + 1)
+                    validCount++
+                    break
+                }
+            }
+        }
+
+        switch(validCount >= minCount) {
+            case true: {
+                const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1])
+                const mostCommon = sorted[0]!
+
+                switch(mostCommon[1] >= minCount) {
+                    case true: prefix.push(mostCommon[0]); break
+                    case false: return prefix
+                }
+                break
+            }
+            case false: return prefix
         }
     }
 
@@ -598,12 +623,12 @@ suite('pure_FindCommonPrefix', () => {
 
     test('no common prefix', () => {
         const sequences = [['='], [':']]
-        assert.deepStrictEqual(pure_FindCommonPrefix(sequences), [])
+        assert.deepStrictEqual(pure_FindCommonPrefix(sequences, 0.5), ['='])
     })
 
     test('partial prefix', () => {
         const sequences = [['=', ':'], ['=', ','], ['=', ':']]
-        assert.deepStrictEqual(pure_FindCommonPrefix(sequences), ['='])
+        assert.deepStrictEqual(pure_FindCommonPrefix(sequences, 0.5), ['=', ':'])
     })
 })
 
@@ -660,6 +685,50 @@ suite('alignAll', () => {
         assert.strictEqual(result[2], '')
         assert.strictEqual(result[3], 'const z = 3')
         assert.strictEqual(result[4], 'const w = 44')
+    })
+
+    test('aligns object literal with mixed lines', () => {
+        const lines = [
+            "        lineComments: ['//'],",
+            "        blockComments: [{ start: '/*', end: '*/' }],",
+            "        stringDelimiters: ['\"', \"'\", '`'],",
+            "        alignChars: [':', '{', '=', ','],",
+            "        multiCharOps: ['===', '!==', '==', '!=', '<=', '>=', '=>', '->']",
+            "    },",
+            "    python: {",
+            "        lineComments: ['#'],",
+            "        blockComments: [],",
+            "        stringDelimiters: ['\"', \"'\"],",
+            "        alignChars: ['=', ':', ','],",
+            "        multiCharOps: ['==', '!=', '<=', '>=']",
+        ]
+
+        // Debug: check sequences
+        const sequences = lines.map(line => {
+            const { lineCommentPos } = pure_ExtractCommentMarkers(line, JS_CONFIG)
+            const alignPoints = pure_FindAlignPoints(line, JS_CONFIG.alignChars, lineCommentPos, JS_CONFIG)
+            return pure_ExtractOperatorSequence(alignPoints)
+        })
+        console.log('Sequences:')
+        sequences.forEach((seq, i) => console.log(`  ${i}: ${JSON.stringify(seq)}`))
+
+        const commonPrefix = pure_FindCommonPrefix(sequences, 0.5)
+        console.log('Common prefix:', JSON.stringify(commonPrefix))
+
+        const result = alignBlock(lines, JS_CONFIG)
+
+        assert.strictEqual(result.length, lines.length)
+
+        const colonPositions = result.map(line => {
+            const pos = line.indexOf(':')
+            return pos !== -1 ? pos : -1
+        })
+        console.log('Colon positions after alignment:', colonPositions)
+
+        const linesWithColons = sequences.map((seq, i) => seq.includes(':') ? i : -1).filter(i => i !== -1)
+        const colonPositionsFiltered = colonPositions.filter((_, i) => linesWithColons.includes(i))
+        const allSameColons = colonPositionsFiltered.every(p => p === colonPositionsFiltered[0])
+        assert.strictEqual(allSameColons, true, 'All colons should be at same position')
     })
 })
 

@@ -1,3 +1,8 @@
+# v4.0.3 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v4.0.3)
+
+- Fix: Align mixed object literals with partial common prefix (e.g., `lineComments:` and `python:`)
+- Improve: `pure_FindCommonPrefix` uses coverage threshold instead of strict equality
+
 # v4.0.2 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v4.0.2)
 
 - Fix: Align full document when selecting entire file or no selection
