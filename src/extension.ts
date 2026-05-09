@@ -703,12 +703,41 @@ export function activate(context: vscode.ExtensionContext): void {
     const ns: NS = NS_Container(CONFIG)
 
     const alignSelection = vscode.commands.registerCommand('vscode-better-align-columns.align', () => {
-        a_Chain(ns)
-        if(ns.s_Error) {
-            vscode.window.showErrorMessage(ns.s_Error)
-        } else {
-            vscode.window.showInformationMessage('Code aligned successfully')
+        ns.s_Error = ''
+        ns.result = ok({})
+
+        // Step 1: Load
+        data_Load_Decor(ns)
+        if(ns_Error(ns)) {
+            vscode.window.showErrorMessage(`[Load] ${ns.s_Error}`)
+            return
         }
+
+        // Step 2: Validate
+        data_Validate_Decor(ns)
+        if(ns_Error(ns)) {
+            vscode.window.showErrorMessage(`[Validate] ${ns.s_Error}`)
+            return
+        }
+
+        // Step 3: Process
+        data_Process_Decor(ns)
+        if(ns_Error(ns)) {
+            vscode.window.showErrorMessage(`[Process] ${ns.s_Error}`)
+            return
+        }
+
+        // Step 4: Write
+        data_Write_Decor(ns)
+        if(ns_Error(ns)) {
+            vscode.window.showErrorMessage(`[Write] ${ns.s_Error}`)
+            return
+        }
+
+        // Success
+        const blockCount = ns.blocks?.length ?? 0
+        const lineCount = ns.blocks?.reduce((sum: number, b: string[]) => sum + b.length, 0) ?? 0
+        vscode.window.showInformationMessage(`Aligned: ${blockCount} block(s), ${lineCount} line(s)`)
     })
 
     context.subscriptions.push(alignSelection)

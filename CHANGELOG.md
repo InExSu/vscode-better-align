@@ -1,3 +1,8 @@
+# v3.0.2 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v3.0.2)
+
+- Add: Detailed step-by-step messages on align (Load/Validate/Process/Write)
+- Add: Show block and line count on success
+
 # v3.0.1 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v3.0.1)
 
 - Fix: Added missing pure_FindAlignPoints function
