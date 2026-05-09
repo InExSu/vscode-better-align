@@ -1,3 +1,11 @@
+# v5.0.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v5.0.0)
+
+- Add: Universal position-based alignment - aligns any delimiter count per line without prefix matching
+- Add: Slot-based algorithm groups delimiters by index and aligns to max position
+- Fix: Comma alignment in arrays with different element counts
+- Fix: Compound assignment operators (+=, -=, etc.) no longer split during alignment
+- Add: Compound operators (+=, -=, *=, /=, %=, etc.) added to multiCharOps list
+
 # v4.0.5 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v4.0.5)
 
 - Add: Depth-based comma alignment - only align commas at the same nesting depth
