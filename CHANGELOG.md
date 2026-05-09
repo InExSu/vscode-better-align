@@ -1,3 +1,7 @@
+# v6.0.6 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.0.6)
+
+- Fix: Correctly handle compound assignment operators (e.g., `+=`, `-=`) to prevent them from being split during alignment.
+
 # v6.0.5 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.0.5)
 
 - Fix: "command not found" error by correcting the command name in the extension's activation logic.
