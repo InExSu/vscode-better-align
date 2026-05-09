@@ -235,45 +235,45 @@ function language_Detect_Decor(ns: NS): void {
 function block_Find_Decor(ns: NS): void {
     if(ns.config.b_Debug) {
         ns.data.blocks = (ns['testBlocks'] as LineBlock[] | undefined) ?? []
-        ns.result = ok(ns.data.blocks)
+        ns.result      = ok(ns.data.blocks)
         return
     }
     try {
-        const editor = ns.data.editor
+        const editor    = ns.data.editor
         if(!editor) { ns_SetError(ns, 'No active editor'); return }
-        const rules = ns.data.languageRules
+        const rules     = ns.data.languageRules
         if(!rules) { ns_SetError(ns, 'No language rules'); return }
-        const doc = editor.document
+        const doc       = editor.document
         const selection = editor.selection
 
-        let startLine, endLine;
-        if (selection.isEmpty) {
-            const activeLine = selection.active.line;
-            const initialIndent = doc.lineAt(activeLine).text.match(/^\s*/)?.[0] ?? '';
+        let startLine, endLine
+        if(selection.isEmpty) {
+            const activeLine    = selection.active.line
+            const initialIndent = doc.lineAt(activeLine).text.match(/^\s*/)?.[0] ?? ''
 
-            startLine = activeLine;
-            while (startLine > 0) {
-                const prevLine = doc.lineAt(startLine - 1);
-                if (prevLine.isEmptyOrWhitespace || (prevLine.text.match(/^\s*/)?.[0] ?? '') !== initialIndent) {
-                    break;
+            startLine = activeLine
+            while(startLine > 0) {
+                const prevLine = doc.lineAt(startLine - 1)
+                if(prevLine.isEmptyOrWhitespace || (prevLine.text.match(/^\s*/)?.[0] ?? '') !== initialIndent) {
+                    break
                 }
-                startLine--;
+                startLine--
             }
 
-            endLine = activeLine;
-            while (endLine < doc.lineCount - 1) {
-                const nextLine = doc.lineAt(endLine + 1);
-                if (nextLine.isEmptyOrWhitespace || (nextLine.text.match(/^\s*/)?.[0] ?? '') !== initialIndent) {
-                    break;
+            endLine = activeLine
+            while(endLine < doc.lineCount - 1) {
+                const nextLine = doc.lineAt(endLine + 1)
+                if(nextLine.isEmptyOrWhitespace || (nextLine.text.match(/^\s*/)?.[0] ?? '') !== initialIndent) {
+                    break
                 }
-                endLine++;
+                endLine++
             }
         } else {
-            startLine = selection.start.line;
-            endLine = selection.end.line;
+            startLine = selection.start.line
+            endLine   = selection.end.line
         }
 
-        const rawLines = extractRawLines(doc, startLine, endLine)
+        const rawLines = extractRawLines(doc    , startLine, endLine)
         ns.data.blocks = findLineBlocks(rawLines, startLine, rules, ns.config.maxBlockSize)
         ns.result = ok(ns.data.blocks)
     } catch(e) {
