@@ -1,3 +1,7 @@
+# v3.0.1 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v3.0.1)
+
+- Fix: Added missing pure_FindAlignPoints function
+
 # v3.0.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v3.0.0)
 
 - Fix: Command name changed from codeAlign.alignSelection to vscode-better-align-columns.align
