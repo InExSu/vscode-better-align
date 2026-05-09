@@ -344,6 +344,20 @@ function pure_ScanSingleCharAlignPoints(
 }
 
 // ============================================================================
+// PURE FUNCTIONS: COMBINED ALIGN POINTS
+// ============================================================================
+function pure_FindAlignPoints(
+    line           : string,
+    alignChars     : string[],
+    lineCommentPos : number,
+    languageConfig : any
+): AlignPoint[] {
+    const multi = pure_ScanMultiCharOps(line, lineCommentPos, languageConfig)
+    const single = pure_ScanSingleCharAlignPoints(line, alignChars, lineCommentPos, languageConfig)
+    return [...multi, ...single].sort((a, b) => a.pos - b.pos)
+}
+
+// ============================================================================
 // PURE FUNCTIONS: FIND ALIGN POSITIONS (NUMBERS ONLY)
 // ============================================================================
 function pure_FindAlignPositions(
