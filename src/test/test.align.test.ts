@@ -138,7 +138,7 @@ describe('alignBlock', () => {
 
     it('aligns function call arguments', () => {
         const input = lines(
-            'rwd(config_Load_Decor    , ns)',
+            'rwd(config_Load_Decor, ns)',
             'rwd(language_Detect_Decor, ns)'
         )
         
