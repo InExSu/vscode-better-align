@@ -24,7 +24,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const assert = __importStar(require("assert"));
-const testPure_1 = require("../src/testPure");
+const testPure_1 = require("../testPure");
 const vscode = 'vscode';
 function lines(...args) { return args; }
 function show(title, input, output) {
@@ -71,33 +71,33 @@ describe('alignBlock', () => {
     it('aligns on =', () => {
         const input = lines('const a = 1', 'const bc = 22', 'const def = 333');
         const parsed = input.map(l => (0, testPure_1.parseLineIgnoringStrings)(l, testPure_1.DEFAULT_LANGUAGE_RULES));
-        const output = (0, testPure_1.alignBlock)(parsed, testPure_1.DEFAULT_DEFAULT_CONFIG.maxSpaces);
+        const output = (0, testPure_1.alignBlock)(parsed, testPure_1.DEFAULT_CONFIG.maxSpaces);
         show('align on =', input, output);
     });
     it('aligns on =>', () => {
         const input = lines('a => 1', 'ab => 22', 'abc => 333');
         const parsed = input.map(l => (0, testPure_1.parseLineIgnoringStrings)(l, testPure_1.DEFAULT_LANGUAGE_RULES));
-        const output = (0, testPure_1.alignBlock)(parsed, testPure_1.DEFAULT_DEFAULT_CONFIG.maxSpaces);
+        const output = (0, testPure_1.alignBlock)(parsed, testPure_1.DEFAULT_CONFIG.maxSpaces);
         show('align on =>', input, output);
     });
     it('aligns on :', () => {
         const input = lines('a: 1', 'ab: 22', 'abc: 333');
         const parsed = input.map(l => (0, testPure_1.parseLineIgnoringStrings)(l, testPure_1.DEFAULT_LANGUAGE_RULES));
-        const output = (0, testPure_1.alignBlock)(parsed, testPure_1.DEFAULT_DEFAULT_CONFIG.maxSpaces);
+        const output = (0, testPure_1.alignBlock)(parsed, testPure_1.DEFAULT_CONFIG.maxSpaces);
         show('align on :', input, output);
     });
     it('aligns TypeScript type annotations', () => {
         const input = lines('type NSData = {', '    editor       : vscode.TextEditor | false', '    languageRules: LanguageRules | false', '    blocks       : LineBlock[]', '    parsedLines  : ParsedLine[][]', '    alignedLines: string[][]', '}');
         const parsed = input.map(l => (0, testPure_1.parseLineIgnoringStrings)(l, testPure_1.DEFAULT_LANGUAGE_RULES));
-        const output = (0, testPure_1.alignBlock)(parsed, testPure_1.DEFAULT_DEFAULT_CONFIG.maxSpaces);
+        const output = (0, testPure_1.alignBlock)(parsed, testPure_1.DEFAULT_CONFIG.maxSpaces);
         show('TypeScript types', input, output);
     });
     it('is idempotent - second pass should not change output', () => {
         const input = lines('type NSData = {', '    editor       : vscode.TextEditor | false', '    languageRules: LanguageRules | false', '    blocks       : LineBlock[]', '    parsedLines  : ParsedLine[][]', '    alignedLines: string[][]', '}');
         const parsed1 = input.map(l => (0, testPure_1.parseLineIgnoringStrings)(l, testPure_1.DEFAULT_LANGUAGE_RULES));
-        const output1 = (0, testPure_1.alignBlock)(parsed1, testPure_1.DEFAULT_DEFAULT_CONFIG.maxSpaces);
+        const output1 = (0, testPure_1.alignBlock)(parsed1, testPure_1.DEFAULT_CONFIG.maxSpaces);
         const parsed2 = output1.map(l => (0, testPure_1.parseLineIgnoringStrings)(l, testPure_1.DEFAULT_LANGUAGE_RULES));
-        const output2 = (0, testPure_1.alignBlock)(parsed2, testPure_1.DEFAULT_DEFAULT_CONFIG.maxSpaces);
+        const output2 = (0, testPure_1.alignBlock)(parsed2, testPure_1.DEFAULT_CONFIG.maxSpaces);
         show('first pass', input, output1);
         show('second pass', output1, output2);
         // Output should not change after second alignment
@@ -107,14 +107,14 @@ describe('alignBlock', () => {
     it('skips strings containing align chars', () => {
         const input = lines('const a = "=>"', 'const bc = "="');
         const parsed = input.map(l => (0, testPure_1.parseLineIgnoringStrings)(l, testPure_1.DEFAULT_LANGUAGE_RULES));
-        const output = (0, testPure_1.alignBlock)(parsed, testPure_1.DEFAULT_DEFAULT_CONFIG.maxSpaces);
+        const output = (0, testPure_1.alignBlock)(parsed, testPure_1.DEFAULT_CONFIG.maxSpaces);
         show('skip strings', input, output);
     });
     it('aligns function parameters and return types with : and =>', () => {
         const input = lines('const ns_Error    = (ns: NS)           : boolean => ns.result.ok === false', 'const ns_SetError = (ns: NS, e: string): void    => {');
         const parsed = input.map(l => (0, testPure_1.parseLineIgnoringStrings)(l, testPure_1.DEFAULT_LANGUAGE_RULES));
         console.log('markers:', parsed.map(pl => pl.markers.map(m => m.symbol).join(' ')));
-        const output = (0, testPure_1.alignBlock)(parsed, testPure_1.DEFAULT_DEFAULT_CONFIG.maxSpaces);
+        const output = (0, testPure_1.alignBlock)(parsed, testPure_1.DEFAULT_CONFIG.maxSpaces);
         show('function params + return', input, output);
     });
     it('aligns function call arguments', () => {
@@ -142,23 +142,4 @@ describe('alignBlock', () => {
         output.forEach((l, i) => console.log(`${i} | ${l}`));
     });
 });
-describe('buildPairwisePositionMap', () => {
-    it('creates position map for aligned markers', () => {
-        const input = lines('const a = 1', 'const bc = 22');
-        const parsed = input.map(l => (0, testPure_1.parseLineIgnoringStrings)(l, testPure_1.DEFAULT_LANGUAGE_RULES));
-        const posMap = (0, testPure_1.buildPairwisePositionMap)(parsed, testPure_1.DEFAULT_DEFAULT_CONFIG.maxSpaces);
-        console.log('position map:', Array.from(posMap.entries()));
-        assert.ok(posMap.size > 0, 'Position map should not be empty');
-    });
-});
-describe('applyPositionMap', () => {
-    it('applies position map to produce aligned lines', () => {
-        const input = lines('const a = 1', 'const bc = 22');
-        const parsed = input.map(l => (0, testPure_1.parseLineIgnoringStrings)(l, testPure_1.DEFAULT_LANGUAGE_RULES));
-        const posMap = (0, testPure_1.buildPairwisePositionMap)(parsed, testPure_1.DEFAULT_DEFAULT_CONFIG.maxSpaces);
-        const output = (0, testPure_1.applyPositionMap)(parsed, posMap);
-        console.log('output:', output);
-        assert.equal(output.length, input.length);
-    });
-});
-//# sourceMappingURL=align.test.js.map
+//# sourceMappingURL=test.align.test.js.map

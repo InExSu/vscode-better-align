@@ -13,7 +13,7 @@ export type LanguageRules = {
 
 export type LineBlock = { startLine: number; lines: string[] }
 
-export type ParsedLine = { raw: string; tokens: Token[]; markers: Marker[] }
+export type ParsedLine = { raw: string; tokens: Token[]; markers: Marker[]; originalMarkers?: Marker[] }
 
 export type Token =
     | { kind: 'code'; text   : string }
@@ -143,7 +143,7 @@ export function parseLineIgnoringStrings(raw: string, rules: LanguageRules): Par
                 break mainLoop
         }
     }
-    return { raw, tokens, markers }
+    return { raw, tokens, markers, originalMarkers: [...markers] }
 }
 
 // ── 6. A3 — BLOCK GROUPING FSM (PascalCase states) ──────────────
@@ -220,38 +220,71 @@ export function propagatePositions(parsedLines: ParsedLine[], posMap: Map<string
     if(state === PropagationState.Accumulating) { applyMax() }
 }
 
-// ── 8. POSITION MAP BUILDING & APPLICATION ────────────────────
 export function buildPairwisePositionMap(parsedLines: ParsedLine[], maxSpaces: number): Map<string, number> {
     const posMap = new Map<string, number>()
     if(parsedLines.length < 2) { return posMap }
-    const maxMarkers = Math.max(0, ...parsedLines.map(pl => pl.markers.length))
-    for(let mk = 0; mk < maxMarkers; mk++) {
-        let maxCol = -1
-        for(const pl of parsedLines) { if(pl.markers[mk]) { maxCol = Math.max(maxCol, pl.markers[mk].startCol) } }
-        if(maxCol < 0) { continue }
-        const count = parsedLines.filter(pl => pl.markers[mk]).length
-        if(count < 2) { continue }
-        for(let i = 0; i < parsedLines.length; i++) {
-            const m = parsedLines[i].markers[mk]; if(!m) { continue }
-            const target = m.startCol >= maxCol ? m.startCol : Math.min(maxCol, m.startCol + maxSpaces)
-            posMap.set(`${i}:${mk}`, Math.max(posMap.get(`${i}:${mk}`) ?? 0, target))
+    
+    const hasOriginal = parsedLines.some(pl => pl.originalMarkers !== undefined)
+    
+    const symbolToMarkers = new Map<string, { lineIdx: number; mk: number; startCol: number }[]>()
+    
+    for(let lineIdx = 0; lineIdx < parsedLines.length; lineIdx++) {
+        const pl = parsedLines[lineIdx]
+        const markers = hasOriginal ? (pl.originalMarkers || pl.markers) : pl.markers
+        
+        for(let mk = 0; mk < markers.length; mk++) {
+            const m = markers[mk]
+            const key = m.symbol
+            if(!symbolToMarkers.has(key)) {
+                symbolToMarkers.set(key, [])
+            }
+            symbolToMarkers.get(key)!.push({ lineIdx, mk, startCol: m.startCol })
         }
     }
-    for(let mk = 0; mk < maxMarkers; mk++) { propagatePositions(parsedLines, posMap, mk) }
-    return posMap
+    
+    for(const symbol of Array.from(symbolToMarkers.keys())) {
+        const markers = symbolToMarkers.get(symbol)!
+        if(markers.length < 2) { continue }
+        
+        const maxCol = Math.max(...markers.map(m => m.startCol))
+        
+        for(const { lineIdx, mk, startCol } of markers) {
+            if(startCol >= maxCol) { continue }
+            const target = Math.min(maxCol, startCol + maxSpaces)
+            if(target > startCol) {
+                posMap.set(`${lineIdx}:${mk}`, target)
+            }
+        }
+    }
+    
+    for(const symbol of Array.from(symbolToMarkers.keys())) {
+        const markers = symbolToMarkers.get(symbol)!
+        const mks = Array.from(new Set(markers.map(m => m.mk)))
+        for(const mk of mks) {
+            const markersWithSameMk = markers.filter(m => m.mk === mk)
+            if(markersWithSameMk.length < 2) { continue }
+            propagatePositions(parsedLines, posMap, mk)
+        }
+    }
+    
+return posMap
 }
 
 export function applyPositionMap(parsedLines: ParsedLine[], posMap: Map<string, number>): string[] {
     return parsedLines.map((pl, lineIdx) => {
-        let out = '', srcPos = 0, shift = 0
+        let out = '', srcPos = 0
         for(let mk = 0; mk < pl.markers.length; mk++) {
             const marker = pl.markers[mk]
             out += pl.raw.slice(srcPos, marker.startCol)
             srcPos = marker.startCol
             const key = `${lineIdx}:${mk}`
-            if(posMap.has(key)) {
-                const target = posMap.get(key)!, targetOut = target + shift, pad = targetOut - out.length
-                if(pad > 0) { out += ' '.repeat(pad); shift += pad }
+            const target = posMap.get(key)
+            if(target !== undefined) {
+                if(target > out.length) {
+                    out += ' '.repeat(target - out.length)
+                } else if(target < out.length) {
+                    out = out.slice(0, target)
+                }
             }
             out += marker.symbol
             srcPos = marker.startCol + marker.symbol.length
@@ -263,8 +296,13 @@ export function applyPositionMap(parsedLines: ParsedLine[], posMap: Map<string, 
 
 export function alignBlock(parsedLines: ParsedLine[], maxSpaces: number): string[] {
     if(parsedLines.length < 2) { return parsedLines.map(pl => pl.raw) }
+    return buildAndApply(parsedLines, maxSpaces)
+}
+
+function buildAndApply(parsedLines: ParsedLine[], maxSpaces: number): string[] {
     const posMap = buildPairwisePositionMap(parsedLines, maxSpaces)
-    return posMap.size === 0 ? parsedLines.map(pl => pl.raw) : applyPositionMap(parsedLines, posMap)
+    if(posMap.size === 0) { return parsedLines.map(pl => pl.raw) }
+    return applyPositionMap(parsedLines, posMap)
 }
 
 // ── 9. PIPELINE FSM ───────────────────────────────────────────
