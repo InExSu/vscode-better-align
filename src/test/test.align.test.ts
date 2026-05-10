@@ -124,4 +124,17 @@ describe('alignBlock', () => {
         const output = alignBlock(parsed, CONFIG.maxSpaces)
         show('skip strings', input, output)
     })
+
+    it('aligns function parameters and return types with : and =>', () => {
+        const input = lines(
+            'const ns_Error    = (ns: NS)           : boolean => ns.result.ok === false',
+            'const ns_SetError = (ns: NS, e: string): void    => {'
+        )
+        const parsed = input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES))
+        console.log('markers:', parsed.map(pl => pl.markers.map(m => m.symbol).join(' ')))
+        const output = alignBlock(parsed, CONFIG.maxSpaces)
+        show('function params + return', input, output)
+        
+        // Note: May not be fully idempotent due to multiple markers of same symbol at different positions
+    })
 })

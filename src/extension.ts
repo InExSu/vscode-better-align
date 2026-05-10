@@ -55,8 +55,8 @@ type Marker = {
     startCol: number
 }
 
-const ns_Error = (ns: NS): boolean => ns.result.ok === false
-const ns_SetError = (ns: NS, e: string): void => {
+const ns_Error    = (ns: NS): boolean           => ns.result.ok === false
+const ns_SetError = (ns: NS, e: string): void   => {
     ns.result = err(e)
     ns.s_Error = e
 }

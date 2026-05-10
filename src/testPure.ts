@@ -231,35 +231,33 @@ function buildPairwisePositionMap(
 
     if(parsedLines.length < 2) { return posMap }
 
-    // Phase 1: pairwise sliding window
-    for(let i = 0; i < parsedLines.length - 1; i++) {
-        const mA = parsedLines[i].markers
-        const mB = parsedLines[i + 1].markers
-        const minLen = Math.min(mA.length, mB.length)
+    const maxMarkers = Math.max(0, ...parsedLines.map(pl => pl.markers.length))
 
-        let commonLen = 0
-        while(commonLen < minLen && mA[commonLen].symbol === mB[commonLen].symbol) {
-            commonLen++
+    for(let mk = 0; mk < maxMarkers; mk++) {
+        let linesWithMarker = 0
+        let maxCol = -1
+        
+        for(let i = 0; i < parsedLines.length; i++) {
+            const m = parsedLines[i].markers[mk]
+            if(m) {
+                linesWithMarker++
+                maxCol = Math.max(maxCol, m.startCol)
+            }
         }
-        if(commonLen === 0) { continue }
-
-        for(let mk = 0; mk < commonLen; mk++) {
-            const colA = mA[mk].startCol
-            const colB = mB[mk].startCol
-            const target = Math.min(
-                Math.max(colA, colB),
-                Math.min(colA, colB) + maxSpaces
-            )
-
-            const keyA = `${i}:${mk}`
-            const keyB = `${i + 1}:${mk}`
-            posMap.set(keyA, Math.max(posMap.get(keyA) ?? 0, target))
-            posMap.set(keyB, Math.max(posMap.get(keyB) ?? 0, target))
+        
+        if(linesWithMarker < 2 || maxCol < 0) { continue }
+        
+        for(let i = 0; i < parsedLines.length; i++) {
+            const m = parsedLines[i].markers[mk]
+            if(!m) { continue }
+            
+            const target = Math.min(maxCol, m.startCol + maxSpaces)
+            const key = `${i}:${mk}`
+            posMap.set(key, Math.max(posMap.get(key) ?? 0, target))
         }
     }
 
-    // Phase 2: transitive propagation
-    for(let mk = 0; mk < 20; mk++) {
+    for(let mk = 0; mk < maxMarkers; mk++) {
         let runStart = -1
         let runEnd = -1
 
@@ -321,21 +319,19 @@ function applyPositionMap(
 ): string[] {
     return parsedLines.map((pl, lineIdx) => {
         let out    = ''
-        let srcPos = 0   // read cursor in pl.raw (raw coordinates)
-        let shift  = 0   // extra chars inserted so far on this line
+        let srcPos = 0
+        let shift  = 0
 
         for(let mk = 0; mk < pl.markers.length; mk++) {
             const marker = pl.markers[mk]
 
-            // Copy everything in the original string up to this marker
             out   += pl.raw.slice(srcPos, marker.startCol)
             srcPos = marker.startCol
 
-            // target is in raw coords; translate to output coords via shift
             const key = `${lineIdx}:${mk}`
             if(posMap.has(key)) {
                 const target    = posMap.get(key)!
-                const targetOut = target + shift   // where we want out.length to be
+                const targetOut = target + shift
                 const pad       = targetOut - out.length
                 if(pad > 0) {
                     out   += ' '.repeat(pad)
@@ -343,7 +339,6 @@ function applyPositionMap(
                 }
             }
 
-            // Append the marker symbol itself
             out   += marker.symbol
             srcPos = marker.startCol + marker.symbol.length
         }
