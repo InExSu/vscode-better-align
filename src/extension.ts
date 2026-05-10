@@ -195,6 +195,14 @@ type BlockSearchContext = {
 }
 
 function analyzeSelection(ctx: BlockSearchContext): { startLine: number; endLine: number } | null {
+    const isFullSelection = !ctx.selection.isEmpty && 
+        ctx.selection.start.line === 0 && 
+        ctx.selection.end.line === ctx.doc.lineCount - 1
+    
+    if (isFullSelection) {
+        return { startLine: 0, endLine: ctx.doc.lineCount - 1 }
+    }
+    
     let state = SelectionAnalysisState.CheckingEmpty
     while(true) {
         switch(state) {

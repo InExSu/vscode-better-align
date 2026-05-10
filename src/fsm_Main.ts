@@ -5,10 +5,10 @@
 
 // ── 1. SHARED TYPES (no VS Code dependencies) ────────────────
 export type LanguageRules = {
-    lineComments    : string[]
-    blockComments   : { start: string; end: string }[]
+    lineComments: string[]
+    blockComments: { start: string; end: string }[]
     stringDelimiters: string[]
-    alignChars      : string[]
+    alignChars: string[]
 }
 
 export type LineBlock = { startLine: number; lines: string[] }
@@ -16,8 +16,8 @@ export type LineBlock = { startLine: number; lines: string[] }
 export type ParsedLine = { raw: string; tokens: Token[]; markers: Marker[] }
 
 export type Token =
-    | { kind: 'code'; text   : string }
-    | { kind: 'string'; text : string }
+    | { kind: 'code'; text: string }
+    | { kind: 'string'; text: string }
     | { kind: 'comment'; text: string }
 
 export type Marker = { symbol: string; startCol: number }
@@ -29,51 +29,51 @@ export const err = <E,>(e: E): Result<never, E> => ({ ok: false, error: e })
 
 // ── 3. CONFIG ──────────────────────────────────────────────────
 export const DEFAULT_CONFIG = {
-    b_Debug             : false,
-    defaultAlignChars   : ['===', '!==', '<=>', '=>', '->', '==', '!=', '>=', '<=', '+=', '-=', '*=', '/=', '%=', '**=', ':', '{', '=', ','],
-    maxBlockSize        : 500,
-    preserveComments    : true,
-    preserveStrings     : true,
+    b_Debug: false,
+    defaultAlignChars: ['===', '!==', '<=>', '=>', '->', '==', '!=', '>=', '<=', '+=', '-=', '*=', '/=', '%=', '**=', ':', '{', '=', ','],
+    maxBlockSize: 500,
+    preserveComments: true,
+    preserveStrings: true,
     alignMultilineBlocks: false,
-    skipTemplates       : true,
-    greedyMatch         : true,
-    minColumns          : 1,
-    maxSpaces           : 10,
-    testData            : {} as Record<string, unknown>,
+    skipTemplates: true,
+    greedyMatch: true,
+    minColumns: 1,
+    maxSpaces: 10,
+    testData: {} as Record<string, unknown>,
 }
 
 // ── 4. LANGUAGE RULES ──────────────────────────────────────────
 export const DEFAULT_LANGUAGE_RULES: LanguageRules = {
-    lineComments    : ['//'],
-    blockComments   : [{ start: '/*', end: '*/' }],
+    lineComments: ['//'],
+    blockComments: [{ start: '/*', end: '*/' }],
     stringDelimiters: ['"', "'", '`'],
-    alignChars      : DEFAULT_CONFIG.defaultAlignChars,
+    alignChars: DEFAULT_CONFIG.defaultAlignChars,
 }
 
 export const LANGUAGE_RULES: Record<string, LanguageRules> = {
     typescript: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }], stringDelimiters: ['"', "'", '`'], alignChars: DEFAULT_CONFIG.defaultAlignChars },
     javascript: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }], stringDelimiters: ['"', "'", '`'], alignChars: DEFAULT_CONFIG.defaultAlignChars },
-    python    : { lineComments: ['#'], blockComments: [], stringDelimiters: ['"', "'"], alignChars: DEFAULT_CONFIG.defaultAlignChars },
-    rust      : { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }], stringDelimiters: ['"'], alignChars: DEFAULT_CONFIG.defaultAlignChars },
-    go        : { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }], stringDelimiters: ['"', '`'], alignChars: DEFAULT_CONFIG.defaultAlignChars },
-    lua       : { lineComments: ['--'], blockComments: [{ start: '--[[', end: ']]' }], stringDelimiters: ['"', "'"], alignChars: DEFAULT_CONFIG.defaultAlignChars },
-    sql       : { lineComments: ['--'], blockComments: [{ start: '/*', end: '*/' }], stringDelimiters: ['"', "'"], alignChars: DEFAULT_CONFIG.defaultAlignChars },
+    python: { lineComments: ['#'], blockComments: [], stringDelimiters: ['"', "'"], alignChars: DEFAULT_CONFIG.defaultAlignChars },
+    rust: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }], stringDelimiters: ['"'], alignChars: DEFAULT_CONFIG.defaultAlignChars },
+    go: { lineComments: ['//'], blockComments: [{ start: '/*', end: '*/' }], stringDelimiters: ['"', '`'], alignChars: DEFAULT_CONFIG.defaultAlignChars },
+    lua: { lineComments: ['--'], blockComments: [{ start: '--[[', end: ']]' }], stringDelimiters: ['"', "'"], alignChars: DEFAULT_CONFIG.defaultAlignChars },
+    sql: { lineComments: ['--'], blockComments: [{ start: '/*', end: '*/' }], stringDelimiters: ['"', "'"], alignChars: DEFAULT_CONFIG.defaultAlignChars },
 }
 
 export function detectLanguageRules(langId: string, defaultAlignChars: string[]): LanguageRules {
-    return LANGUAGE_RULES[langId] 
-        ? { ...LANGUAGE_RULES[langId], alignChars: defaultAlignChars } 
+    return LANGUAGE_RULES[langId]
+        ? { ...LANGUAGE_RULES[langId], alignChars: defaultAlignChars }
         : { ...DEFAULT_LANGUAGE_RULES, alignChars: defaultAlignChars }
 }
 
 // ── 5. A2 — SCANNER FSM (PascalCase states) ───────────────────
 export enum ScannerState {
-    CodeReading      = 'CodeReading',
-    StringDouble     = 'StringDouble',
-    StringSingle     = 'StringSingle',
+    CodeReading = 'CodeReading',
+    StringDouble = 'StringDouble',
+    StringSingle = 'StringSingle',
     TemplateBacktick = 'TemplateBacktick',
-    BlockComment     = 'BlockComment',
-    CommentDone      = 'CommentDone',
+    BlockComment = 'BlockComment',
+    CommentDone = 'CommentDone',
 }
 
 export function parseLineIgnoringStrings(raw: string, rules: LanguageRules): ParsedLine {
@@ -149,7 +149,7 @@ export function parseLineIgnoringStrings(raw: string, rules: LanguageRules): Par
 // ── 6. A3 — BLOCK GROUPING FSM (PascalCase states) ──────────────
 export enum GroupingState {
     WaitingForStart = 'WaitingForStart',
-    Accumulating     = 'Accumulating',
+    Accumulating = 'Accumulating',
 }
 
 export function findLineBlocks(rawLines: string[], startOffset: number, rules: LanguageRules, maxBlockSize: number): LineBlock[] {
@@ -177,13 +177,13 @@ export function findLineBlocks(rawLines: string[], startOffset: number, rules: L
                 state = GroupingState.Accumulating; break
             case GroupingState.Accumulating:
                 if(isBlankOrComment(raw)) { flush(); continue }
-                if(indent !== curIndent || curBlock.lines.length >= maxBlockSize) { 
+                if(indent !== curIndent || curBlock.lines.length >= maxBlockSize) {
                     flush()
                     curIndent = indent
                     curBlock = { startLine: startOffset + idx, lines: [raw] }
                     state = GroupingState.Accumulating
-                } else { 
-                    curBlock.lines.push(raw) 
+                } else {
+                    curBlock.lines.push(raw)
                 }
                 break
         }
@@ -194,7 +194,7 @@ export function findLineBlocks(rawLines: string[], startOffset: number, rules: L
 // ── 7. A4 — PROPAGATION FSM (PascalCase states) ───────────────
 export enum PropagationState {
     FindingSeries = 'FindingSeries',
-    Accumulating   = 'Accumulating',
+    Accumulating = 'Accumulating',
 }
 
 export function propagatePositions(parsedLines: ParsedLine[], posMap: Map<string, number>, mk: number): void {
@@ -269,45 +269,45 @@ export function alignBlock(parsedLines: ParsedLine[], maxSpaces: number): string
 
 // ── 9. PIPELINE FSM ───────────────────────────────────────────
 export enum PipelineState {
-    Idle            = 'Idle',
-    LoadConfig      = 'LoadConfig',
-    DetectLanguage  = 'DetectLanguage',
-    FindBlocks      = 'FindBlocks',
-    ParseLines      = 'ParseLines',
-    Align           = 'Align',
-    ReplaceText     = 'ReplaceText',
-    Done            = 'Done',
-    Error           = 'Error',
+    Idle = 'Idle',
+    LoadConfig = 'LoadConfig',
+    DetectLanguage = 'DetectLanguage',
+    FindBlocks = 'FindBlocks',
+    ParseLines = 'ParseLines',
+    Align = 'Align',
+    ReplaceText = 'ReplaceText',
+    Done = 'Done',
+    Error = 'Error',
 }
 
 export type Decorator = (ns: NS) => void
 export type NS = {
-    result : Result<unknown>
+    result: Result<unknown>
     s_Error: string
-    config : typeof DEFAULT_CONFIG
-    data   : NSData
+    config: typeof DEFAULT_CONFIG
+    data: NSData
     [k: string]: unknown
 }
 
 export type NSData = {
-    editor       : unknown // VS Code specific, set by extension
+    editor: unknown // VS Code specific, set by extension
     languageRules: LanguageRules | false
-    blocks       : LineBlock[]
-    parsedLines  : ParsedLine[][]
-    alignedLines : string[][]
+    blocks: LineBlock[]
+    parsedLines: ParsedLine[][]
+    alignedLines: string[][]
 }
 
 export function ns_Error(ns: NS): boolean { return ns.result.ok === false }
 export function ns_SetError(ns: NS, e: string): void { ns.result = err(e); ns.s_Error = e }
 
 export function buildPipelineFSM(
-    config_Load_Decor    : Decorator,
+    config_Load_Decor: Decorator,
     language_Detect_Decor: Decorator,
-    block_Find_Decor     : Decorator,
-    lines_Parse_Decor    : Decorator,
+    block_Find_Decor: Decorator,
+    lines_Parse_Decor: Decorator,
     alignment_Apply_Decor: Decorator,
-    text_Replace_Decor   : Decorator,
-    rwd                  : (fn: Decorator, ns: NS) => void
+    text_Replace_Decor: Decorator,
+    rwd: (fn: Decorator, ns: NS) => void
 ): (ns: NS) => void {
     return function pipelineFSM(ns: NS): void {
         let state = PipelineState.Idle
