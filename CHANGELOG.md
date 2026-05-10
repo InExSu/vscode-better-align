@@ -304,6 +304,10 @@
 - Fix commands broken if cursor in empty line
 - Add web extension support
 
+# v6.1.9 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.1.9)
+
+- Fix: Function argument alignment works correctly
+
 # v6.1.8 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.1.8)
 
 - Fix: Improved function argument alignment works correctly
