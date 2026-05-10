@@ -5,7 +5,7 @@
 
 // ── 1. SHARED TYPES (no VS Code dependencies) ────────────────
 export type LanguageRules = {
-    lineComments    : string[]
+    lineComments: string[]
     blockComments: { start: string; end: string }[]
     stringDelimiters: string[]
     alignChars: string[]
@@ -272,25 +272,39 @@ export function buildPairwisePositionMap(parsedLines: ParsedLine[], maxSpaces: n
     return posMap
 }
 
+// ── 8. APPLY POSITION MAP — FIXED ─────────────────────────────
 export function applyPositionMap(parsedLines: ParsedLine[], posMap: Map<string, number>): string[] {
     return parsedLines.map((pl, lineIdx) => {
         let out = '', srcPos = 0
+
         for(let mk = 0; mk < pl.markers.length; mk++) {
             const marker = pl.markers[mk]
+
+            // Copy content from original raw string up to marker position
             out += pl.raw.slice(srcPos, marker.startCol)
-            srcPos = marker.startCol
+
             const key = `${lineIdx}:${mk}`
             const target = posMap.get(key)
+
             if(target !== undefined) {
-                if(target > out.length) {
-                    out += ' '.repeat(target - out.length)
-                } else if(target < out.length) {
-                    out = out.slice(0, target)
+                // Конвертация целевой позиции из координат исходной строки
+                // в координаты выходной строки с учётом уже добавленных пробелов
+                const outputOffset = out.length - marker.startCol
+                const targetInOutput = target + outputOffset
+
+                // Только добавляем пробелы, никогда не усекаем контент
+                if(targetInOutput > out.length) {
+                    out += ' '.repeat(targetInOutput - out.length)
                 }
             }
+
+            // Добавляем сам символ маркера
             out += marker.symbol
+            // Продвигаем позицию в исходной строке за пределы маркера
             srcPos = marker.startCol + marker.symbol.length
         }
+
+        // Копируем остаток строки после последнего маркера
         out += pl.raw.slice(srcPos)
         return out
     })

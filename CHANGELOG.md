@@ -22,6 +22,10 @@
 
 - Fix: Improved alignment logic to correctly handle blocks with lines that do not contain alignment markers.
 
+# v6.3.1 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.3.1)
+
+- Fix: Improved nesting depth tracking for generic type parameters and objects
+
 # v6.3.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.3.0)
 
 - Fix: Generic type parameters (`<T>`) are now excluded from alignment markers

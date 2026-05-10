@@ -201,13 +201,6 @@ describe('alignBlock', () => {
             `export const err = <E,>(e: E): Result<never, E> => ({ ok: false, error: e })`
         ]
         
-        console.log('=== Testing each line ===')
-        input.forEach((line, idx) => {
-            console.log(`Line ${idx}:`, line)
-            const parsed = parseLineIgnoringStrings(line, DEFAULT_LANGUAGE_RULES)
-            console.log('Markers:', JSON.stringify(parsed.markers))
-        })
-        
         const output = alignBlock(
             input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES)),
             30
