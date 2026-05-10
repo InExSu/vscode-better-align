@@ -114,8 +114,8 @@ export function parseLineIgnoringStrings(raw: string, rules: LanguageRules): Par
                 if(nestingDepth === 0) {
                     for(const ac of alignChars) {
                         if(raw.startsWith(ac, i)) {
-                            // Skip single = that is preceded by >
-                            if(ac === '=' && i > 0 && raw[i - 1] === '>') { i++; continue mainLoop }
+                            // Skip single = that is part of >=
+                            if(ac === '=' && i > 0 && (raw[i - 1] === '>' || (raw[i - 1] === ' ' && raw[i - 2] === '>'))) { i++; continue mainLoop }
                             if(!(ac === ':' && i > 0 && raw[i - 1] === ')')) { markers.push({ symbol: ac, startCol: i }) }
                             i += ac.length; continue mainLoop
                         }

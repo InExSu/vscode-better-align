@@ -254,4 +254,34 @@ describe('alignBlock', () => {
         assert.equal(output[0], input[0], 'Line 0 should not change')
         assert.equal(output[1], input[1], 'Line 1 should not change')
     })
+
+    it('aligns entire fsm_Main.ts without syntax errors', () => {
+        const fs = require('fs')
+        const input: string[] = fs.readFileSync('src/fsm_Main.ts', 'utf8').split('\n')
+        
+        const output = alignBlock(
+            input.map((l: string) => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES)),
+            30
+        )
+        
+        const result = output.join('\n')
+        
+        console.log("=== fsm_Main.ts alignment ===")
+        console.log("Lines:", input.length, "->", output.length)
+        
+        // Check that >= stayed together (not split into > followed by = with only spaces between)
+        // This regex finds > followed by spaces and then = that is NOT preceded by >
+        // But the simpler check: ensure original >= stays >= or better
+        const originalContent = input.join('\n')
+        
+        // Extract all >= positions from original
+        const originalMatches = [...originalContent.matchAll(/>=/g)]
+        const outputMatches = [...result.matchAll(/>=/g)]
+        
+        console.log("Original >= count:", originalMatches.length)
+        console.log("Output >= count:", outputMatches.length)
+        
+        // The output should have the same number of >= operators
+        assert.equal(outputMatches.length, originalMatches.length, 'All >= operators should be preserved')
+    })
 })

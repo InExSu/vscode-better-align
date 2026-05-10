@@ -22,6 +22,10 @@
 
 - Fix: Improved alignment logic to correctly handle blocks with lines that do not contain alignment markers.
 
+# v6.3.5 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.3.5)
+
+- Fix: >= detection handles already-aligned code correctly
+
 # v6.3.4 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.3.4)
 
 - Fix: >= operator properly kept together, not split into > and =
