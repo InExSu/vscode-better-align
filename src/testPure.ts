@@ -321,23 +321,29 @@ function applyPositionMap(
 ): string[] {
     return parsedLines.map((pl, lineIdx) => {
         let out    = ''
-        let srcPos = 0
+        let srcPos = 0   // read cursor in pl.raw (raw coordinates)
+        let shift  = 0   // extra chars inserted so far on this line
 
         for(let mk = 0; mk < pl.markers.length; mk++) {
             const marker = pl.markers[mk]
 
-            out += pl.raw.slice(srcPos, marker.startCol)
+            // Copy everything in the original string up to this marker
+            out   += pl.raw.slice(srcPos, marker.startCol)
             srcPos = marker.startCol
 
+            // target is in raw coords; translate to output coords via shift
             const key = `${lineIdx}:${mk}`
             if(posMap.has(key)) {
-                const target = posMap.get(key)!
-                const curCol = out.length
-                if(target > curCol) {
-                    out += ' '.repeat(target - curCol)
+                const target    = posMap.get(key)!
+                const targetOut = target + shift   // where we want out.length to be
+                const pad       = targetOut - out.length
+                if(pad > 0) {
+                    out   += ' '.repeat(pad)
+                    shift += pad
                 }
             }
 
+            // Append the marker symbol itself
             out   += marker.symbol
             srcPos = marker.startCol + marker.symbol.length
         }

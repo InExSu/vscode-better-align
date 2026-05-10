@@ -344,12 +344,12 @@ function loadConfig(
     defaults  : typeof CONFIG
 ): Partial<typeof CONFIG> {
     return {
-        defaultAlignChars: alignChars                             ,
-        maxBlockSize     : vsConfig.get<number>('maxBlockSize'    , defaults.maxBlockSize)    ,
-        preserveComments : vsConfig.get<boolean>('preserveComments', defaults.preserveComments),
-        preserveStrings  : vsConfig.get<boolean>('preserveStrings', defaults.preserveStrings) ,
-        maxSpaces        : vsConfig.get<number>('maxSpaces'       , defaults.maxSpaces)       ,
-        greedyMatch      : vsConfig.get<boolean>('greedyMatch'    , defaults.greedyMatch)     ,
+        defaultAlignChars: alignChars                               ,
+        maxBlockSize     : vsConfig.get<number>('maxBlockSize'      , defaults.maxBlockSize)    ,
+        preserveComments : vsConfig.get<boolean>('preserveComments' , defaults.preserveComments),
+        preserveStrings  : vsConfig.get<boolean>('preserveStrings'  , defaults.preserveStrings) ,
+        maxSpaces        : vsConfig.get<number>('maxSpaces'         , defaults.maxSpaces)       ,
+        greedyMatch      : vsConfig.get<boolean>('greedyMatch'      , defaults.greedyMatch)     ,
     }
 }
 
@@ -599,38 +599,30 @@ function findAlignCharsGreedy(code: string, alignChars: string[], rules: Languag
 /**
  * Build a target-column map for all markers in a parsed block.
  *
- * Phase 1 — pairwise sliding window (unchanged)
- * ─────────────────────────────────────────────
+ * All target columns are expressed in the coordinate space of the ORIGINAL
+ * (pre-alignment) line — i.e. they are raw character offsets into pl.raw.
+ * applyPositionMap converts them to output positions by accounting for the
+ * cumulative shift introduced by earlier insertions on the same line.
+ *
+ * Phase 1 — pairwise sliding window
+ * ──────────────────────────────────
  * Slide a two-line window over the block top-to-bottom.
  * For each adjacent pair (i, i+1):
  *   • Walk both marker sequences in parallel until the symbols diverge.
  *   • Every matched position k gets target = max(colA, colB),
  *     capped so neither line gains more than maxSpaces of extra padding.
- *   • The result is stored under keys `${i}:${k}` and `${i+1}:${k}`,
+ *   • Stored under keys `${i}:${k}` and `${i+1}:${k}`,
  *     taking Math.max with any value already there.
  *
- * Phase 2 — transitive propagation (new)
- * ───────────────────────────────────────
+ * Phase 2 — transitive propagation
+ * ──────────────────────────────────
  * A single left-to-right pass is not enough when the widest line sits in
- * the middle of the block.  Example (marker position 0, symbol ":"):
+ * the middle of the block.  For each marker position k , find every maximal
+ * run of consecutive lines sharing the same symbol at k, then lift every
+ * posMap entry in that run to the run's maximum.  This makes the result
+ * idempotent: a second pass produces no further change.
  *
- *   line 0  editor        col  7   pair(0,1) → target 13
- *   line 1  languageRules col 13   pair(1,2) → target 13   ← maximum
- *   line 2  blocks        col  6   pair(2,3) → target 12   ✗ should be 13
- *   line 3  parsedLines   col 11   pair(3,4) → target 12   ✗ should be 13
- *   line 4  alignedLines  col 12
- *
- * Lines 2-4 never reach 13 in a single pass because they are not adjacent
- * to line 1.  Running the command again fixes them — exactly the
- * "needs multiple runs" symptom reported.
- *
- * Phase 2 fixes this: for each marker position k, find every maximal run
- * of consecutive lines that share the same symbol at k, then lift every
- * posMap entry in that run to the run's maximum.  After phase 2 the result
- * is identical to what repeated runs would eventually converge to, and
- * running the command again produces no further change (idempotent).
- *
- * Key format: `"${lineIndex}:${markerIndex}"` → target column
+ * Key format: `"${lineIndex}:${markerIndex}"` → target column (in raw coords)
  */
 function buildPairwisePositionMap(
     parsedLines: ParsedLine[],
@@ -667,27 +659,17 @@ function buildPairwisePositionMap(
     }
 
     // ── Phase 2: transitive propagation ──────────────────────
-    // For each marker position mk, scan all maximal runs of consecutive
-    // lines that share the same symbol at mk.  Lift every posMap entry
-    // in the run to the run's maximum so that a "wide" line in the middle
-    // of a run propagates its target to all neighbours, not just its
-    // immediate pair partners.
     const maxMarkers = Math.max(0, ...parsedLines.map(pl => pl.markers.length))
 
     for(let mk = 0; mk < maxMarkers; mk++) {
         let runStart = 0
 
         while(runStart < parsedLines.length) {
-            // Skip lines that have no marker at position mk
-            if(parsedLines[runStart].markers[mk] === undefined) {
-                runStart++
-                continue
-            }
+            if(parsedLines[runStart].markers[mk] === undefined) { runStart++; continue }
 
             const symbol = parsedLines[runStart].markers[mk].symbol
             let runEnd   = runStart
 
-            // Extend the run while the symbol at mk keeps matching
             while(
                 runEnd + 1 < parsedLines.length &&
                 parsedLines[runEnd + 1].markers[mk]?.symbol === symbol
@@ -695,22 +677,15 @@ function buildPairwisePositionMap(
                 runEnd++
             }
 
-            // Find the maximum target already recorded in this run
             let runMax = 0
             for(let i  = runStart; i <= runEnd; i++) {
                 runMax = Math.max(runMax, posMap.get(`${i}:${mk}`) ?? 0)
             }
 
-            // Propagate the maximum to every participating line in the run.
-            // We only update lines that already have a posMap entry — lines
-            // at the very edge of a block with only one neighbour and a
-            // mismatching symbol correctly have no entry and must stay out.
             if(runMax > 0) {
                 for(let i = runStart; i <= runEnd; i++) {
                     const key = `${i}:${mk}`
-                    if(posMap.has(key)) {
-                        posMap.set(key, runMax)
-                    }
+                    if(posMap.has(key)) { posMap.set(key, runMax) }
                 }
             }
 
@@ -723,14 +698,28 @@ function buildPairwisePositionMap(
 
 // ── applyPositionMap ─────────────────────────────────────────
 /**
- * Rewrite each parsed line by inserting spaces before markers whose
- * `"${lineIdx}:${markerIdx}"` key appears in posMap, advancing them to the
- * recorded target column.
+ * Rewrite each parsed line by inserting spaces before markers so that each
+ * marker lands on its target column.
  *
- * Markers not in the map, and all raw content between markers, are copied
- * verbatim from the original string.  Because we read from pl.raw (original
- * positions) but write to an accumulator (shifted positions), earlier
- * insertions naturally push subsequent markers right without extra bookkeeping.
+ * KEY INSIGHT — two coordinate spaces
+ * ─────────────────────────────────────
+ * posMap stores targets in RAW coordinates (offsets into pl.raw, the
+ * original unmodified line).  As we write characters into `out` we
+ * accumulate a `shift` — the total number of extra spaces inserted so far
+ * on this line.  A marker originally at raw column C will appear in the
+ * output at column C + shift.  So to reach target (raw) we need the output
+ * column to be target + shift:
+ *
+ *   pad = (target + shift) - out.length   // out.length === C + shift before pad
+ *       = target - C                       // simplifies to raw gap
+ *
+ * Without this correction the first marker is placed correctly but every
+ * subsequent marker on the same line is off by the cumulative shift of all
+ * previous insertions — causing the "needs two passes" symptom when a block
+ * has markers at both ':' and ','.
+ *
+ * After this fix the operation is idempotent: on a line that is already
+ * aligned, shift stays 0 throughout, pad is always 0, output equals input.
  */
 function applyPositionMap(
     parsedLines: ParsedLine[],
@@ -738,27 +727,30 @@ function applyPositionMap(
 ): string[] {
     return parsedLines.map((pl, lineIdx) => {
         let out    = ''
-        let srcPos = 0  // read cursor in pl.raw
+        let srcPos = 0   // read cursor in pl.raw (raw coordinates)
+        let shift  = 0   // extra chars inserted so far on this line
 
         for(let mk = 0; mk < pl.markers.length; mk++) {
             const marker = pl.markers[mk]
 
             // Copy everything in the original string up to this marker
-            out += pl.raw.slice(srcPos, marker.startCol)
+            out   += pl.raw.slice(srcPos, marker.startCol)
             srcPos = marker.startCol
 
-            // If this marker has a target column, pad to it
+            // target is in raw coords; translate to output coords via shift
             const key = `${lineIdx}:${mk}`
             if(posMap.has(key)) {
-                const target = posMap.get(key)!
-                const curCol = out.length
-                if(target > curCol) {
-                    out += ' '.repeat(target - curCol)
+                const target    = posMap.get(key)!
+                const targetOut = target + shift   // where we want out.length to be
+                const pad       = targetOut - out.length
+                if(pad > 0) {
+                    out   += ' '.repeat(pad)
+                    shift += pad
                 }
             }
 
             // Append the marker symbol itself
-            out += marker.symbol
+            out   += marker.symbol
             srcPos = marker.startCol + marker.symbol.length
         }
 
