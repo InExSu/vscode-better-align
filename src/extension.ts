@@ -7,7 +7,7 @@ import * as vscode from 'vscode'
 
 // ── 2. RESULT TYPE ───────────────────────────────────────────
 type Result<T, E = string> = { ok: true; value: T } | { ok: false; error: E }
-const ok = <T,>(v: T): Result<T> => ({ ok: true, value: v })
+const ok  = <T,>(v: T): Result<T> => ({ ok: true, value: v })
 const err = <E,>(e: E): Result<never, E> => ({ ok: false, error: e })
 
 // ── 3. NS TYPE ───────────────────────────────────────────────
@@ -24,7 +24,6 @@ type NSData = {
     languageRules: LanguageRules | false
     blocks       : LineBlock[]
     parsedLines  : ParsedLine[][]
-    commonPrefix : string[][]
     alignedLines : string[][]
 }
 
@@ -56,7 +55,7 @@ type Marker = {
     startCol: number
 }
 
-const ns_Error = (ns: NS): boolean => ns.result.ok === false
+const ns_Error    = (ns: NS): boolean => ns.result.ok === false
 const ns_SetError = (ns: NS, e: string): void => {
     ns.result  = err(e)
     ns.s_Error = e
@@ -64,12 +63,11 @@ const ns_SetError = (ns: NS, e: string): void => {
 
 // ── 4. RWD + a_Chain ─────────────────────────────────────────
 const timers = new Map<string, number>()
-const line = (ch: string): string => ch.repeat(50)
+const line   = (ch: string): string => ch.repeat(50)
 
 function decor_Start(name: string): void {
     timers.set(name, performance.now())
-    console.log(`
-${line('═')}`)
+    console.log(`\n${line('═')}`)
     console.log(`▶  ${name}`)
     console.log(`${line('─')}`)
 }
@@ -79,8 +77,7 @@ function decor_Finish(name: string): void {
     const duration = start ? (performance.now() - start).toFixed(2) : '?'
     console.log(`${line('─')}`)
     console.log(`◀  ${name} (${duration}ms)`)
-    console.log(`${line('═')}
-`)
+    console.log(`${line('═')}\n`)
     timers.delete(name)
 }
 
@@ -96,38 +93,36 @@ function a_Chain(ns: NS): void {
     rwd(language_Detect_Decor, ns)
     rwd(block_Find_Decor     , ns)
     rwd(lines_Parse_Decor    , ns)
-    rwd(pattern_Compute_Decor, ns)
     rwd(alignment_Apply_Decor, ns)
     rwd(text_Replace_Decor   , ns)
 }
 
 // ── 5. CONFIG ────────────────────────────────────────────────
 const CONFIG = {
-    b_Debug          : false,
-    defaultAlignChars: ['===', '!==', '<=>', '=>', '->', '==', '!=', '>=', '<=', '+=', '-=', '*=', '/=', '%=', '**=', ':', '{', '=', ','],
-    maxBlockSize     : 500 ,
-    preserveComments : true,
-    preserveStrings  : true,
+    b_Debug             : false,
+    defaultAlignChars   : ['===', '!==', '<=>', '=>', '->', '==', '!=', '>=', '<=', '+=', '-=', '*=', '/=', '%=', '**=', ':', '{', '=', ','],
+    maxBlockSize        : 500  ,
+    preserveComments    : true ,
+    preserveStrings     : true ,
     alignMultilineBlocks: false,
-    skipTemplates    : true,
-    greedyMatch      : true,
-    minColumns       : 1   ,
-    maxSpaces        : 10  ,
-    testData: {} as Record<string, unknown>,
+    skipTemplates       : true ,
+    greedyMatch         : true ,
+    minColumns          : 1    ,
+    maxSpaces           : 10   ,
+    testData            : {} as Record<string, unknown>,
 }
 
 // ── 6. NS_Container ──────────────────────────────────────────
 function NS_Container(cfg: typeof CONFIG): NS {
     return {
-        result: ok({}),
+        result : ok({}),
         s_Error: '',
         config : cfg,
-        data: {
+        data   : {
             editor       : false,
             languageRules: false,
             blocks       : []   ,
             parsedLines  : []   ,
-            commonPrefix : []   ,
             alignedLines : []   ,
         }          ,
         ...cfg.testData,
@@ -137,53 +132,53 @@ function NS_Container(cfg: typeof CONFIG): NS {
 // ── 7. LANGUAGE RULES MAP ─────────────────────────────────────
 const LANGUAGE_RULES: Record<string, LanguageRules> = {
     typescript: {
-        lineComments    : ['//']      ,
-        blockComments: [{ start: '/*', end: '*/' }],
-        stringDelimiters: ['"'        , "'", '`'],
+        lineComments    : ['//'],
+        blockComments   : [{ start: '/*', end: '*/' }],
+        stringDelimiters: ['"'          , "'", '`'],
         alignChars      : CONFIG.defaultAlignChars,
     },
     javascript: {
-        lineComments    : ['//']      ,
-        blockComments: [{ start: '/*', end: '*/' }],
-        stringDelimiters: ['"'        , "'", '`'],
+        lineComments    : ['//'],
+        blockComments   : [{ start: '/*', end: '*/' }],
+        stringDelimiters: ['"'          , "'", '`'],
         alignChars      : CONFIG.defaultAlignChars,
     },
     python: {
-        lineComments    : ['#']    ,
-        blockComments   : []       ,
-        stringDelimiters: ['"'     , "'"],
+        lineComments    : ['#']         ,
+        blockComments   : []            ,
+        stringDelimiters: ['"'          , "'"],
         alignChars      : CONFIG.defaultAlignChars,
     },
     rust: {
-        lineComments    : ['//']      ,
-        blockComments: [{ start: '/*', end: '*/' }],
-        stringDelimiters: ['"']       ,
+        lineComments    : ['//'],
+        blockComments   : [{ start: '/*', end: '*/' }],
+        stringDelimiters: ['"']          ,
         alignChars      : CONFIG.defaultAlignChars,
     },
     go: {
-        lineComments    : ['//']      ,
-        blockComments: [{ start: '/*', end: '*/' }],
-        stringDelimiters: ['"'        , '`'],
+        lineComments    : ['//'],
+        blockComments   : [{ start: '/*', end: '*/' }],
+        stringDelimiters: ['"'          , '`'],
         alignChars      : CONFIG.defaultAlignChars,
     },
     lua: {
-        lineComments    : ['--']      ,
-        blockComments: [{ start: '--[[', end: ']]' }],
-        stringDelimiters: ['"'        , "'"],
+        lineComments    : ['--'],
+        blockComments   : [{ start: '--[[', end: ']]' }],
+        stringDelimiters: ['"'          , "'"],
         alignChars      : CONFIG.defaultAlignChars,
     },
     sql: {
-        lineComments    : ['--']      ,
-        blockComments: [{ start: '/*', end: '*/' }],
-        stringDelimiters: ['"'        , "'"],
+        lineComments    : ['--'],
+        blockComments   : [{ start: '/*', end: '*/' }],
+        stringDelimiters: ['"'          , "'"],
         alignChars      : CONFIG.defaultAlignChars,
     },
 }
 
 const DEFAULT_LANGUAGE_RULES: LanguageRules = {
-    lineComments    : ['//']      ,
-    blockComments: [{ start: '/*', end: '*/' }],
-    stringDelimiters: ['"'        , "'", '`'],
+    lineComments    : ['//'],
+    blockComments   : [{ start: '/*', end: '*/' }],
+    stringDelimiters: ['"'          , "'", '`'],
     alignChars      : CONFIG.defaultAlignChars,
 }
 
@@ -200,7 +195,7 @@ function config_Load_Decor(ns: NS): void {
     try {
         const vsConfig   = vscode.workspace.getConfiguration('codeAlign')
         const alignChars = vsConfig.get<string[]>('alignChars', ns.config.defaultAlignChars)
-        const loadedCfg  = loadConfig(vsConfig, alignChars, ns.config)
+        const loadedCfg  = loadConfig(vsConfig         , alignChars, ns.config)
         ns.config        = { ...ns.config, ...loadedCfg }
         ns.result        = ok(ns.config)
     } catch(e) {
@@ -217,12 +212,12 @@ function language_Detect_Decor(ns: NS): void {
         return
     }
     try {
-        const editor        = vscode.window.activeTextEditor
+        const editor = vscode.window.activeTextEditor
         if(!editor) { ns_SetError(ns, 'No active editor'); return }
-        ns.data.editor      = editor
-        const langId        = editor.document.languageId
+        ns.data.editor        = editor
+        const langId          = editor.document.languageId
         ns.data.languageRules = detectLanguageRules(langId, ns.config.defaultAlignChars)
-        ns.result           = ok(ns.data.languageRules)
+        ns.result             = ok(ns.data.languageRules)
     } catch(e) {
         ns_SetError(ns, (e as Error).message)
     }
@@ -239,9 +234,9 @@ function block_Find_Decor(ns: NS): void {
         return
     }
     try {
-        const editor    = ns.data.editor
+        const editor = ns.data.editor
         if(!editor) { ns_SetError(ns, 'No active editor'); return }
-        const rules     = ns.data.languageRules
+        const rules = ns.data.languageRules
         if(!rules) { ns_SetError(ns, 'No language rules'); return }
         const doc       = editor.document
         const selection = editor.selection
@@ -275,7 +270,7 @@ function block_Find_Decor(ns: NS): void {
 
         const rawLines = extractRawLines(doc    , startLine, endLine)
         ns.data.blocks = findLineBlocks(rawLines, startLine, rules, ns.config.maxBlockSize)
-        ns.result = ok(ns.data.blocks)
+        ns.result      = ok(ns.data.blocks)
     } catch(e) {
         ns_SetError(ns, (e as Error).message)
     }
@@ -291,7 +286,7 @@ function lines_Parse_Decor(ns: NS): void {
         return
     }
     try {
-        const rules         = ns.data.languageRules
+        const rules = ns.data.languageRules
         if(!rules) { ns_SetError(ns, 'No language rules'); return }
         ns.data.parsedLines = ns.data.blocks.map(block =>
             block.lines.map(raw => parseLineIgnoringStrings(raw, rules))
@@ -303,27 +298,7 @@ function lines_Parse_Decor(ns: NS): void {
 }
 
 /**
- * Compute the common prefix of marker sequences for each block.
- */
-function pattern_Compute_Decor(ns: NS): void {
-    if(ns.config.b_Debug) {
-        ns.data.commonPrefix = (ns['testCommonPrefix'] as string[][] | undefined) ?? []
-        ns.result           = ok(ns.data.commonPrefix)
-        return
-    }
-    try {
-        ns.data.commonPrefix = ns.data.parsedLines.map(blockLines => {
-            const sequences = blockLines.map(pl => pl.markers.map(m => m.symbol))
-            return findDominantPrefix(sequences)
-        })
-        ns.result = ok(ns.data.commonPrefix)
-    } catch(e) {
-        ns_SetError(ns, (e as Error).message)
-    }
-}
-
-/**
- * Apply alignment spacing to each block according to the common prefix.
+ * Apply pairwise sliding-window alignment to every block.
  */
 function alignment_Apply_Decor(ns: NS): void {
     if(ns.config.b_Debug) {
@@ -332,11 +307,9 @@ function alignment_Apply_Decor(ns: NS): void {
         return
     }
     try {
-        ns.data.alignedLines = ns.data.parsedLines.map((blockLines, bi) => {
-            const prefix = ns.data.commonPrefix[bi]
-            if(prefix.length === 0) { return blockLines.map(pl => pl.raw) }
-            return alignBlock(blockLines, prefix, ns.config.maxSpaces)
-        })
+        ns.data.alignedLines = ns.data.parsedLines.map(blockLines =>
+            alignBlock(blockLines, ns.config.maxSpaces)
+        )
         ns.result = ok(ns.data.alignedLines)
     } catch(e) {
         ns_SetError(ns, (e as Error).message)
@@ -355,7 +328,7 @@ function text_Replace_Decor(ns: NS): void {
         const editor = ns.data.editor
         if(!editor) { ns_SetError(ns, 'No active editor'); return }
         applyEditorReplacements(editor, ns.data.blocks, ns.data.alignedLines)
-        ns.result    = ok('replaced')
+        ns.result = ok('replaced')
     } catch(e) {
         ns_SetError(ns, (e as Error).message)
     }
@@ -368,15 +341,15 @@ function text_Replace_Decor(ns: NS): void {
 function loadConfig(
     vsConfig  : vscode.WorkspaceConfiguration,
     alignChars: string[]          ,
-    defaults: typeof CONFIG
+    defaults  : typeof CONFIG
 ): Partial<typeof CONFIG> {
     return {
-        defaultAlignChars: alignChars,
-        maxBlockSize    : vsConfig.get<number>('maxBlockSize', defaults.maxBlockSize),
-        preserveComments: vsConfig.get<boolean>('preserveComments', defaults.preserveComments),
-        preserveStrings : vsConfig.get<boolean>('preserveStrings', defaults.preserveStrings),
-        maxSpaces       : vsConfig.get<number>('maxSpaces'   , defaults.maxSpaces),
-        greedyMatch     : vsConfig.get<boolean>('greedyMatch', defaults.greedyMatch),
+        defaultAlignChars: alignChars                             ,
+        maxBlockSize     : vsConfig.get<number>('maxBlockSize'    , defaults.maxBlockSize)    ,
+        preserveComments : vsConfig.get<boolean>('preserveComments', defaults.preserveComments),
+        preserveStrings  : vsConfig.get<boolean>('preserveStrings', defaults.preserveStrings) ,
+        maxSpaces        : vsConfig.get<number>('maxSpaces'       , defaults.maxSpaces)       ,
+        greedyMatch      : vsConfig.get<boolean>('greedyMatch'    , defaults.greedyMatch)     ,
     }
 }
 
@@ -385,7 +358,7 @@ function loadConfig(
 function detectLanguageRules(langId: string, defaultAlignChars: string[]): LanguageRules {
     const rules = LANGUAGE_RULES[langId]
     if(rules) { return { ...rules, alignChars: defaultAlignChars } }
-    return { ...DEFAULT_LANGUAGE_RULES, alignChars: defaultAlignChars }
+    return    { ...DEFAULT_LANGUAGE_RULES, alignChars: defaultAlignChars }
 }
 
 // ── extractRawLines ───────────────────────────────────────────
@@ -404,16 +377,15 @@ function extractRawLines(doc: vscode.TextDocument, start: number, end: number): 
  * Lines that are pure comments are ignored (not added to blocks).
  *
  * FSM states:
- *   idle_Waiting    — looking for the start of a new block
- *   block_Building  — accumulating lines into the current block
+ *   idle_Waiting   — looking for the start of a new block
+ *   block_Building — accumulating lines into the current block
  */
 function findLineBlocks(
-    rawLines   : string[],
-    startOffset: number ,
-    rules      : LanguageRules,
+    rawLines    : string[],
+    startOffset : number,
+    rules       : LanguageRules,
     maxBlockSize: number
 ): LineBlock[] {
-    // states: idle_Waiting | block_Building
     type State = 'idle_Waiting' | 'block_Building'
 
     const blocks: LineBlock[] = []
@@ -424,7 +396,7 @@ function findLineBlocks(
     const flush = (): void => {
         if(curBlock.lines.length > 1) { blocks.push(curBlock) }
         curBlock = { startLine: 0, lines: [] }
-        state = 'idle_Waiting'
+        state    = 'idle_Waiting'
     }
 
     const isBlankOrComment = (raw: string): boolean => {
@@ -457,7 +429,6 @@ function findLineBlocks(
                 const indent = getIndent(raw)
                 if(indent !== curIndent || curBlock.lines.length >= maxBlockSize) {
                     flush()
-                    // re-process this line as a potential new block start
                     curIndent = indent
                     curBlock  = { startLine: startOffset + i, lines: [raw] }
                     state     = 'block_Building'
@@ -478,12 +449,12 @@ function findLineBlocks(
  * and line/block comments.
  *
  * FSM states:
- *   code_Reading       — scanning normal code
- *   string_Double      — inside "..." string
- *   string_Single      — inside '...' string
- *   template_Backtick  — inside `...` template literal
- *   lineComment_Done   — line comment found; stop scanning
- *   blockComment_Open  — inside block comment
+ *   code_Reading      — scanning normal code
+ *   string_Double     — inside "..." string
+ *   string_Single     — inside '...' string
+ *   template_Backtick — inside `...` template literal
+ *   lineComment_Done  — line comment found; stop scanning
+ *   blockComment_Open — inside block comment
  */
 function parseLineIgnoringStrings(raw: string, rules: LanguageRules): ParsedLine {
     type State =
@@ -500,8 +471,8 @@ function parseLineIgnoringStrings(raw: string, rules: LanguageRules): ParsedLine
     const markers: Marker[] = []
 
     let state: State = 'code_Reading'
-    let i           = 0
-    let codeStart   = 0
+    let i               = 0
+    let codeStart       = 0
     let blockCommentEnd = ''
 
     const pushCode = (end: number): void => {
@@ -523,7 +494,7 @@ function parseLineIgnoringStrings(raw: string, rules: LanguageRules): ParsedLine
                         blockCommentEnd = bc.end
                         state           = 'blockComment_Open'
                         i += bc.start.length
-                        foundBlock      = true
+                        foundBlock = true
                         break
                     }
                 }
@@ -570,24 +541,24 @@ function parseLineIgnoringStrings(raw: string, rules: LanguageRules): ParsedLine
 
             case 'string_Double': {
                 if(i >= raw.length) { tokens.push({ kind: 'string', text: raw.slice(codeStart) }); break outerLoop }
-                if(raw[i] === '') { i += 2; continue outerLoop }
-                if(raw[i] === '"') { i++; tokens.push({ kind: 'string', text: raw.slice(codeStart, i) }); codeStart = i; state = 'code_Reading'; continue outerLoop }
+                if(raw[i] === '\\') { i += 2; continue outerLoop }
+                if(raw[i] === '"')  { i++; tokens.push({ kind: 'string', text: raw.slice(codeStart, i) }); codeStart = i; state = 'code_Reading'; continue outerLoop }
                 i++
                 break
             }
 
             case 'string_Single': {
                 if(i >= raw.length) { tokens.push({ kind: 'string', text: raw.slice(codeStart) }); break outerLoop }
-                if(raw[i] === '') { i += 2; continue outerLoop }
-                if(raw[i] === "'") { i++; tokens.push({ kind: 'string', text: raw.slice(codeStart, i) }); codeStart = i; state = 'code_Reading'; continue outerLoop }
+                if(raw[i] === '\\') { i += 2; continue outerLoop }
+                if(raw[i] === "'")  { i++; tokens.push({ kind: 'string', text: raw.slice(codeStart, i) }); codeStart = i; state = 'code_Reading'; continue outerLoop }
                 i++
                 break
             }
 
             case 'template_Backtick': {
                 if(i >= raw.length) { tokens.push({ kind: 'string', text: raw.slice(codeStart) }); break outerLoop }
-                if(raw[i] === '') { i += 2; continue outerLoop }
-                if(raw[i] === '`') { i++; tokens.push({ kind: 'string', text: raw.slice(codeStart, i) }); codeStart = i; state = 'code_Reading'; continue outerLoop }
+                if(raw[i] === '\\') { i += 2; continue outerLoop }
+                if(raw[i] === '`')  { i++; tokens.push({ kind: 'string', text: raw.slice(codeStart, i) }); codeStart = i; state = 'code_Reading'; continue outerLoop }
                 i++
                 break
             }
@@ -621,148 +592,200 @@ function parseLineIgnoringStrings(raw: string, rules: LanguageRules): ParsedLine
  * (Thin wrapper around parseLineIgnoringStrings for external use / testing.)
  */
 function findAlignCharsGreedy(code: string, alignChars: string[], rules: LanguageRules): Marker[] {
-    const rulesWithChars: LanguageRules = { ...rules, alignChars }
-    return parseLineIgnoringStrings(code, rulesWithChars).markers
+    return parseLineIgnoringStrings(code, { ...rules, alignChars }).markers
 }
 
-// ── findDominantPrefix ────────────────────────────────────────
+// ── buildPairwisePositionMap ──────────────────────────────────
 /**
- * Given an array of marker-symbol sequences, find the most frequent
- * non-empty sequence to use as the alignment prefix.
- */
-function findDominantPrefix(sequences: string[][]): string[] {
-    if(sequences.length === 0) { return [] }
-
-    const counts = new Map<string, { sequence: string[], count: number }>()
-    for(const seq of sequences) {
-        if(seq.length === 0) { continue }
-        const key      = JSON.stringify(seq)
-        const existing = counts.get(key)
-        if(existing) {
-            existing.count++
-        } else {
-            counts.set(key, { sequence: seq, count: 1 })
-        }
-    }
-
-    if(counts.size === 0) { return [] }
-
-    let dominantSeq: string[] = []
-    let maxCount = 0
-    for(const { sequence, count } of counts.values()) {
-        if(count > maxCount) {
-            maxCount    = count
-            dominantSeq = sequence
-        }
-    }
-
-    return dominantSeq
-}
-
-// ── computeColumnPositionsWithLength ─────────────────────────
-/**
- * For each marker position in the common prefix                 , compute the maximum column
- * (start position) at which that marker appears across all lines, taking
- * into account that earlier markers may have been padded.
+ * Build a target-column map for all markers in a parsed block.
  *
- * Returns an array of target column positions (one per prefix entry).
+ * Phase 1 — pairwise sliding window (unchanged)
+ * ─────────────────────────────────────────────
+ * Slide a two-line window over the block top-to-bottom.
+ * For each adjacent pair (i, i+1):
+ *   • Walk both marker sequences in parallel until the symbols diverge.
+ *   • Every matched position k gets target = max(colA, colB),
+ *     capped so neither line gains more than maxSpaces of extra padding.
+ *   • The result is stored under keys `${i}:${k}` and `${i+1}:${k}`,
+ *     taking Math.max with any value already there.
+ *
+ * Phase 2 — transitive propagation (new)
+ * ───────────────────────────────────────
+ * A single left-to-right pass is not enough when the widest line sits in
+ * the middle of the block.  Example (marker position 0, symbol ":"):
+ *
+ *   line 0  editor        col  7   pair(0,1) → target 13
+ *   line 1  languageRules col 13   pair(1,2) → target 13   ← maximum
+ *   line 2  blocks        col  6   pair(2,3) → target 12   ✗ should be 13
+ *   line 3  parsedLines   col 11   pair(3,4) → target 12   ✗ should be 13
+ *   line 4  alignedLines  col 12
+ *
+ * Lines 2-4 never reach 13 in a single pass because they are not adjacent
+ * to line 1.  Running the command again fixes them — exactly the
+ * "needs multiple runs" symptom reported.
+ *
+ * Phase 2 fixes this: for each marker position k, find every maximal run
+ * of consecutive lines that share the same symbol at k, then lift every
+ * posMap entry in that run to the run's maximum.  After phase 2 the result
+ * is identical to what repeated runs would eventually converge to, and
+ * running the command again produces no further change (idempotent).
+ *
+ * Key format: `"${lineIndex}:${markerIndex}"` → target column
  */
-function computeColumnPositionsWithLength(
+function buildPairwisePositionMap(
     parsedLines: ParsedLine[],
-    prefix     : string[]    ,
-    maxSpaces: number
-): number[] {
-    const positions: number[] = new Array(prefix.length).fill(0)
+    maxSpaces  : number
+): Map<string, number> {
+    const posMap = new Map<string, number>()
 
-    for(const pl of parsedLines) {
-        // We only care about lines whose marker sequence starts with the prefix
-        const lineSymbols = pl.markers.map(m => m.symbol)
-        if(!prefixMatches(lineSymbols, prefix)) { continue }
+    // ── Phase 1: pairwise sliding window ─────────────────────
+    for(let i = 0; i < parsedLines.length - 1; i++) {
+        const mA     = parsedLines[i].markers
+        const mB     = parsedLines[i + 1].markers
+        const minLen = Math.min(mA.length, mB.length)
 
-        for(let pi = 0; pi < prefix.length; pi++) {
-            const col = pl.markers[pi].startCol
-            if(col > positions[pi]) { positions[pi] = col }
+        // Length of the common symbol prefix
+        let commonLen = 0
+        while(commonLen < minLen && mA[commonLen].symbol === mB[commonLen].symbol) {
+            commonLen++
+        }
+        if(commonLen === 0) { continue }
+
+        for(let mk = 0; mk < commonLen; mk++) {
+            const colA   = mA[mk].startCol
+            const colB   = mB[mk].startCol
+            const target = Math.min(
+                Math.max(colA, colB),             // ideal: bring both to the further one
+                Math.min(colA, colB) + maxSpaces  // cap: never add more than maxSpaces
+            )
+
+            const keyA = `${i}:${mk}`
+            const keyB = `${i + 1}:${mk}`
+            posMap.set(keyA, Math.max(posMap.get(keyA) ?? 0, target))
+            posMap.set(keyB, Math.max(posMap.get(keyB) ?? 0, target))
         }
     }
 
-    // Clamp: never add more than maxSpaces per marker
-    for(let pi = 0; pi < positions.length; pi++) {
-        const minCol = parsedLines
-            .filter(pl => prefixMatches(pl.markers.map(m => m.symbol), prefix))
-            .reduce((acc, pl) => Math.min(acc, pl.markers[pi].startCol), Infinity)
-        const cap = minCol + maxSpaces
-        if(positions[pi] > cap) { positions[pi] = cap }
+    // ── Phase 2: transitive propagation ──────────────────────
+    // For each marker position mk, scan all maximal runs of consecutive
+    // lines that share the same symbol at mk.  Lift every posMap entry
+    // in the run to the run's maximum so that a "wide" line in the middle
+    // of a run propagates its target to all neighbours, not just its
+    // immediate pair partners.
+    const maxMarkers = Math.max(0, ...parsedLines.map(pl => pl.markers.length))
+
+    for(let mk = 0; mk < maxMarkers; mk++) {
+        let runStart = 0
+
+        while(runStart < parsedLines.length) {
+            // Skip lines that have no marker at position mk
+            if(parsedLines[runStart].markers[mk] === undefined) {
+                runStart++
+                continue
+            }
+
+            const symbol = parsedLines[runStart].markers[mk].symbol
+            let runEnd   = runStart
+
+            // Extend the run while the symbol at mk keeps matching
+            while(
+                runEnd + 1 < parsedLines.length &&
+                parsedLines[runEnd + 1].markers[mk]?.symbol === symbol
+            ) {
+                runEnd++
+            }
+
+            // Find the maximum target already recorded in this run
+            let runMax = 0
+            for(let i  = runStart; i <= runEnd; i++) {
+                runMax = Math.max(runMax, posMap.get(`${i}:${mk}`) ?? 0)
+            }
+
+            // Propagate the maximum to every participating line in the run.
+            // We only update lines that already have a posMap entry — lines
+            // at the very edge of a block with only one neighbour and a
+            // mismatching symbol correctly have no entry and must stay out.
+            if(runMax > 0) {
+                for(let i = runStart; i <= runEnd; i++) {
+                    const key = `${i}:${mk}`
+                    if(posMap.has(key)) {
+                        posMap.set(key, runMax)
+                    }
+                }
+            }
+
+            runStart = runEnd + 1
+        }
     }
 
-    return positions
+    return posMap
 }
 
-/** Check that lineSymbols starts with prefix. */
-function prefixMatches(lineSymbols: string[], prefix: string[]): boolean {
-    if(lineSymbols.length < prefix.length) { return false }
-    for(let i = 0; i < prefix.length; i++) {
-        if(lineSymbols[i] !== prefix[i]) { return false }
-    }
-    return true
-}
-
-// ── applySpacingRespectingMultichar ──────────────────────────
+// ── applyPositionMap ─────────────────────────────────────────
 /**
- * Rewrite a single parsed line by inserting spaces before each marker in the
- * common prefix so that its start column reaches `targetCols[pi]`.
- * Markers beyond the prefix and content after them are appended as-is.
+ * Rewrite each parsed line by inserting spaces before markers whose
+ * `"${lineIdx}:${markerIdx}"` key appears in posMap, advancing them to the
+ * recorded target column.
+ *
+ * Markers not in the map, and all raw content between markers, are copied
+ * verbatim from the original string.  Because we read from pl.raw (original
+ * positions) but write to an accumulator (shifted positions), earlier
+ * insertions naturally push subsequent markers right without extra bookkeeping.
  */
-function applySpacingRespectingMultichar(
-    pl    : ParsedLine,
-    prefix: string[],
-    targetCols: number[]
-): string {
-    if(!prefixMatches(pl.markers.map(m => m.symbol), prefix)) { return pl.raw }
+function applyPositionMap(
+    parsedLines: ParsedLine[],
+    posMap     : Map<string  , number>
+): string[] {
+    return parsedLines.map((pl, lineIdx) => {
+        let out    = ''
+        let srcPos = 0  // read cursor in pl.raw
 
-    let out    = ''
-    let srcPos = 0 // current position in pl.raw
+        for(let mk = 0; mk < pl.markers.length; mk++) {
+            const marker = pl.markers[mk]
 
-    for(let pi = 0; pi < prefix.length; pi++) {
-        const marker    = pl.markers[pi]
-        const targetCol = targetCols[pi]
-        // Append everything before this marker
-        out += pl.raw.slice(srcPos, marker.startCol)
-        srcPos = marker.startCol
-        // Current length of out is the current column of this marker
-        const curCol = out.length
-        if(targetCol > curCol) {
-            out += ' '.repeat(targetCol - curCol)
+            // Copy everything in the original string up to this marker
+            out += pl.raw.slice(srcPos, marker.startCol)
+            srcPos = marker.startCol
+
+            // If this marker has a target column, pad to it
+            const key = `${lineIdx}:${mk}`
+            if(posMap.has(key)) {
+                const target = posMap.get(key)!
+                const curCol = out.length
+                if(target > curCol) {
+                    out += ' '.repeat(target - curCol)
+                }
+            }
+
+            // Append the marker symbol itself
+            out += marker.symbol
+            srcPos = marker.startCol + marker.symbol.length
         }
-        // Append the marker itself
-        out += pl.raw.slice(marker.startCol, marker.startCol + marker.symbol.length)
-        srcPos = marker.startCol + marker.symbol.length
-    }
 
-    // Append the rest of the line
-    out += pl.raw.slice(srcPos)
-    return out
+        // Append the remainder of the line after the last marker
+        out += pl.raw.slice(srcPos)
+        return out
+    })
 }
 
 // ── alignBlock ───────────────────────────────────────────────
 /**
- * Align all lines in a block according to their common prefix.
- * Lines that don't start with the prefix are returned unchanged.
+ * Align all lines in a block using the pairwise sliding-window strategy
+ * with transitive propagation.
+ * Blocks with fewer than two lines are returned unchanged.
  */
-function alignBlock(
-    parsedLines: ParsedLine[],
-    prefix     : string[]    ,
-    maxSpaces: number
-): string[] {
-    if(prefix.length === 0) { return parsedLines.map(pl => pl.raw) }
-    const targetCols = computeColumnPositionsWithLength(parsedLines, prefix, maxSpaces)
-    return parsedLines.map(pl => applySpacingRespectingMultichar(pl, prefix, targetCols))
+function alignBlock(parsedLines: ParsedLine[], maxSpaces: number): string[] {
+    if(parsedLines.length < 2) { return parsedLines.map(pl => pl.raw) }
+    const posMap = buildPairwisePositionMap(parsedLines, maxSpaces)
+    if(posMap.size === 0) { return parsedLines.map(pl => pl.raw) }
+    return applyPositionMap(parsedLines, posMap)
 }
 
 // ── applyEditorReplacements ───────────────────────────────────
 /** Apply aligned lines back into the VS Code editor document. */
 function applyEditorReplacements(
-    editor: vscode.TextEditor,
-    blocks: LineBlock[]      ,
+    editor      : vscode.TextEditor,
+    blocks      : LineBlock[],
     alignedLines: string[][]
 ): void {
     editor.edit(editBuilder => {
@@ -795,11 +818,8 @@ export function activate(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-better-align-columns.align', runAlign),
         vscode.commands.registerCommand('CodeAlign.AlignBlock'          , runAlign),
-        vscode.commands.registerCommand('CodeAlign.Configure', () => {
-            vscode.commands.executeCommand(
-                'workbench.action.openSettings',
-                'codeAlign'
-            )
+        vscode.commands.registerCommand('CodeAlign.Configure'           , () => {
+            vscode.commands.executeCommand('workbench.action.openSettings', 'codeAlign')
         })
     )
 }
@@ -809,21 +829,19 @@ export function deactivate(): void { }
 
 // ── EXPORTS FOR TESTING ───────────────────────────────────────
 export {
-    ok          , err,
-    NS_Container,
-    a_Chain     ,
-    findAlignCharsGreedy,
-    findDominantPrefix,
-    computeColumnPositionsWithLength,
-    applySpacingRespectingMultichar,
+    ok                      , err,
+    NS_Container            ,
+    a_Chain                 ,
+    findAlignCharsGreedy    ,
+    buildPairwisePositionMap,
+    applyPositionMap        ,
     parseLineIgnoringStrings,
-    findLineBlocks,
-    alignBlock  ,
-    detectLanguageRules,
-    prefixMatches,
-    DEFAULT_LANGUAGE_RULES,
-    CONFIG      ,
-    LanguageRules,
-    ParsedLine  ,
-    Marker      ,
+    findLineBlocks          ,
+    alignBlock              ,
+    detectLanguageRules     ,
+    DEFAULT_LANGUAGE_RULES  ,
+    CONFIG                  ,
+    LanguageRules           ,
+    ParsedLine              ,
+    Marker                  ,
 }

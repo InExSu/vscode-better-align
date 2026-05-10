@@ -8,8 +8,11 @@
 		"types": ["node", "mocha", "glob"],
 		"strictPropertyInitialization": false,
 		"sourceMap": true,
-				"strict": true,
-				"rootDir": "src",
-				"outDir": "out"
-	}
+			"strict": true,
+			"rootDir": "src",
+			"outDir": "out"
+	},
+	"exclude": [
+		"test"
+	]
 }

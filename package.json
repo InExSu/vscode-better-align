@@ -2,7 +2,7 @@
   "name": "vscode-better-align-columns",
   "displayName": "Better Align Columns",
   "description": "Better vertical alignment with/without selection in any language for any characters or words.",
-  "version": "6.0.9",
+  "version": "6.1.2",
   "icon": "images/icon.png",
   "publisher": "inexsu",
   "license": "SEE LICENSE IN LICENSE",
@@ -165,7 +165,7 @@
     "package": "webpack --mode production --devtool hidden-source-map && npm run compile-web",
     "pretest": "tsc -p ./ && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js"
+    "test": "ts-mocha -p tsconfig.json \"src/test/test.align.test.ts\""
   },
   "devDependencies": {
     "@types/glob": "^8.1.0",

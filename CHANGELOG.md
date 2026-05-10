@@ -304,6 +304,21 @@
 - Fix commands broken if cursor in empty line
 - Add web extension support
 
+# v6.1.2 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.1.2)
+
+- Fix: Transitive propagation for multi-line alignment in one pass (idempotent)
+- Refactored algorithm into pairwise sliding window + transitive propagation
+
+# v6.1.1 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.1.1)
+
+- Fix: Alignment now works correctly in one pass (idempotent)
+- Fix: Better alignment for TypeScript type annotations with `:` and `=`
+
+# v6.1.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.1.0)
+
+- Add tests for alignment functions without VS Code dependencies
+- Test output shows input and output lines for visual verification
+
 # v1.2.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v1.2.0)
 
 - Initial release
