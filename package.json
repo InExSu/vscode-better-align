@@ -2,8 +2,7 @@
   "name": "vscode-better-align-columns",
   "displayName": "Better Align Columns",
   "description": "Better vertical alignment with/without selection in any language for any characters or words.",
-  "version": "6.3.5",
-  "icon": "images/icon.png",
+  "version": "6.3.7",
   "publisher": "inexsu",
   "license": "SEE LICENSE IN LICENSE",
   "author": {

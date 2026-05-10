@@ -1,39 +1,55 @@
-# FSM Hierarchy Diagram
-
 ```mermaid
-flowchart TD
-    subgraph Scanner["A2 — Scanner FSM"]
-        direction TB
-        SCR["`CodeReading`"]
-        SD["`StringDouble`"]
-        SS["`StringSingle`"]
-        TBck["`TemplateBacktick`"]
-        BC["`BlockComment`"]
-        CD["`CommentDone`"]
-    end
+stateDiagram-v2
+    direction LR
+    
+    [*] --> Idle
+    Idle --> LoadConfig
+    LoadConfig --> DetectLanguage
+    DetectLanguage --> FindBlocks
 
-    subgraph Grouping["A3 — Grouping FSM"]
-        direction TB
-        WFS["`WaitingForStart`"]
-        ACC["`Accumulating`"]
-    end
+    state "FindBlocks (Grouping FSM)" as FindBlocks {
+        direction LR
+        [*] --> WaitingForStart
+        WaitingForStart --> Accumulating: non-blank line
+        Accumulating --> WaitingForStart: different indent or blank
+        Accumulating --> Accumulating: same indent
+    }
+    FindBlocks --> ParseLines
 
-    subgraph Propagation["A4 — Propagation FSM"]
-        direction TB
-        FS["`FindingSeries`"]
-        ACP["`Accumulating`"]
-    end
+    state "ParseLines (Scanner FSM)" as ParseLines {
+        direction LR
+        [*] --> CodeReading
+        CodeReading --> StringDouble: "
+        CodeReading --> StringSingle: '
+        CodeReading --> TemplateBacktick: `
+        CodeReading --> BlockComment: /*
+        CodeReading --> CommentDone: //
 
-    subgraph Pipeline["A9 — Pipeline FSM"]
-        direction TB
-        IDL["`Idle`"]
-        LC["`LoadConfig`"]
-        DL["`DetectLanguage`"]
-        FB["`FindBlocks`"]
-        PL["`ParseLines`"]
-        AL["`Align`"]
-        RT["`ReplaceText`"]
-        DN["`Done`"]
-        ER["`Error`"]
-    end
+        StringDouble --> CodeReading: "
+        StringSingle --> CodeReading: '
+        TemplateBacktick --> CodeReading: `
+        BlockComment --> CodeReading: */
+        CommentDone --> [*]
+    }
+    ParseLines --> Align
+
+    state "Align (Propagation FSM)" as Align {
+      direction LR
+      [*] --> FindingSeries
+      FindingSeries --> Accumulating: marker found
+      Accumulating --> FindingSeries: marker series broken
+      Accumulating --> Accumulating: same marker
+    }
+
+    Align --> ReplaceText
+    ReplaceText --> Done
+    Done --> [*]
+
+    LoadConfig --> Error
+    DetectLanguage --> Error
+    FindBlocks --> Error
+    ParseLines --> Error
+    Align --> Error
+    ReplaceText --> Error
+    Error --> [*]
 ```

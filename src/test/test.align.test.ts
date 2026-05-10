@@ -284,4 +284,35 @@ describe('alignBlock', () => {
         // The output should have the same number of >= operators
         assert.equal(outputMatches.length, originalMatches.length, 'All >= operators should be preserved')
     })
+
+    it('is idempotent - repeated alignments do not add spaces', () => {
+        const input = lines(
+            'const a = 1',
+            'const b = 22'
+        )
+        
+        const first = alignBlock(
+            input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES)),
+            10
+        )
+        
+        const second = alignBlock(
+            first.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES)),
+            10
+        )
+        
+        const third = alignBlock(
+            second.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES)),
+            10
+        )
+        
+        console.log("=== idempotent test ===")
+        console.log("First :", first)
+        console.log("Second:", second)
+        console.log("Third :", third)
+        
+        assert.equal(first[0], second[0], 'First pass should equal second')
+        assert.equal(second[0], third[0], 'Second pass should equal third')
+        assert.equal(first.join('\n'), third.join('\n'), 'All passes should produce same result')
+    })
 })

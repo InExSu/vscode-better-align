@@ -1,26 +1,10 @@
-# v6.0.7 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.0.7)
+# v6.3.7 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.3.7)
 
-- Fix: Improved alignment logic to correctly handle blocks with lines that do not contain alignment markers.
+- Добавлена диаграмма состояний FSM
 
-# v6.0.7 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.0.7)
+# v6.3.6 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.3.6)
 
-- Fix: Improved alignment logic to correctly handle blocks with lines that do not contain alignment markers.
-
-# v6.0.7 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.0.7)
-
-- Fix: Improved alignment logic to correctly handle blocks with lines that do not contain alignment markers.
-
-# v6.0.7 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.0.7)
-
-- Fix: Improved alignment logic to correctly handle blocks with lines that do not contain alignment markers.
-
-# v6.0.7 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.0.7)
-
-- Fix: Improved alignment logic to correctly handle blocks with lines that do not contain alignment markers.
-
-# v6.0.7 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.0.7)
-
-- Fix: Improved alignment logic to correctly handle blocks with lines that do not contain alignment markers.
+- Test: Idempotency - repeated alignments don't add spaces
 
 # v6.3.5 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.3.5)
 
