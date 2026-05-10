@@ -235,4 +235,23 @@ describe('alignBlock', () => {
         assert.equal(output[0], input[0], 'Line 0 should not change')
         assert.equal(output[1], input[1], 'Line 1 should not change')
     })
+
+    it('does not split >= in code like startCol >= maxCol', () => {
+        const input = lines(
+            'if(startCol >= maxCol) { continue }',
+            'if(startCol < maxCol) { done }'
+        )
+        const output = alignBlock(
+            input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES)),
+            10
+        )
+        console.log("=== >= in code ===")
+        console.log("--- INPUT ---")
+        input.forEach((l, i) => console.log(`${i} | ${l}`))
+        console.log("--- OUTPUT ---")
+        output.forEach((l, i) => console.log(`${i} | ${l}`))
+        
+        assert.equal(output[0], input[0], 'Line 0 should not change')
+        assert.equal(output[1], input[1], 'Line 1 should not change')
+    })
 })
