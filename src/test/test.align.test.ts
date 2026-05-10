@@ -148,4 +148,29 @@ describe('alignBlock', () => {
         )
         show('func args', input, output)
     })
+
+    it('aligns Record type definitions', () => {
+        const input = [
+            `const LANGUAGE_RULES: Record<string, LanguageRules> = {`,
+            `    typescript: { lineComments: ["//"], blockComments: [{ start: "/*", end: "*/" }], stringDelimiters: ["\"", "\"", "\`"], alignChars: CONFIG.defaultAlignChars },`,
+            `    javascript: { lineComments: ["//"], blockComments: [{ start: "/*", end: "*/" }], stringDelimiters: ["\"", "\"", "\`"], alignChars: CONFIG.defaultAlignChars },`,
+            `    python: { lineComments: ["#"], blockComments: [], stringDelimiters: ["\"", "\""], alignChars: CONFIG.defaultAlignChars },`,
+            `    rust: { lineComments: ["//"], blockComments: [{ start: "/*", end: "*/" }], stringDelimiters: ["\""], alignChars: CONFIG.defaultAlignChars },`,
+            `    go: { lineComments: ["//"], blockComments: [{ start: "/*", end: "*/" }], stringDelimiters: ["\"", "\`"], alignChars: CONFIG.defaultAlignChars },`,
+            `    lua: { lineComments: ["--"], blockComments: [{ start: "--[[", end: "]]" }], stringDelimiters: ["\"", "\""], alignChars: CONFIG.defaultAlignChars },`,
+            `    sql: { lineComments: ["--"], blockComments: [{ start: "/*", end: "*/" }], stringDelimiters: ["\"", "\""], alignChars: CONFIG.defaultAlignChars },`,
+            `}`
+        ]
+        
+        const output = alignBlock(
+            input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES)),
+            20
+        )
+        
+        console.log("=== Record type ===")
+        console.log("--- INPUT ---")
+        input.forEach((l, i) => console.log(`${i} | ${l}`))
+        console.log("--- OUTPUT ---")
+        output.forEach((l, i) => console.log(`${i} | ${l}`))
+    })
 })
