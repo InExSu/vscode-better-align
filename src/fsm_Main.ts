@@ -109,7 +109,9 @@ export function parseLineIgnoringStrings(raw: string, rules: LanguageRules): Par
                 if(ch === '`' && rules.stringDelimiters.includes('`')) { pushCode(i); codeStart = i; state = ScannerState.TemplateBacktick; i++; continue mainLoop }
                 if(ch === '(' || ch === '[' || ch === '{') { nestingDepth++; i++; continue mainLoop }
                 if(ch === ')' || ch === ']' || ch === '}') { nestingDepth = Math.max(0, nestingDepth - 1); i++; continue mainLoop }
-                if(nestingDepth <= 1) {
+                if(ch === '<') { nestingDepth++; i++; continue mainLoop }
+                if(ch === '>') { nestingDepth = Math.max(0, nestingDepth - 1); i++; continue mainLoop }
+                if(nestingDepth === 0) {
                     for(const ac of alignChars) {
                         if(raw.startsWith(ac, i)) {
                             if(!(ac === ':' && i > 0 && raw[i - 1] === ')')) { markers.push({ symbol: ac, startCol: i }) }

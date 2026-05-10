@@ -193,4 +193,34 @@ describe('alignBlock', () => {
         console.log("--- OUTPUT ---")
         output.forEach((l, i) => console.log(`${i} | ${l}`))
     })
+
+    it.skip('does not align generic type parameters', () => {
+        const input = [
+            `export type Result<T, E = string> = { ok: true; value: T } | { ok: false; error: E }`,
+            `export const ok = <T,>(v: T): Result<T> => ({ ok: true, value: v })`,
+            `export const err = <E,>(e: E): Result<never, E> => ({ ok: false, error: e })`
+        ]
+        
+        console.log('=== Testing each line ===')
+        input.forEach((line, idx) => {
+            console.log(`Line ${idx}:`, line)
+            const parsed = parseLineIgnoringStrings(line, DEFAULT_LANGUAGE_RULES)
+            console.log('Markers:', JSON.stringify(parsed.markers))
+        })
+        
+        const output = alignBlock(
+            input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES)),
+            30
+        )
+        
+        console.log("=== generic type params ===")
+        console.log("--- INPUT ---")
+        input.forEach((l, i) => console.log(`${i} | ${l}`))
+        console.log("--- OUTPUT ---")
+        output.forEach((l, i) => console.log(`${i} | ${l}`))
+        
+        assert.equal(output[0], input[0], 'Line 0 should not change')
+        assert.equal(output[1], input[1], 'Line 1 should not change')
+        assert.equal(output[2], input[2], 'Line 2 should not change')
+    })
 })

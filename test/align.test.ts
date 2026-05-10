@@ -175,6 +175,22 @@ describe('alignBlock', () => {
         console.log("--- OUTPUT ---")
         output.forEach((l, i) => console.log(`${i} | ${l}`))
     })
+
+    it('aligns object type properties at depth 0 only', () => {
+        const input = lines(
+            'type X = { a: number }',
+            'type Y = { b: string }'
+        )
+        const output = alignBlock(
+            input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES)),
+            30
+        )
+        console.log('=== object depth ===')
+        console.log('--- INPUT ---')
+        input.forEach((l, i) => console.log(`${i} | ${l}`))
+        console.log('--- OUTPUT ---')
+        output.forEach((l, i) => console.log(`${i} | ${l}`))
+    })
 })
 
 describe('buildPairwisePositionMap', () => {

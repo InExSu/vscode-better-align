@@ -8,6 +8,16 @@ npm run lint    # Проверка линтера
 npm run test    # Запуск тестов
 ```
 
+## Создание документации FSM
+
+После изменения `src/fsm_Main.ts` создайте файл `src/fsm_Main.md` с mermaid-диаграммой иерархии управляющих машин состояний:
+
+```bash
+npx ts2mermaid src/fsm_Main.ts > src/fsm_Main.md
+```
+
+Если ts2mermaid не работает, создайте диаграмму вручную на основе enum состояний в коде. Диаграмма должна показывать все состояния (enum) и их переходы. Цвета на диаграмме не нужны.
+
 ## Процесс исправления ошибок (TDD)
 
 Когда пользователь просит исправить ошибку:
@@ -110,10 +120,11 @@ git add -A && git commit -m "vX.Y.Z: Описание изменений"
 
    - Исправлена ошибка "Invalid array length" при большом выравнивании
    ```
-3. Запустите   : `npx vsce package`
-4. Установите  : `code --uninstall-extension inexsu.vscode-better-align-columns 2>/dev/null || true && code --install-extension vscode-better-align-columns-X.Y.Z.vsix --force && code --reload-window`
-5. Проверьте детали расширения в панели расширений VS Code
-6. Зафиксируйте: `git add -A && git commit -m "vX.Y.Z: Исправлена ошибка Invalid array length при большом выравнивании"`
+3. Удалите старый VSIX: `rm -f vscode-better-align-columns-X.Y.Z.vsix`
+4. Запустите   : `npx vsce package`
+5. Установите  : `code --uninstall-extension inexsu.vscode-better-align-columns 2>/dev/null || true && code --install-extension vscode-better-align-columns-X.Y.Z.vsix --force && code --reload-window`
+6. Проверьте детали расширения в панели расширений VS Code
+7. Зафиксируйте: `git add -A && git commit -m "vX.Y.Z: Исправлена ошибка Invalid array length при большом выравнивании"`
 
 ---
 name       : karpathy-guidelines
