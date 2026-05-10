@@ -1,3 +1,7 @@
+# v6.4.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.4.0)
+
+- Initial implementation of automated release flow, adhering to AGENTS.md guidelines.
+
 # v6.3.8 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.3.8)
 
 - Обновлены скрипты и документация конечного автомата

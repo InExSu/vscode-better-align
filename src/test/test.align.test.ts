@@ -314,5 +314,19 @@ describe('alignBlock', () => {
         assert.equal(first[0], second[0], 'First pass should equal second')
         assert.equal(second[0], third[0], 'Second pass should equal third')
         assert.equal(first.join('\n'), third.join('\n'), 'All passes should produce same result')
-    })
-})
+        })
+
+        it('correctly aligns lines with varied existing whitespace', () => {
+        const input = lines(
+            'const a = 1;',
+            'const bee  = 2;'
+        );
+        const parsed = input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES));
+        const output = alignBlock(parsed, DEFAULT_CONFIG.maxSpaces);
+        show('varied whitespace', input, output);
+        assert.deepStrictEqual(output, [
+            'const a    = 1;',
+            'const bee  = 2;'
+        ]);
+        });
+        })
