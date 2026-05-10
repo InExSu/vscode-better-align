@@ -275,9 +275,21 @@ function blockSearchFSM(ns: NS): void {
             case BlockSearchState.ExtractingLines:
                 ctx.rawLines = extractRawLines(ctx.doc, ctx.startLine, ctx.endLine)
                 state = BlockSearchState.GroupingBlocks; break
-            case BlockSearchState.GroupingBlocks:
-                ns.data.blocks = findLineBlocks(ctx.rawLines, ctx.startLine, ctx.rules, ns.config.maxBlockSize)
+            case BlockSearchState.GroupingBlocks: {
+                const isFullSelection = ctx.startLine === 0 && ctx.endLine === ctx.doc.lineCount - 1
+                const lines = ctx.rawLines
+                if(isFullSelection && lines.length > 1 && ctx.rules.lineComments.length > 0) {
+                    const hasMultipleIndents = new Set(lines.map(l => l.match(/^(\s*)/)?.[1] ?? '')).size > 1
+                    if(hasMultipleIndents) {
+                        ns.data.blocks = [{ startLine: ctx.startLine, lines: ctx.rawLines }]
+                    } else {
+                        ns.data.blocks = findLineBlocks(ctx.rawLines, ctx.startLine, ctx.rules, ns.config.maxBlockSize)
+                    }
+                } else {
+                    ns.data.blocks = findLineBlocks(ctx.rawLines, ctx.startLine, ctx.rules, ns.config.maxBlockSize)
+                }
                 state = BlockSearchState.Done; break
+            }
             case BlockSearchState.Done: ns.result = ok(ns.data.blocks); break main
             case BlockSearchState.Error: break main
         }

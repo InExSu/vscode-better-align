@@ -5,10 +5,10 @@
 
 // ── 1. SHARED TYPES (no VS Code dependencies) ────────────────
 export type LanguageRules = {
-    lineComments: string[]
-    blockComments: { start: string; end: string }[]
+    lineComments    : string[]
+    blockComments   : { start: string; end: string }[]
     stringDelimiters: string[]
-    alignChars: string[]
+    alignChars      : string[]
 }
 
 export type LineBlock = { startLine: number; lines: string[] }
@@ -16,8 +16,8 @@ export type LineBlock = { startLine: number; lines: string[] }
 export type ParsedLine = { raw: string; tokens: Token[]; markers: Marker[] }
 
 export type Token =
-    | { kind: 'code'; text: string }
-    | { kind: 'string'; text: string }
+    | { kind: 'code'; text   : string }
+    | { kind: 'string'; text : string }
     | { kind: 'comment'; text: string }
 
 export type Marker = { symbol: string; startCol: number }

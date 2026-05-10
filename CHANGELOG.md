@@ -304,6 +304,10 @@
 - Fix commands broken if cursor in empty line
 - Add web extension support
 
+# v6.2.6 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.2.6)
+
+- Fix: Full file selection aligns all code, idempotent behavior
+
 # v6.2.5 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.2.5)
 
 - Fix: Full file selection now aligns all code as one block
