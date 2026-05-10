@@ -286,7 +286,7 @@ export function applyPositionMap(parsedLines: ParsedLine[], posMap: Map<string, 
         for(let mk = 0; mk < pl.markers.length; mk++) {
             const marker = pl.markers[mk]
             // Берём сегмент до маркера и убираем trailing пробелы
-            out += pl.raw.slice(srcPos, marker.startCol).trimEnd()
+            out += pl.raw.slice(srcPos, marker.startCol)
             srcPos = marker.startCol
             const key = `${lineIdx}:${mk}`
             if(posMap.has(key)) {

@@ -5,7 +5,7 @@ import {
     alignBlock,
     DEFAULT_LANGUAGE_RULES,
     DEFAULT_CONFIG,
-} from '../testPure'
+} from '../fsm_Main'
 
 const vscode = 'vscode'
 
