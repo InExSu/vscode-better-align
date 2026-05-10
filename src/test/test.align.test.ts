@@ -118,6 +118,26 @@ describe('alignBlock', () => {
         assert.equal(changed, false, 'Alignment should be idempotent')
     })
 
+    it('does not modify property names in type definitions', () => {
+        const input = lines(
+            'export type LanguageRules = {',
+            '    lineComments: string[]',
+            '    blockComments: { start: string; end: string }[]',
+            '    stringDelimiters: string[]',
+            '    alignChars: string[]',
+            '}'
+        )
+        const parsed = input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES))
+        console.log('markers:', parsed.map(pl => pl.markers.map(m => m.symbol + '@' + m.startCol).join(', ')))
+        const output = alignBlock(parsed, DEFAULT_CONFIG.maxSpaces)
+        
+        // Check that 'start' is not modified
+        const hasStart = output.some(l => l.includes('start'))
+        assert.equal(hasStart, true, 'start should not be modified to st')
+        
+        show('type with nested objects', input, output)
+    })
+
     it('skips strings containing align chars', () => {
         const input = lines('const a = "=>"', 'const bc = "="')
         const parsed = input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES))

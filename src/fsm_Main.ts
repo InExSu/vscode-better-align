@@ -6,9 +6,9 @@
 // ── 1. SHARED TYPES (no VS Code dependencies) ────────────────
 export type LanguageRules = {
     lineComments    : string[]
-    blockComments   : { start: string; end: string }[]
+    blockComments: { start: string; end: string }[]
     stringDelimiters: string[]
-    alignChars      : string[]
+    alignChars: string[]
 }
 
 export type LineBlock = { startLine: number; lines: string[] }
@@ -16,8 +16,8 @@ export type LineBlock = { startLine: number; lines: string[] }
 export type ParsedLine = { raw: string; tokens: Token[]; markers: Marker[]; originalMarkers?: Marker[] }
 
 export type Token =
-    | { kind: 'code'; text   : string }
-    | { kind: 'string'; text : string }
+    | { kind: 'code'; text: string }
+    | { kind: 'string'; text: string }
     | { kind: 'comment'; text: string }
 
 export type Marker = { symbol: string; startCol: number }
@@ -223,15 +223,15 @@ export function propagatePositions(parsedLines: ParsedLine[], posMap: Map<string
 export function buildPairwisePositionMap(parsedLines: ParsedLine[], maxSpaces: number): Map<string, number> {
     const posMap = new Map<string, number>()
     if(parsedLines.length < 2) { return posMap }
-    
+
     const hasOriginal = parsedLines.some(pl => pl.originalMarkers !== undefined)
-    
+
     const symbolToMarkers = new Map<string, { lineIdx: number; mk: number; startCol: number }[]>()
-    
+
     for(let lineIdx = 0; lineIdx < parsedLines.length; lineIdx++) {
         const pl = parsedLines[lineIdx]
         const markers = hasOriginal ? (pl.originalMarkers || pl.markers) : pl.markers
-        
+
         for(let mk = 0; mk < markers.length; mk++) {
             const m = markers[mk]
             const key = m.symbol
@@ -241,13 +241,13 @@ export function buildPairwisePositionMap(parsedLines: ParsedLine[], maxSpaces: n
             symbolToMarkers.get(key)!.push({ lineIdx, mk, startCol: m.startCol })
         }
     }
-    
+
     for(const symbol of Array.from(symbolToMarkers.keys())) {
         const markers = symbolToMarkers.get(symbol)!
         if(markers.length < 2) { continue }
-        
+
         const maxCol = Math.max(...markers.map(m => m.startCol))
-        
+
         for(const { lineIdx, mk, startCol } of markers) {
             if(startCol >= maxCol) { continue }
             const target = Math.min(maxCol, startCol + maxSpaces)
@@ -256,7 +256,7 @@ export function buildPairwisePositionMap(parsedLines: ParsedLine[], maxSpaces: n
             }
         }
     }
-    
+
     for(const symbol of Array.from(symbolToMarkers.keys())) {
         const markers = symbolToMarkers.get(symbol)!
         const mks = Array.from(new Set(markers.map(m => m.mk)))
@@ -266,8 +266,8 @@ export function buildPairwisePositionMap(parsedLines: ParsedLine[], maxSpaces: n
             propagatePositions(parsedLines, posMap, mk)
         }
     }
-    
-return posMap
+
+    return posMap
 }
 
 export function applyPositionMap(parsedLines: ParsedLine[], posMap: Map<string, number>): string[] {

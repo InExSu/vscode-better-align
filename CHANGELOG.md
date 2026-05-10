@@ -304,6 +304,11 @@
 - Fix commands broken if cursor in empty line
 - Add web extension support
 
+# v6.2.8 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.2.8)
+
+- Fix: Property names in type definitions not modified (start stays as start)
+- Add test for nested objects in type definitions
+
 # v6.2.7 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.2.7)
 
 - Fix: Idempotent behavior for aligned code
