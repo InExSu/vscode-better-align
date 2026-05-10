@@ -304,6 +304,11 @@
 - Fix commands broken if cursor in empty line
 - Add web extension support
 
+# v6.2.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.2.0)
+
+- Improved alignment algorithm with FSM state machines
+- Better idempotent behavior
+
 # v6.1.9 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.1.9)
 
 - Fix: Function argument alignment works correctly
