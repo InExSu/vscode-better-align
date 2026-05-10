@@ -114,6 +114,8 @@ export function parseLineIgnoringStrings(raw: string, rules: LanguageRules): Par
                 if(nestingDepth === 0) {
                     for(const ac of alignChars) {
                         if(raw.startsWith(ac, i)) {
+                            // Skip single = that is preceded by >
+                            if(ac === '=' && i > 0 && raw[i - 1] === '>') { i++; continue mainLoop }
                             if(!(ac === ':' && i > 0 && raw[i - 1] === ')')) { markers.push({ symbol: ac, startCol: i }) }
                             i += ac.length; continue mainLoop
                         }
@@ -252,6 +254,11 @@ export function buildPairwisePositionMap(parsedLines: ParsedLine[], maxSpaces: n
 
         for(const { lineIdx, mk, startCol } of markers) {
             if(startCol >= maxCol) { continue }
+            
+            // Skip single = that is part of >=
+            const raw = parsedLines[lineIdx].raw
+            if(raw.substr(startCol, 2) === '>=' && raw[startCol - 1] !== '>') { continue }
+            
             const target = Math.min(maxCol, startCol + maxSpaces)
             if(target > startCol) {
                 posMap.set(`${lineIdx}:${mk}`, target)
