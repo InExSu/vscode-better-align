@@ -304,10 +304,12 @@
 - Fix commands broken if cursor in empty line
 - Add web extension support
 
-# v6.1.6 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.1.6)
+# v6.1.7 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.1.7)
 
-- Fix: Improved buildPairwisePositionMap to find max column across ALL lines
-- Test for function parameters and return types with multiple markers
+- Fix: Align all markers of same symbol across ALL lines that match
+- Improved handling of function call arguments
+
+# v6.1.6 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.1.6)
 
 # v6.1.5 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.1.5)
 

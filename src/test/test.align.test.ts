@@ -134,7 +134,18 @@ describe('alignBlock', () => {
         console.log('markers:', parsed.map(pl => pl.markers.map(m => m.symbol).join(' ')))
         const output = alignBlock(parsed, CONFIG.maxSpaces)
         show('function params + return', input, output)
+    })
+
+    it('aligns function call arguments', () => {
+        const input = lines(
+            'rwd(config_Load_Decor    , ns)',
+            'rwd(language_Detect_Decor, ns)'
+        )
         
-        // Note: May not be fully idempotent due to multiple markers of same symbol at different positions
+        const output = alignBlock(
+            input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES)),
+            30
+        )
+        show('func args', input, output)
     })
 })

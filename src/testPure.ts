@@ -234,24 +234,30 @@ function buildPairwisePositionMap(
     const maxMarkers = Math.max(0, ...parsedLines.map(pl => pl.markers.length))
 
     for(let mk = 0; mk < maxMarkers; mk++) {
-        let linesWithMarker = 0
         let maxCol = -1
         
         for(let i = 0; i < parsedLines.length; i++) {
             const m = parsedLines[i].markers[mk]
             if(m) {
-                linesWithMarker++
                 maxCol = Math.max(maxCol, m.startCol)
             }
         }
         
-        if(linesWithMarker < 2 || maxCol < 0) { continue }
+        if(maxCol < 0) { continue }
+        
+        let linesWithMarker = 0
+        for(let i = 0; i < parsedLines.length; i++) {
+            if(parsedLines[i].markers[mk]) { linesWithMarker++ }
+        }
+        if(linesWithMarker < 2) { continue }
         
         for(let i = 0; i < parsedLines.length; i++) {
             const m = parsedLines[i].markers[mk]
             if(!m) { continue }
             
-            const target = Math.min(maxCol, m.startCol + maxSpaces)
+            const target = m.startCol >= maxCol 
+                ? m.startCol 
+                : Math.min(maxCol, m.startCol + maxSpaces)
             const key = `${i}:${mk}`
             posMap.set(key, Math.max(posMap.get(key) ?? 0, target))
         }
