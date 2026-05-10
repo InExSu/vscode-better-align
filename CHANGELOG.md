@@ -22,6 +22,10 @@
 
 - Fix: Improved alignment logic to correctly handle blocks with lines that do not contain alignment markers.
 
+# v6.3.2 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.3.2)
+
+- Fix: >= operator no longer split into > and =
+
 # v6.3.1 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.3.1)
 
 - Fix: Improved nesting depth tracking for generic type parameters and objects

@@ -216,4 +216,23 @@ describe('alignBlock', () => {
         assert.equal(output[1], input[1], 'Line 1 should not change')
         assert.equal(output[2], input[2], 'Line 2 should not change')
     })
+
+    it('does not split >= operator', () => {
+        const input = lines(
+            'const a = 1',
+            'const b >= 2'
+        )
+        const output = alignBlock(
+            input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES)),
+            10
+        )
+        console.log("=== >= operator ===")
+        console.log("--- INPUT ---")
+        input.forEach((l, i) => console.log(`${i} | ${l}`))
+        console.log("--- OUTPUT ---")
+        output.forEach((l, i) => console.log(`${i} | ${l}`))
+        
+        assert.equal(output[0], input[0], 'Line 0 should not change')
+        assert.equal(output[1], input[1], 'Line 1 should not change')
+    })
 })
