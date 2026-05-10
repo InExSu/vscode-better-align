@@ -304,6 +304,10 @@
 - Fix commands broken if cursor in empty line
 - Add web extension support
 
+# v6.2.4 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.2.4)
+
+- Refactor: Separate pure logic from VS Code API
+
 # v6.2.3 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.2.3)
 
 - Refactor: Extract A1 pipeline automaton code to separate file for testability

@@ -4,7 +4,7 @@ import {
     findLineBlocks,
     alignBlock,
     DEFAULT_LANGUAGE_RULES,
-    CONFIG,
+    DEFAULT_CONFIG,
 } from '../testPure'
 
 const vscode = 'vscode'
@@ -61,21 +61,21 @@ describe('alignBlock', () => {
     it('aligns on =', () => {
         const input = lines('const a = 1', 'const bc = 22', 'const def = 333')
         const parsed = input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES))
-        const output = alignBlock(parsed, CONFIG.maxSpaces)
+        const output = alignBlock(parsed, DEFAULT_CONFIG.maxSpaces)
         show('align on =', input, output)
     })
 
     it('aligns on =>', () => {
         const input = lines('a => 1', 'ab => 22', 'abc => 333')
         const parsed = input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES))
-        const output = alignBlock(parsed, CONFIG.maxSpaces)
+        const output = alignBlock(parsed, DEFAULT_CONFIG.maxSpaces)
         show('align on =>', input, output)
     })
 
     it('aligns on :', () => {
         const input = lines('a: 1', 'ab: 22', 'abc: 333')
         const parsed = input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES))
-        const output = alignBlock(parsed, CONFIG.maxSpaces)
+        const output = alignBlock(parsed, DEFAULT_CONFIG.maxSpaces)
         show('align on :', input, output)
     })
 
@@ -90,7 +90,7 @@ describe('alignBlock', () => {
             '}'
         )
         const parsed = input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES))
-        const output = alignBlock(parsed, CONFIG.maxSpaces)
+        const output = alignBlock(parsed, DEFAULT_CONFIG.maxSpaces)
         show('TypeScript types', input, output)
     })
 
@@ -105,10 +105,10 @@ describe('alignBlock', () => {
             '}'
         )
         const parsed1 = input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES))
-        const output1 = alignBlock(parsed1, CONFIG.maxSpaces)
+        const output1 = alignBlock(parsed1, DEFAULT_CONFIG.maxSpaces)
         
         const parsed2 = output1.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES))
-        const output2 = alignBlock(parsed2, CONFIG.maxSpaces)
+        const output2 = alignBlock(parsed2, DEFAULT_CONFIG.maxSpaces)
         
         show('first pass', input, output1)
         show('second pass', output1, output2)
@@ -121,7 +121,7 @@ describe('alignBlock', () => {
     it('skips strings containing align chars', () => {
         const input = lines('const a = "=>"', 'const bc = "="')
         const parsed = input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES))
-        const output = alignBlock(parsed, CONFIG.maxSpaces)
+        const output = alignBlock(parsed, DEFAULT_CONFIG.maxSpaces)
         show('skip strings', input, output)
     })
 
@@ -132,7 +132,7 @@ describe('alignBlock', () => {
         )
         const parsed = input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES))
         console.log('markers:', parsed.map(pl => pl.markers.map(m => m.symbol).join(' ')))
-        const output = alignBlock(parsed, CONFIG.maxSpaces)
+        const output = alignBlock(parsed, DEFAULT_CONFIG.maxSpaces)
         show('function params + return', input, output)
     })
 
@@ -152,13 +152,13 @@ describe('alignBlock', () => {
     it('aligns Record type definitions', () => {
         const input = [
             `const LANGUAGE_RULES: Record<string, LanguageRules> = {`,
-            `    typescript: { lineComments: ["//"], blockComments: [{ start: "/*", end: "*/" }], stringDelimiters: ["\"", "\"", "\`"], alignChars: CONFIG.defaultAlignChars },`,
-            `    javascript: { lineComments: ["//"], blockComments: [{ start: "/*", end: "*/" }], stringDelimiters: ["\"", "\"", "\`"], alignChars: CONFIG.defaultAlignChars },`,
-            `    python: { lineComments: ["#"], blockComments: [], stringDelimiters: ["\"", "\""], alignChars: CONFIG.defaultAlignChars },`,
-            `    rust: { lineComments: ["//"], blockComments: [{ start: "/*", end: "*/" }], stringDelimiters: ["\""], alignChars: CONFIG.defaultAlignChars },`,
-            `    go: { lineComments: ["//"], blockComments: [{ start: "/*", end: "*/" }], stringDelimiters: ["\"", "\`"], alignChars: CONFIG.defaultAlignChars },`,
-            `    lua: { lineComments: ["--"], blockComments: [{ start: "--[[", end: "]]" }], stringDelimiters: ["\"", "\""], alignChars: CONFIG.defaultAlignChars },`,
-            `    sql: { lineComments: ["--"], blockComments: [{ start: "/*", end: "*/" }], stringDelimiters: ["\"", "\""], alignChars: CONFIG.defaultAlignChars },`,
+            `    typescript: { lineComments: ["//"], blockComments: [{ start: "/*", end: "*/" }], stringDelimiters: ["\"", "\"", "\`"], alignChars: DEFAULT_CONFIG.defaultAlignChars },`,
+            `    javascript: { lineComments: ["//"], blockComments: [{ start: "/*", end: "*/" }], stringDelimiters: ["\"", "\"", "\`"], alignChars: DEFAULT_CONFIG.defaultAlignChars },`,
+            `    python: { lineComments: ["#"], blockComments: [], stringDelimiters: ["\"", "\""], alignChars: DEFAULT_CONFIG.defaultAlignChars },`,
+            `    rust: { lineComments: ["//"], blockComments: [{ start: "/*", end: "*/" }], stringDelimiters: ["\""], alignChars: DEFAULT_CONFIG.defaultAlignChars },`,
+            `    go: { lineComments: ["//"], blockComments: [{ start: "/*", end: "*/" }], stringDelimiters: ["\"", "\`"], alignChars: DEFAULT_CONFIG.defaultAlignChars },`,
+            `    lua: { lineComments: ["--"], blockComments: [{ start: "--[[", end: "]]" }], stringDelimiters: ["\"", "\""], alignChars: DEFAULT_CONFIG.defaultAlignChars },`,
+            `    sql: { lineComments: ["--"], blockComments: [{ start: "/*", end: "*/" }], stringDelimiters: ["\"", "\""], alignChars: DEFAULT_CONFIG.defaultAlignChars },`,
             `}`
         ]
         
