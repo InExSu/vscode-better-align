@@ -304,6 +304,10 @@
 - Fix commands broken if cursor in empty line
 - Add web extension support
 
+# v6.2.2 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.2.2)
+
+- Fix: Lint auto-fix for curly braces
+
 # v6.2.1 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.2.1)
 
 - Added test for Record type definitions alignment
