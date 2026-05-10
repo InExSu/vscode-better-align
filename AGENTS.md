@@ -1,188 +1,146 @@
-```markdown
-# Инструкции для агента по разработке
+# Инструкции для агента
 
-После внесения изменений в код всегда проверяйте их выполнение:
+---
+
+## Обязательные проверки после любых изменений кода
 
 ```bash
-npm run lint    # Проверка линтера
-npm run test    # Запуск тестов
+npm run lint   # должен пройти без ошибок
+npm run test   # все тесты должны быть зелёными
 ```
 
-## Создание документации FSM
+Не переходи к следующему шагу, пока оба не прошли.
 
-После изменения `src/fsm_Main.ts` создайте файл `src/fsm_Main.md` с mermaid-диаграммой иерархии управляющих машин состояний:
+---
 
-Создайте диаграмму вручную на основе enum состояний в коде. Диаграмма должна показывать все состояния (enum) и их переходы. Цвета на диаграмме не нужны.
+## Документация FSM
+
+После изменения `src/fsm_Main.ts` — обновить `src/fsm_Main.md`:
+
+- Создать mermaid-диаграмму на основе enum состояний в коде
+- Показать все состояния и переходы между ними
+- Цвета не нужны
+
+---
 
 ## Процесс исправления ошибок (TDD)
 
-Когда пользователь просит исправить ошибку:
+Строгий порядок шагов — не менять:
 
-1. **Сначала создайте падающий тест** - Напишите тест в `test/align.test.ts`, который воспроизводит ошибку
-2. **Запустите тест                                                         , чтобы подтвердить падение** - `npm run test` должен показывать, что новый тест падает
-3. **Исправьте код** - Реализуйте исправление в `src/extension.ts`
-4. **Запустите тесты** - Все тесты должны проходить
-5. **Обновите линтер** - `npm run lint` должен проходить
-6. **Соберите и протестируйте** - `npm run package` и протестируйте расширение
+1. **Написать падающий тест** в `test/align.test.ts`, воспроизводящий ошибку
+2. **Убедиться, что тест падает** — `npm run test` показывает именно этот тест красным
+3. **Исправить код** в `src/extension.ts` (или `src/fsm_Main.ts`)
+4. **Убедиться, что все тесты зелёные** — `npm run test`
+5. **Проверить линтер** — `npm run lint`
+6. **Собрать и упаковать** — `npm run package`
 
-Это относится ко ВСЕМ исправлениям ошибок, не только к проблемам выравнивания.
+### Ограничение на итерации
 
-## Важные ограничения
+Если исправление не работает после **3–5 попыток**:
+- Остановиться
+- Описать пользователю: что пробовал, где застрял, какие варианты видишь
+- Запросить уточнение — не продолжать угадывать
 
-**Если застряли после 3-5 итераций попыток исправить ошибку:**
-- Прекратите бесконечные рассуждения
-- Сообщите пользователю о проблеме и попросите руководства
-- НЕ продолжайте бесконечные циклы отладки
+---
 
-**Временное ограничение на исправление:** Если простое исправление не работает после нескольких попыток, попросите разъяснений, а не продолжайте бесконечно.
+## Процесс релиза
 
-# Инструкции для агента по процессу релиза
+Выполнять после того, как тесты и линтер прошли.
 
-После успешного улучшения кода выполните следующие шаги для выпуска новой версии:
+### 1. Версия
 
-## 1. Увеличение версии
+В `package.json` обновить `"version"` по semver:
+- патч (`Z+1`) — багфикс
+- минор (`Y+1`) — новая функциональность, обратная совместимость сохранена
+- мажор (`X+1`) — ломающее изменение
 
-Обновите версию в `package.json`:
-- Измените `"version": "X.Y.Z"` на следующий номер версии
+### 2. CHANGELOG.md
 
-## 2. Обновите CHANGELOG.md
-
-Добавьте новый раздел в начало `CHANGELOG.md`:
+Добавить в начало файла:
 
 ```markdown
 # vX.Y.Z [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/vX.Y.Z)
 
-- Краткое описание изменений
+- Описание изменений
 ```
 
-## 3. Сборка и упаковка
+### 3. Сборка
 
-Удалите старый VSIX, если существует:
 ```bash
-rm -f vscode-better-align-columns-X.Y.Z.vsix
-```
-
-Соберите и упакуйте расширение:
-```bash
+rm -f vscode-better-align-columns-*.vsix
 npm run package
 ```
 
-Или используйте vsce:
-```bash
-npx vsce package
-```
+### 4. Установка и проверка
 
-## 4. Проверьте релиз, установив и перезагрузив VS Code
-
-Чтобы убедиться, что новая версия работает корректно как часть процесса релиза, установите только что упакованное расширение и перезагрузите VS Code:
 ```bash
 code --uninstall-extension inexsu.vscode-better-align-columns 2>/dev/null || true
 code --install-extension vscode-better-align-columns-X.Y.Z.vsix --force
 code --reload-window
 ```
 
-Перезагрузите VS Code после установки (если автоматическая перезагрузка не работает):
+Если автоперезагрузка не сработала:
 ```bash
 osascript -e 'tell app "Code" to quit' && open -a "Visual Studio Code"
 ```
 
-## 5. Проверьте расширение
+Открыть панель расширений `Ctrl+Shift+X` → найти "Better Align Columns" → убедиться, что версия и описание актуальны.
 
-После установки проверьте детали расширения в VS Code:
-- Откройте панель расширений (Ctrl+Shift+X)
-- Найдите "Better Align Columns"
-- Проверьте , что версия показывает X.Y.Z и описание корректно
+Если описание устарело — пересобрать: `npx vsce package`.
 
-Если описание показывает устаревшую информацию, пересоберите:
-```bash
-npx vsce package
-```
+### 5. Git коммит
 
-## 6. Создайте Git коммит
-
-Создайте коммит со всеми изменениями:
 ```bash
 git add -A && git commit -m "vX.Y.Z: Описание изменений"
 ```
 
-## Пример
-
-Для исправления, улучшающего обработку ошибки "Invalid array length":
-
-1. Обновите `package.json`  : `"version": "X.Y.Z"`
-2. Добавьте в `CHANGELOG.md`:
-   ```markdown
-   # vX.Y.Z [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/vX.Y.Z)
-
-   - Исправлена ошибка "Invalid array length" при большом выравнивании
-   ```
-3. Удалите старый VSIX: `rm -f vscode-better-align-columns-X.Y.Z.vsix`
-4. Запустите   : `npx vsce package`
-5. Установите  : `code --uninstall-extension inexsu.vscode-better-align-columns 2>/dev/null || true && code --install-extension vscode-better-align-columns-X.Y.Z.vsix --force && code --reload-window`
-6. Проверьте детали расширения в панели расширений VS Code
-7. Зафиксируйте: `git add -A && git commit -m "vX.Y.Z: Исправлена ошибка Invalid array length при большом выравнивании"`
-
----
-name       : karpathy-guidelines
-description: Behavioral guidelines to reduce common LLM coding mistakes. Use when writing, reviewing, or refactoring code to avoid overcomplication, make surgical changes, surface assumptions, and define verifiable success criteria.
-license    : MIT
 ---
 
-# Karpathy Guidelines
+## Принципы написания кода
 
-## 1. Think Before Coding
+### Думай перед тем как писать
 
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
+- Явно назови допущения. Если не уверен — спроси.
+- Если возможны разные интерпретации задачи — изложи их, не выбирай молча.
+- Если есть более простое решение — скажи об этом.
+- Если что-то непонятно — остановись и задай вопрос, не угадывай.
 
-Before implementing          :
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist              , present them - don't pick silently.
-- If a simpler approach exists                   , say so. Push back when warranted.
-- If something is unclear                        , stop. Name what's confusing. Ask.
+### Минимализм
 
-## 2. Simplicity First
+Минимальный код, решающий задачу. Ничего сверх:
 
-**Minimum code that solves the problem. Nothing speculative.**
+- Никаких фич, которые не просили
+- Никаких абстракций для одноразового кода
+- Никакой "гибкости на будущее" без запроса
+- Никакой обработки невозможных сценариев
+- Если написал 200 строк, а можно было 50 — перепиши
 
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
+### Хирургические изменения
 
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+Трогать только то, что нужно:
 
-## 3. Surgical Changes
+- Не улучшать соседний код, комментарии, форматирование
+- Не рефакторить то, что не сломано
+- Соответствовать существующему стилю
+- Если видишь мёртвый код, не относящийся к задаче — упомяни, но не удаляй
+- Удалять только то, что стало неиспользуемым из-за **твоих** изменений
 
-**Touch only what you must. Clean up only your own mess.**
+Тест: каждая изменённая строка должна прямо вытекать из запроса пользователя.
 
-When editing existing code         :
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style             , even if you'd do it differently.
-- If you notice unrelated dead code, mention it - don't delete it.
+### Критерии успеха
 
-When your changes create orphans:
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
+Перед реализацией сформулируй проверяемые цели:
 
-The test: Every changed line should trace directly to the user's request.
-
-## 4. Goal-Driven Execution
-
-**Define success criteria. Loop until verified.**
-
-Transform tasks into verifiable goals:
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
-
-For multi-step tasks, state a brief plan:
 ```
-1. [Step] → verify  : [check]
-2. [Step] → verify  : [check]
-3. [Step] → verify  : [check]
+"Исправить баг X" → написать тест, воспроизводящий X → сделать тест зелёным
+"Добавить валидацию" → написать тесты на невалидные входы → сделать их зелёными
+"Рефакторинг Y" → тесты проходят до и после
 ```
 
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+Для многошаговых задач — краткий план:
+
+```
+1. [Шаг] → проверка: [что должно быть]
+2. [Шаг] → проверка: [что должно быть]
+3. [Шаг] → проверка: [что должно быть]
 ```

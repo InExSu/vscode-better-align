@@ -1,3 +1,7 @@
+# v6.3.8 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.3.8)
+
+- Обновлены скрипты и документация конечного автомата
+
 # v6.3.7 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.3.7)
 
 - Добавлена диаграмма состояний FSM
