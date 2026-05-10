@@ -7,8 +7,8 @@ import * as vscode from 'vscode'
 
 // ── 2. RESULT TYPE ───────────────────────────────────────────
 type Result<T, E = string> = { ok: true; value: T } | { ok: false; error: E }
-const ok  = <T,>(v: T): Result<T> => ({ ok: true, value: v })
-const err = <E,>(e: E): Result<never, E> => ({ ok: false, error: e })
+const ok  = <T ,>(v  : T)    : Result<T> => ({ ok: true, value: v })
+const err = <E ,>(e  : E)    : Result<never, E> => ({ ok: false, error: e })
 
 // ── 3. NS TYPE ───────────────────────────────────────────────
 type NS = {
@@ -55,8 +55,8 @@ type Marker = {
     startCol: number
 }
 
-const ns_Error    = (ns: NS): boolean => ns.result.ok === false
-const ns_SetError = (ns: NS, e: string): void => {
+const ns_Error    = (ns   : NS): boolean => ns.result.ok === false
+const ns_SetError = (ns   : NS, e: string): void => {
     ns.result  = err(e)
     ns.s_Error = e
 }
@@ -99,16 +99,16 @@ function a_Chain(ns: NS): void {
 
 // ── 5. CONFIG ────────────────────────────────────────────────
 const CONFIG = {
-    b_Debug             : false,
-    defaultAlignChars   : ['===', '!==', '<=>', '=>', '->', '==', '!=', '>=', '<=', '+=', '-=', '*=', '/=', '%=', '**=', ':', '{', '=', ','],
-    maxBlockSize        : 500  ,
-    preserveComments    : true ,
-    preserveStrings     : true ,
-    alignMultilineBlocks: false,
-    skipTemplates       : true ,
-    greedyMatch         : true ,
-    minColumns          : 1    ,
-    maxSpaces           : 10   ,
+    b_Debug             : false             ,
+    defaultAlignChars   : ['==='            , '!==', '<=>', '=>', '->', '==', '!=', '>=', '<=', '+=', '-=', '*=', '/=', '%=', '**=', ':', '{', '=', ','],
+    maxBlockSize        : 500               ,
+    preserveComments    : true              ,
+    preserveStrings     : true              ,
+    alignMultilineBlocks: false             ,
+    skipTemplates       : true              ,
+    greedyMatch         : true              ,
+    minColumns          : 1                 ,
+    maxSpaces           : 10                ,
     testData            : {} as Record<string, unknown>,
 }
 
@@ -116,15 +116,15 @@ const CONFIG = {
 function NS_Container(cfg: typeof CONFIG): NS {
     return {
         result : ok({}),
-        s_Error: '',
+        s_Error: '' ,
         config : cfg,
         data   : {
-            editor       : false,
-            languageRules: false,
-            blocks       : []   ,
-            parsedLines  : []   ,
-            alignedLines : []   ,
-        }          ,
+            editor       : false       ,
+            languageRules: false       ,
+            blocks       : []          ,
+            parsedLines  : []          ,
+            alignedLines : []          ,
+        }              ,
         ...cfg.testData,
     }
 }
@@ -134,43 +134,43 @@ const LANGUAGE_RULES: Record<string, LanguageRules> = {
     typescript: {
         lineComments    : ['//'],
         blockComments   : [{ start: '/*', end: '*/' }],
-        stringDelimiters: ['"'          , "'", '`'],
+        stringDelimiters: ['"'                    , "'", '`'],
         alignChars      : CONFIG.defaultAlignChars,
     },
     javascript: {
         lineComments    : ['//'],
         blockComments   : [{ start: '/*', end: '*/' }],
-        stringDelimiters: ['"'          , "'", '`'],
+        stringDelimiters: ['"'                    , "'", '`'],
         alignChars      : CONFIG.defaultAlignChars,
     },
     python: {
-        lineComments    : ['#']         ,
-        blockComments   : []            ,
-        stringDelimiters: ['"'          , "'"],
+        lineComments    : ['#']                   ,
+        blockComments   : []                      ,
+        stringDelimiters: ['"'                    , "'"],
         alignChars      : CONFIG.defaultAlignChars,
     },
     rust: {
         lineComments    : ['//'],
         blockComments   : [{ start: '/*', end: '*/' }],
-        stringDelimiters: ['"']          ,
+        stringDelimiters: ['"']                   ,
         alignChars      : CONFIG.defaultAlignChars,
     },
     go: {
         lineComments    : ['//'],
         blockComments   : [{ start: '/*', end: '*/' }],
-        stringDelimiters: ['"'          , '`'],
+        stringDelimiters: ['"'                    , '`'],
         alignChars      : CONFIG.defaultAlignChars,
     },
     lua: {
         lineComments    : ['--'],
         blockComments   : [{ start: '--[[', end: ']]' }],
-        stringDelimiters: ['"'          , "'"],
+        stringDelimiters: ['"'                    , "'"],
         alignChars      : CONFIG.defaultAlignChars,
     },
     sql: {
         lineComments    : ['--'],
         blockComments   : [{ start: '/*', end: '*/' }],
-        stringDelimiters: ['"'          , "'"],
+        stringDelimiters: ['"'                    , "'"],
         alignChars      : CONFIG.defaultAlignChars,
     },
 }
@@ -178,7 +178,7 @@ const LANGUAGE_RULES: Record<string, LanguageRules> = {
 const DEFAULT_LANGUAGE_RULES: LanguageRules = {
     lineComments    : ['//'],
     blockComments   : [{ start: '/*', end: '*/' }],
-    stringDelimiters: ['"'          , "'", '`'],
+    stringDelimiters: ['"'                    , "'", '`'],
     alignChars      : CONFIG.defaultAlignChars,
 }
 
@@ -195,7 +195,7 @@ function config_Load_Decor(ns: NS): void {
     try {
         const vsConfig   = vscode.workspace.getConfiguration('codeAlign')
         const alignChars = vsConfig.get<string[]>('alignChars', ns.config.defaultAlignChars)
-        const loadedCfg  = loadConfig(vsConfig         , alignChars, ns.config)
+        const loadedCfg  = loadConfig(vsConfig                , alignChars, ns.config)
         ns.config        = { ...ns.config, ...loadedCfg }
         ns.result        = ok(ns.config)
     } catch(e) {
@@ -268,8 +268,8 @@ function block_Find_Decor(ns: NS): void {
             endLine   = selection.end.line
         }
 
-        const rawLines = extractRawLines(doc    , startLine, endLine)
-        ns.data.blocks = findLineBlocks(rawLines, startLine, rules, ns.config.maxBlockSize)
+        const rawLines = extractRawLines(doc    , startLine    , endLine)
+        ns.data.blocks = findLineBlocks(rawLines, startLine    , rules, ns.config.maxBlockSize)
         ns.result      = ok(ns.data.blocks)
     } catch(e) {
         ns_SetError(ns, (e as Error).message)
@@ -303,7 +303,7 @@ function lines_Parse_Decor(ns: NS): void {
 function alignment_Apply_Decor(ns: NS): void {
     if(ns.config.b_Debug) {
         ns.data.alignedLines = (ns['testAlignedLines'] as string[][] | undefined) ?? []
-        ns.result           = ok(ns.data.alignedLines)
+        ns.result            = ok(ns.data.alignedLines)
         return
     }
     try {
@@ -340,16 +340,16 @@ function text_Replace_Decor(ns: NS): void {
 /** Load and merge VS Code settings with defaults. */
 function loadConfig(
     vsConfig  : vscode.WorkspaceConfiguration,
-    alignChars: string[]          ,
+    alignChars: string[]                     ,
     defaults  : typeof CONFIG
 ): Partial<typeof CONFIG> {
     return {
-        defaultAlignChars: alignChars                               ,
-        maxBlockSize     : vsConfig.get<number>('maxBlockSize'      , defaults.maxBlockSize)    ,
-        preserveComments : vsConfig.get<boolean>('preserveComments' , defaults.preserveComments),
-        preserveStrings  : vsConfig.get<boolean>('preserveStrings'  , defaults.preserveStrings) ,
-        maxSpaces        : vsConfig.get<number>('maxSpaces'         , defaults.maxSpaces)       ,
-        greedyMatch      : vsConfig.get<boolean>('greedyMatch'      , defaults.greedyMatch)     ,
+        defaultAlignChars: alignChars                                     ,
+        maxBlockSize     : vsConfig.get<number>('maxBlockSize'            , defaults.maxBlockSize)                          ,
+        preserveComments : vsConfig.get<boolean>('preserveComments'       , defaults.preserveComments)                      ,
+        preserveStrings  : vsConfig.get<boolean>('preserveStrings'        , defaults.preserveStrings)                       ,
+        maxSpaces        : vsConfig.get<number>('maxSpaces'               , defaults.maxSpaces)                             ,
+        greedyMatch      : vsConfig.get<boolean>('greedyMatch'            , defaults.greedyMatch)                           ,
     }
 }
 
@@ -381,16 +381,16 @@ function extractRawLines(doc: vscode.TextDocument, start: number, end: number): 
  *   block_Building — accumulating lines into the current block
  */
 function findLineBlocks(
-    rawLines    : string[],
-    startOffset : number,
+    rawLines    : string[]     ,
+    startOffset : number       ,
     rules       : LanguageRules,
     maxBlockSize: number
 ): LineBlock[] {
     type State = 'idle_Waiting' | 'block_Building'
 
-    const blocks: LineBlock[] = []
-    let state   : State       = 'idle_Waiting'
-    let curBlock: LineBlock   = { startLine: 0, lines: [] }
+    const blocks: LineBlock[]    = []
+    let state   : State          = 'idle_Waiting'
+    let curBlock: LineBlock      = { startLine: 0, lines: [] }
     let curIndent = ''
 
     const flush = (): void => {
@@ -445,8 +445,11 @@ function findLineBlocks(
 
 // ── parseLineIgnoringStrings ──────────────────────────────────
 /**
- * Tokenise a line and locate alignment markers, skipping string literals
- * and line/block comments.
+ * Tokenise a line and locate alignment markers, skipping string literals,
+ * line/block comments                         , and bracket-enclosed regions (parentheses and square
+ * brackets).  Markers inside (...) or [...] are suppressed so that function
+ * parameter annotations such as `(ns: NS, e: string)` do not produce
+ * spurious `:` or `,` markers that would misalign adjacent lines.
  *
  * FSM states:
  *   code_Reading      — scanning normal code
@@ -455,6 +458,9 @@ function findLineBlocks(
  *   template_Backtick — inside `...` template literal
  *   lineComment_Done  — line comment found; stop scanning
  *   blockComment_Open — inside block comment
+ *
+ * Extra state: parenDepth tracks nesting of ( and [ so that markers are
+ * only recorded when parenDepth === 0.
  */
 function parseLineIgnoringStrings(raw: string, rules: LanguageRules): ParsedLine {
     type State =
@@ -467,13 +473,14 @@ function parseLineIgnoringStrings(raw: string, rules: LanguageRules): ParsedLine
 
     // Sort align chars longest-first for greedy matching
     const alignChars = [...rules.alignChars].sort((a, b) => b.length - a.length)
-    const tokens : Token[]  = []
-    const markers: Marker[] = []
+    const tokens : Token[]   = []
+    const markers: Marker[]  = []
 
     let state: State = 'code_Reading'
     let i               = 0
     let codeStart       = 0
     let blockCommentEnd = ''
+    let parenDepth      = 0   // depth of ( and [ nesting; markers suppressed when > 0
 
     const pushCode = (end: number): void => {
         if(end > codeStart) { tokens.push({ kind: 'code', text: raw.slice(codeStart, end) }) }
@@ -525,14 +532,20 @@ function parseLineIgnoringStrings(raw: string, rules: LanguageRules): ParsedLine
                     pushCode(i); codeStart = i; state = 'template_Backtick'; i++; continue outerLoop
                 }
 
-                // Greedy match alignment chars
+                // Track bracket nesting — markers inside ( ... ) and [ ... ] are suppressed
+                if(ch === '(' || ch === '[') { parenDepth++; i++; continue outerLoop }
+                if(ch === ')' || ch === ']') { parenDepth = Math.max(0, parenDepth - 1); i++; continue outerLoop }
+
+                // Greedy match alignment chars — only when not inside brackets
                 let foundMarker = false
-                for(const ac of alignChars) {
-                    if(raw.startsWith(ac, i)) {
-                        markers.push({ symbol: ac, startCol: i })
-                        i += ac.length
-                        foundMarker = true
-                        break
+                if(parenDepth === 0) {
+                    for(const ac of alignChars) {
+                        if(raw.startsWith(ac, i)) {
+                            markers.push({ symbol: ac, startCol: i })
+                            i += ac.length
+                            foundMarker = true
+                            break
+                        }
                     }
                 }
                 if(!foundMarker) { i++ }
@@ -587,7 +600,7 @@ function parseLineIgnoringStrings(raw: string, rules: LanguageRules): ParsedLine
 // ── findAlignCharsGreedy ──────────────────────────────────────
 /**
  * Find alignment marker positions in a raw code string using greedy left-to-right
- * matching, skipping string literals and comments.
+ * matching, skipping string literals, comments, and bracket-enclosed regions.
  *
  * (Thin wrapper around parseLineIgnoringStrings for external use / testing.)
  */
@@ -722,8 +735,8 @@ function buildPairwisePositionMap(
  * aligned, shift stays 0 throughout, pad is always 0, output equals input.
  */
 function applyPositionMap(
-    parsedLines: ParsedLine[],
-    posMap     : Map<string  , number>
+    parsedLines: ParsedLine[]     ,
+    posMap     : Map<string       , number>
 ): string[] {
     return parsedLines.map((pl, lineIdx) => {
         let out    = ''
@@ -734,7 +747,7 @@ function applyPositionMap(
             const marker = pl.markers[mk]
 
             // Copy everything in the original string up to this marker
-            out   += pl.raw.slice(srcPos, marker.startCol)
+            out += pl.raw.slice(srcPos, marker.startCol)
             srcPos = marker.startCol
 
             // target is in raw coords; translate to output coords via shift
@@ -750,7 +763,7 @@ function applyPositionMap(
             }
 
             // Append the marker symbol itself
-            out   += marker.symbol
+            out += marker.symbol
             srcPos = marker.startCol + marker.symbol.length
         }
 
@@ -777,7 +790,7 @@ function alignBlock(parsedLines: ParsedLine[], maxSpaces: number): string[] {
 /** Apply aligned lines back into the VS Code editor document. */
 function applyEditorReplacements(
     editor      : vscode.TextEditor,
-    blocks      : LineBlock[],
+    blocks      : LineBlock[]      ,
     alignedLines: string[][]
 ): void {
     editor.edit(editBuilder => {
@@ -808,9 +821,9 @@ export function activate(context: vscode.ExtensionContext): void {
     }
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-better-align-columns.align', runAlign),
-        vscode.commands.registerCommand('CodeAlign.AlignBlock'          , runAlign),
-        vscode.commands.registerCommand('CodeAlign.Configure'           , () => {
+        vscode.commands.registerCommand('vscode-better-align-columns.align', runAlign)          ,
+        vscode.commands.registerCommand('CodeAlign.AlignBlock'             , runAlign)          ,
+        vscode.commands.registerCommand('CodeAlign.Configure'              , () => {
             vscode.commands.executeCommand('workbench.action.openSettings', 'codeAlign')
         })
     )

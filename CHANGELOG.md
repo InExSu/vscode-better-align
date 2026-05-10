@@ -304,6 +304,10 @@
 - Fix commands broken if cursor in empty line
 - Add web extension support
 
+# v6.1.4 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.1.4)
+
+- Code formatting improvements
+
 # v6.1.3 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.1.3)
 
 - Refactor: Use shift variable to track cumulative insertions in applyPositionMap
