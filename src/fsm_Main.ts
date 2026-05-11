@@ -257,79 +257,130 @@ export function propagatePositions(parsedLines: ParsedLine[], posMap: Map<string
  * @returns Map of line:markerIndex to target column position
  */
 export function buildPairwisePositionMap(parsedLines: ParsedLine[], maxSpaces: number): Map<string, number> {
-    const ctx = {
-        posMap: new Map<string, number>(),
-        hasOriginal: parsedLines.some(pl => pl.originalMarkers !== undefined),
-        symbolToMarkers: new Map<string, { lineIdx: number; mk: number; startCol: number }[]>()
-    }
+    if(parsedLines.length < 2) {return new Map()}
 
-    if(parsedLines.length < 2) {return ctx.posMap}
+    const ctx = createContext(parsedLines)
+    let state = PositionMapState.Collect
 
-    type State = 'COLLECT' | 'PROCESS_SYMBOLS' | 'PROPAGATE' | 'DONE'
-    let state: State = 'COLLECT'
-    let lineIdx = 0, symbolIdx = 0, processState = 0
-
-    while(state !== 'DONE') {
-        switch(state) {
-            case 'COLLECT':
-                if(lineIdx >= parsedLines.length) {
-                    state = 'PROCESS_SYMBOLS'
-                    break
-                }
-
-                const markers = ctx.hasOriginal
-                    ? (parsedLines[lineIdx].originalMarkers || parsedLines[lineIdx].markers)
-                    : parsedLines[lineIdx].markers
-
-                for(let mk = 0; mk < markers.length; mk++) {
-                    const m = markers[mk]
-                    const key = m.symbol
-                    if(!ctx.symbolToMarkers.has(key)) {ctx.symbolToMarkers.set(key, [])}
-                    ctx.symbolToMarkers.get(key)!.push({ lineIdx, mk, startCol: m.startCol })
-                }
-                lineIdx++
-                break
-
-            case 'PROCESS_SYMBOLS':
-                const symbols = Array.from(ctx.symbolToMarkers.keys())
-                if(symbolIdx >= symbols.length) {
-                    state = 'PROPAGATE'
-                    break
-                }
-
-                const markers2 = ctx.symbolToMarkers.get(symbols[symbolIdx])!
-                if(markers2.length >= 2) {
-                    const maxCol = Math.max(...markers2.map(m => m.startCol))
-                    for(const { lineIdx, mk, startCol } of markers2) {
-                        if(startCol >= maxCol) {continue}
-
-                        const raw = parsedLines[lineIdx].raw
-                        if(raw.substr(startCol, 2) === '>=' && raw[startCol - 1] !== '>') {continue}
-
-                        const target = Math.min(maxCol, startCol + maxSpaces)
-                        if(target > startCol) {ctx.posMap.set(`${lineIdx}:${mk}`, target)}
-                    }
-                }
-                symbolIdx++
-                break
-
-            case 'PROPAGATE':
-                for(const symbol of Array.from(ctx.symbolToMarkers.keys())) {
-                    const markers3 = ctx.symbolToMarkers.get(symbol)!
-                    const mks = Array.from(new Set(markers3.map(m => m.mk)))
-                    for(const mk of mks) {
-                        const markersWithSameMk = markers3.filter(m => m.mk === mk)
-                        if(markersWithSameMk.length >= 2) {
-                            propagatePositions(parsedLines, ctx.posMap, mk)
-                        }
-                    }
-                }
-                state = 'DONE'
-                break
-        }
+    while(state !== PositionMapState.Done) {
+        state = executeState(state, ctx, parsedLines, maxSpaces)
     }
 
     return ctx.posMap
+}
+
+enum PositionMapState {
+    Collect = 'Collect',
+    ProcessSymbols = 'ProcessSymbols',
+    Propagate = 'Propagate',
+    Done = 'Done',
+}
+
+interface PositionMapContext {
+    posMap: Map<string, number>
+    hasOriginal: boolean
+    symbolToMarkers: Map<string, { lineIdx: number; mk: number; startCol: number }[]>
+    lineIdx: number
+    symbolIdx: number
+}
+
+function createContext(parsedLines: ParsedLine[]): PositionMapContext {
+    return {
+        posMap: new Map(),
+        hasOriginal: parsedLines.some(pl => pl.originalMarkers !== undefined),
+        symbolToMarkers: new Map(),
+        lineIdx: 0,
+        symbolIdx: 0,
+    }
+}
+
+function executeState(
+    state: PositionMapState,
+    ctx: PositionMapContext,
+    parsedLines: ParsedLine[],
+    maxSpaces: number
+): PositionMapState {
+    switch(state) {
+        case PositionMapState.Collect:
+            return handleCollect(ctx, parsedLines)
+        case PositionMapState.ProcessSymbols:
+            return handleProcessSymbols(ctx, parsedLines, maxSpaces)
+        case PositionMapState.Propagate:
+            return handlePropagate(ctx, parsedLines)
+        case PositionMapState.Done:
+            return PositionMapState.Done
+    }
+}
+
+function handleCollect(ctx: PositionMapContext, parsedLines: ParsedLine[]): PositionMapState {
+    if(ctx.lineIdx >= parsedLines.length) {
+        return PositionMapState.ProcessSymbols
+    }
+
+    const markers = ctx.hasOriginal
+        ? (parsedLines[ctx.lineIdx].originalMarkers || parsedLines[ctx.lineIdx].markers)
+        : parsedLines[ctx.lineIdx].markers
+
+    collectMarkersForLine(ctx, markers)
+    ctx.lineIdx++
+    return PositionMapState.Collect
+}
+
+function collectMarkersForLine(ctx: PositionMapContext, markers: Marker[]): void {
+    for(let mk = 0; mk < markers.length; mk++) {
+        const m = markers[mk]
+        const key = m.symbol
+        if(!ctx.symbolToMarkers.has(key)) {ctx.symbolToMarkers.set(key, [])}
+        ctx.symbolToMarkers.get(key)!.push({ lineIdx: ctx.lineIdx, mk, startCol: m.startCol })
+    }
+}
+
+function handleProcessSymbols(ctx: PositionMapContext, parsedLines: ParsedLine[], maxSpaces: number): PositionMapState {
+    const symbols = Array.from(ctx.symbolToMarkers.keys())
+    if(ctx.symbolIdx >= symbols.length) {
+        return PositionMapState.Propagate
+    }
+
+    const markers = ctx.symbolToMarkers.get(symbols[ctx.symbolIdx])!
+    processSymbol(ctx, parsedLines, maxSpaces, markers)
+    ctx.symbolIdx++
+    return PositionMapState.ProcessSymbols
+}
+
+function processSymbol(
+    ctx: PositionMapContext,
+    parsedLines: ParsedLine[],
+    maxSpaces: number,
+    markers: { lineIdx: number; mk: number; startCol: number }[]
+): void {
+    if(markers.length < 2) {return}
+
+    const maxCol = Math.max(...markers.map(m => m.startCol))
+    for(const { lineIdx, mk, startCol } of markers) {
+        if(startCol >= maxCol) {continue}
+        if(isGteOperator(parsedLines[lineIdx].raw, startCol)) {continue}
+
+        const target = Math.min(maxCol, startCol + maxSpaces)
+        if(target > startCol) {ctx.posMap.set(`${lineIdx}:${mk}`, target)}
+    }
+}
+
+function isGteOperator(raw: string, startCol: number): boolean {
+    return raw.substr(startCol, 2) === '>=' && raw[startCol - 1] !== '>'
+}
+
+function handlePropagate(ctx: PositionMapContext, parsedLines: ParsedLine[]): PositionMapState {
+    for(const symbol of Array.from(ctx.symbolToMarkers.keys())) {
+        const markers = ctx.symbolToMarkers.get(symbol)!
+        const mks = Array.from(new Set(markers.map(m => m.mk)))
+        for(const mk of mks) {
+            const markersWithSameMk = markers.filter(m => m.mk === mk)
+            if(markersWithSameMk.length >= 2) {
+                propagatePositions(parsedLines, ctx.posMap, mk)
+            }
+        }
+    }
+    return PositionMapState.Done
 }
 
 // ── 8. APPLY POSITION MAP — FIXED ─────────────────────────────

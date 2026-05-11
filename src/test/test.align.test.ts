@@ -3,6 +3,7 @@ import {
     parseLineIgnoringStrings,
     findLineBlocks,
     alignBlock,
+    buildPairwisePositionMap,
     DEFAULT_LANGUAGE_RULES,
     DEFAULT_CONFIG,
 } from '../fsm_Main'
@@ -330,3 +331,55 @@ describe('alignBlock', () => {
         ]);
         });
         })
+
+describe('buildPairwisePositionMap', () => {
+    it('returns empty map for single line', () => {
+        const input = lines('const a = 1')
+        const parsed = input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES))
+        const posMap = buildPairwisePositionMap(parsed, 10)
+        assert.equal(posMap.size, 0, 'Single line should have empty map')
+    })
+
+    it('creates position map for two lines with same marker', () => {
+        const input = lines('const a = 1', 'const bc = 22')
+        const parsed = input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES))
+        const posMap = buildPairwisePositionMap(parsed, 10)
+        assert.ok(posMap.size > 0, 'Position map should not be empty for two lines')
+    })
+
+    it('sets correct target position for shorter marker', () => {
+        const input = lines('const a = 1', 'const bc = 22')
+        const parsed = input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES))
+        const posMap = buildPairwisePositionMap(parsed, 10)
+        const key = '0:0'
+        assert.ok(posMap.has(key), 'Should have position for first line marker')
+        assert.equal(posMap.get(key), 9, 'Target position should align with longest marker')
+    })
+
+    it('skips >= operator', () => {
+        const input = lines('const a = 1', 'const b >= 2')
+        const parsed = input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES))
+        const posMap = buildPairwisePositionMap(parsed, 10)
+        const keys = Array.from(posMap.keys())
+        const hasGteKey = keys.some(k => parsed[parseInt(k.split(':')[0])].raw.includes('>='))
+        assert.equal(hasGteKey, false, 'Should not create position for >= operator')
+    })
+
+    it('handles multiple different markers', () => {
+        const input = lines('a: 1', 'ab: 22')
+        const parsed = input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES))
+        const posMap = buildPairwisePositionMap(parsed, 10)
+        assert.ok(posMap.size > 0, 'Should create positions for : marker')
+    })
+
+    it('respects maxSpaces limit', () => {
+        const input = lines('a = 1', 'abc = 22')
+        const parsed = input.map(l => parseLineIgnoringStrings(l, DEFAULT_LANGUAGE_RULES))
+        const posMap = buildPairwisePositionMap(parsed, 2)
+        const key = '0:0'
+        const target = posMap.get(key)
+        const originalCol = parsed[0].markers[0].startCol
+        assert.ok(target !== undefined, 'Should have position')
+        assert.ok(target! - originalCol <= 2, 'Added spaces should not exceed maxSpaces')
+    })
+})
