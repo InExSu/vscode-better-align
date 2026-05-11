@@ -206,7 +206,6 @@ type BlockSearchContext           = {
     initialIndent          : string
     activeLine             : number
     rawLines               : string[]
-    b_HasSelection         : boolean
 }
 
 /**
@@ -220,7 +219,6 @@ function analyzeSelection(ctx: BlockSearchContext): { startLine: number; endLine
         ctx.selection.end.line                                           === ctx.doc.lineCount - 1
 
     if(isFullSelection) {
-        ctx.b_HasSelection = true
         return { startLine: 0, endLine: ctx.doc.lineCount - 1 }
     }
 
@@ -228,14 +226,7 @@ function analyzeSelection(ctx: BlockSearchContext): { startLine: number; endLine
     while(true) {
         switch(s_State) {
             case SelectionAnalysisState.CheckingEmpty                                        :
-                if (ctx.selection.isEmpty) {
-                    s_State = SelectionAnalysisState.AutoSearchIndent
-                    ctx.b_HasSelection = false
-                } else {
-                    s_State = SelectionAnalysisState.UsingSelection
-                    ctx.b_HasSelection = true
-                }
-                break
+                s_State                                         = ctx.selection.isEmpty ? SelectionAnalysisState.AutoSearchIndent : SelectionAnalysisState.UsingSelection; break
             case SelectionAnalysisState.AutoSearchIndent                                        :
                 return fn_AutoSearchIndent(ctx)
             case SelectionAnalysisState.UsingSelection                                        :
@@ -284,9 +275,9 @@ function scanDown(ctx: BlockSearchContext): number | null {
 function fn_GroupBlocks(ns: NS, ctx: BlockSearchContext): void {
     const b_IsFullSelection                                         = ctx.startLine === 0 && ctx.endLine === ctx.doc.lineCount - 1
 
-    if(ctx.b_HasSelection) {
-        // When user has selection - treat all selected lines as one block
-        ns.data.blocks = blocks_Find(ctx.rawLines, ctx.startLine, ctx.rules, ns.config.maxBlockSize, true)
+    // When user has selection - split into blocks by indentation and align each block
+    if(!ctx.selection.isEmpty) {
+        ns.data.blocks = blocks_Find(ctx.rawLines, ctx.startLine, ctx.rules, ns.config.maxBlockSize)
     } else if(fn_ShouldUseCustomGrouping(b_IsFullSelection, ctx.rawLines, ctx.rules)) {
         ns.data.blocks                                         = fn_GetBlocksWithCustomGrouping(ctx, ctx.rawLines)
     } else {
@@ -321,7 +312,6 @@ function blockSearchFSM(ns: NS): void {
         initialIndent                                        : ''                                             ,
         activeLine                                           : 0                                              ,
         rawLines                                             : []                                             ,
-        b_HasSelection                                       : false                                          ,
     }
     let s_State                                         = BlockSearchState.WaitingForData
 

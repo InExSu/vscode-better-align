@@ -359,15 +359,7 @@ export function lines_Align(a_OrigLines: string[], a_Columns: AlignColumn[]): st
 
 // ── 5. BLOCK FINDING (per AI Prompt_This.md) ────────────────────
 
-export function blocks_Find(rawLines: string[], i_StartOffset: number, rules: LanguageRules, i_MaxBlockSize: number, b_ForceSingleBlock = false): LineBlock[] {
-    // When force single block (selection), put all lines in one block regardless of indentation
-    if (b_ForceSingleBlock && rawLines.length > 0) {
-        const a_NonEmpty = rawLines.filter(s_Line => s_Line.trim() !== '')
-        if (a_NonEmpty.length > 0) {
-            return [{ startLine: i_StartOffset, lines: a_NonEmpty }]
-        }
-        return []
-    }
+export function blocks_Find(rawLines: string[], i_StartOffset: number, rules: LanguageRules, i_MaxBlockSize: number): LineBlock[] {
 
     const a_Blocks: LineBlock[] = []
     let s_State = GroupingState.WaitingForStart

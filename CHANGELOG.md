@@ -1,3 +1,7 @@
+# v6.11.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.11.0)
+
+- fix: When user selects code, split into blocks by indentation and align each block separately
+
 # v6.10.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.10.0)
 
 - feat: When user selects code, align all selected lines as one block regardless of indentation
