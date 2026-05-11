@@ -1,1 +1,12 @@
-{"root":["./src/extension.ts","./src/extension_207.ts","./src/extension_305.ts","./src/extension_618.ts","./src/fsm_main.ts","./src/testpure.ts","./src/test/test.align.test.ts"],"version":"5.8.3"}
+{
+    "root": [
+        "./src/extension.ts",
+        "./src/extension_207.ts",
+        "./src/extension_305.ts",
+        "./src/extension_618.ts",
+        "./src/fsm_main.ts",
+        "./src/testpure.ts",
+        "./src/test/test.align.test.ts"
+    ],
+    "version": "5.8.3"
+}

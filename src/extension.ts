@@ -45,6 +45,11 @@ const CONFIG = {
 }
 
 // ── 4. LANGUAGE DETECTION ─────────────────────────────────────
+/**
+ * Detects language rules based on the editor's document language ID.
+ * @param editor - The active text editor
+ * @returns Language rules for the document's language
+ */
 function detectLanguageRulesFromEditor(editor: vscode.TextEditor): LanguageRules {
     return detectLanguageRules(editor.document.languageId, CONFIG.defaultAlignChars)
 }
@@ -53,11 +58,13 @@ function detectLanguageRulesFromEditor(editor: vscode.TextEditor): LanguageRules
 const timers = new Map<string, number>()
 const line = (ch: string): string => ch.repeat(50)
 
+/** Starts timing for a function and logs the start. */
 function decor_Start(name: string): void {
     timers.set(name, performance.now())
     console.log(`\n${line('═')}\n▶  ${name}\n${line('─')}`)
 }
 
+/** Logs the finish of a function with elapsed time. */
 function decor_Finish(name: string): void {
     const start = timers.get(name)
     const duration = start ? (performance.now() - start).toFixed(2) : '?'
@@ -65,6 +72,7 @@ function decor_Finish(name: string): void {
     timers.delete(name)
 }
 
+/** Runs a decorator function with timing. */
 function rwd(fn: (ns: NS) => void, ns: NS): void {
     if(ns_Error(ns)) { return }
     decor_Start(fn.name)
@@ -73,6 +81,7 @@ function rwd(fn: (ns: NS) => void, ns: NS): void {
 }
 
 // ── 6. NS CONTAINER ───────────────────────────────────────────
+/** Creates a new namespace container with initial state. */
 function NS_Container(cfg: typeof CONFIG): NS {
     return {
         result: ok({}),
@@ -94,10 +103,12 @@ const pipelineFSM = buildPipelineFSM(
     rwd
 )
 
+/** Executes the pipeline FSM on the given namespace. */
 function a_Chain(ns: NS): void { pipelineFSM(ns) }
 
 // ── 8. PHASE DECORATORS (VS Code API calls) ───────────────────
 
+/** Loads VS Code configuration and applies to namespace. */
 function config_Load_Decor(ns: NS): void {
     if(ns.config.b_Debug) { ns.data.languageRules = DEFAULT_LANGUAGE_RULES; return }
     try {
@@ -116,6 +127,7 @@ function config_Load_Decor(ns: NS): void {
     } catch(e) { ns_SetError(ns, (e as Error).message) }
 }
 
+/** Detects language rules from the active editor. */
 function language_Detect_Decor(ns: NS): void {
     if(ns.config.b_Debug) { ns.data.languageRules = DEFAULT_LANGUAGE_RULES; return }
     try {
@@ -127,6 +139,7 @@ function language_Detect_Decor(ns: NS): void {
     } catch(e) { ns_SetError(ns, (e as Error).message) }
 }
 
+/** Parses lines in each block, ignoring strings and comments. */
 function lines_Parse_Decor(ns: NS): void {
     if(ns.config.b_Debug) {
         ns.data.parsedLines = (ns['testParsedLines'] as ParsedLine[][] | undefined) ?? []
@@ -140,6 +153,7 @@ function lines_Parse_Decor(ns: NS): void {
     } catch(e) { ns_SetError(ns, (e as Error).message) }
 }
 
+/** Applies alignment to parsed lines in each block. */
 function alignment_Apply_Decor(ns: NS): void {
     if(ns.config.b_Debug) {
         ns.data.alignedLines = (ns['testAlignedLines'] as string[][] | undefined) ?? []
@@ -151,6 +165,7 @@ function alignment_Apply_Decor(ns: NS): void {
     } catch(e) { ns_SetError(ns, (e as Error).message) }
 }
 
+/** Replaces text in the editor with aligned lines. */
 function text_Replace_Decor(ns: NS): void {
     if(ns.config.b_Debug) { ns.result = ok('debug-no-replace'); return }
     try {
@@ -165,15 +180,15 @@ function text_Replace_Decor(ns: NS): void {
 
 // A5 states (PascalCase)
 enum BlockSearchState {
-    WaitingForData = 'WaitingForData',
-    ValidatingContext = 'ValidatingContext',
+    WaitingForData     = 'WaitingForData'    ,
+    ValidatingContext  = 'ValidatingContext' ,
     AnalyzingSelection = 'AnalyzingSelection',
-    ScanningUp = 'ScanningUp',
-    ScanningDown = 'ScanningDown',
-    ExtractingLines = 'ExtractingLines',
-    GroupingBlocks = 'GroupingBlocks',
-    Done = 'Done',
-    Error = 'Error',
+    ScanningUp         = 'ScanningUp'        ,
+    ScanningDown       = 'ScanningDown'      ,
+    ExtractingLines    = 'ExtractingLines'   ,
+    GroupingBlocks     = 'GroupingBlocks'    ,
+    Done               = 'Done'              ,
+    Error              = 'Error'             ,
 }
 
 enum SelectionAnalysisState {
@@ -194,6 +209,11 @@ type BlockSearchContext = {
     rawLines: string[]
 }
 
+/**
+ * Analyzes the selection to determine the block boundaries.
+ * @param ctx - Block search context
+ * @returns Start and end line numbers, or null if no valid block
+ */
 function analyzeSelection(ctx: BlockSearchContext): { startLine: number; endLine: number } | null {
     const isFullSelection = !ctx.selection.isEmpty && 
         ctx.selection.start.line === 0 && 
@@ -221,6 +241,7 @@ function analyzeSelection(ctx: BlockSearchContext): { startLine: number; endLine
     }
 }
 
+/** Scans upward from the active line to find block boundary. */
 function scanUp(ctx: BlockSearchContext): number | null {
     let line = ctx.activeLine
     while(line > 0) {
@@ -232,6 +253,7 @@ function scanUp(ctx: BlockSearchContext): number | null {
     return line
 }
 
+/** Scans downward from the active line to find block boundary. */
 function scanDown(ctx: BlockSearchContext): number | null {
     let line = ctx.activeLine, last = ctx.doc.lineCount - 1
     while(line < last) {
@@ -243,17 +265,21 @@ function scanDown(ctx: BlockSearchContext): number | null {
     return line
 }
 
+/**
+ * FSM that finds line blocks based on selection and indentation.
+ * @param ns - Namespace containing editor state and data
+ */
 function blockSearchFSM(ns: NS): void {
     const ctx: BlockSearchContext = {
-        editor: ns.data.editor as vscode.TextEditor,
-        rules: ns.data.languageRules as LanguageRules,
-        doc: (ns.data.editor as vscode.TextEditor).document,
-        selection: (ns.data.editor as vscode.TextEditor).selection,
-        startLine: 0,
-        endLine: 0,
-        initialIndent: '',
-        activeLine: 0,
-        rawLines: [],
+        editor       : ns.data.editor as vscode.TextEditor            ,
+        rules        : ns.data.languageRules as LanguageRules         ,
+        doc          : (ns.data.editor as vscode.TextEditor).document ,
+        selection    : (ns.data.editor as vscode.TextEditor).selection,
+        startLine    : 0                                              ,
+        endLine      : 0                                              ,
+        initialIndent: ''                                             ,
+        activeLine   : 0                                              ,
+        rawLines     : []                                             ,
     }
     let state = BlockSearchState.WaitingForData
 
@@ -264,8 +290,8 @@ function blockSearchFSM(ns: NS): void {
             case BlockSearchState.ValidatingContext:
                 if(!ctx.editor) { ns_SetError(ns, 'No active editor'); state = BlockSearchState.Error; break }
                 if(!ctx.rules) { ns_SetError(ns, 'No language rules'); state = BlockSearchState.Error; break }
-                ctx.doc = ctx.editor.document; ctx.selection = ctx.editor.selection
-                state = BlockSearchState.AnalyzingSelection; break
+                ctx.doc            = ctx.editor.document; ctx.selection = ctx.editor.selection
+                state              = BlockSearchState.AnalyzingSelection; break
             case BlockSearchState.AnalyzingSelection: {
                 const res = analyzeSelection(ctx)
                 if(!res) { state = BlockSearchState.Error; break }
@@ -296,18 +322,21 @@ function blockSearchFSM(ns: NS): void {
     }
 }
 
+/** Decorator that finds blocks in the editor. */
 function block_Find_Decor(ns: NS): void {
     if(ns.config.b_Debug) { ns.data.blocks = (ns['testBlocks'] as LineBlock[] | undefined) ?? []; ns.result = ok(ns.data.blocks); return }
     try { blockSearchFSM(ns) } catch(e) { ns_SetError(ns, (e as Error).message) }
 }
 
 // ── 10. EDITOR HELPERS (VS Code API) ──────────────────────────
+/** Extracts raw text lines from a document within a range. */
 function extractRawLines(doc: vscode.TextDocument, start: number, end: number): string[] {
     const out: string[] = []
     for(let i = start; i <= end; i++) { out.push(doc.lineAt(i).text) }
     return out
 }
 
+/** Applies aligned lines to the editor using batch edits. */
 function applyEditorReplacements(editor: vscode.TextEditor, blocks: LineBlock[], aligned: string[][]): void {
     editor.edit(builder => {
         for(let bi = 0; bi < blocks.length; bi++) {
@@ -321,11 +350,13 @@ function applyEditorReplacements(editor: vscode.TextEditor, blocks: LineBlock[],
 }
 
 // ── 11. WRAPPER FOR TESTS ─────────────────────────────────────
+/** Finds alignment markers in code (wrapper for testing). */
 function findAlignCharsGreedy(code: string, alignChars: string[], rules: LanguageRules): Marker[] {
     return parseLineIgnoringStrings(code, { ...rules, alignChars }).markers
 }
 
 // ── 12. ACTIVATE / DEACTIVATE ─────────────────────────────────
+/** Entry point called when extension is activated. */
 export function activate(context: vscode.ExtensionContext): void {
     const runAlign = (): void => {
         const ns = NS_Container(CONFIG)
@@ -343,6 +374,7 @@ export function activate(context: vscode.ExtensionContext): void {
     )
 }
 
+/** Cleanup when extension is deactivated. */
 export function deactivate(): void { }
 
 // ── EXPORTS ──────────────────────────────────────────────────

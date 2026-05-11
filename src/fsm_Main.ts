@@ -60,6 +60,12 @@ export const LANGUAGE_RULES: Record<string, LanguageRules> = {
     sql: { lineComments: ['--'], blockComments: [{ start: '/*', end: '*/' }], stringDelimiters: ['"', "'"], alignChars: DEFAULT_CONFIG.defaultAlignChars },
 }
 
+/**
+ * Detects language rules based on language ID.
+ * @param langId - Language identifier (e.g., 'typescript', 'python')
+ * @param defaultAlignChars - Default alignment characters to use
+ * @returns Language rules for the detected language
+ */
 export function detectLanguageRules(langId: string, defaultAlignChars: string[]): LanguageRules {
     return LANGUAGE_RULES[langId]
         ? { ...LANGUAGE_RULES[langId], alignChars: defaultAlignChars }
@@ -76,6 +82,12 @@ export enum ScannerState {
     CommentDone = 'CommentDone',
 }
 
+/**
+ * Parses a single line, ignoring strings and comments to find alignment markers.
+ * @param raw - Raw line of code
+ * @param rules - Language rules for parsing
+ * @returns Parsed line with tokens and markers
+ */
 export function parseLineIgnoringStrings(raw: string, rules: LanguageRules): ParsedLine {
     const alignChars = [...rules.alignChars].sort((a, b) => b.length - a.length)
     const tokens: Token[] = []
@@ -156,6 +168,14 @@ export enum GroupingState {
     Accumulating = 'Accumulating',
 }
 
+/**
+ * Groups raw lines into blocks based on indentation.
+ * @param rawLines - Array of raw line strings
+ * @param startOffset - Line number offset for the first line
+ * @param rules - Language rules for parsing
+ * @param maxBlockSize - Maximum number of lines per block
+ * @returns Array of line blocks
+ */
 export function findLineBlocks(rawLines: string[], startOffset: number, rules: LanguageRules, maxBlockSize: number): LineBlock[] {
     const blocks: LineBlock[] = []
     let state = GroupingState.WaitingForStart
@@ -201,6 +221,12 @@ export enum PropagationState {
     Accumulating = 'Accumulating',
 }
 
+/**
+ * Propagates position values across consecutive lines with the same marker.
+ * @param parsedLines - Parsed lines to process
+ * @param posMap - Position map to update
+ * @param mk - Marker index to propagate
+ */
 export function propagatePositions(parsedLines: ParsedLine[], posMap: Map<string, number>, mk: number): void {
     let state = PropagationState.FindingSeries, startOfSeries = 0, endOfSeries = 0
     const applyMax = (): void => {
@@ -224,6 +250,12 @@ export function propagatePositions(parsedLines: ParsedLine[], posMap: Map<string
     if(state === PropagationState.Accumulating) { applyMax() }
 }
 
+/**
+ * Builds a map of positions for each marker, calculating max column for alignment.
+ * @param parsedLines - Parsed lines with markers
+ * @param maxSpaces - Maximum number of spaces to add
+ * @returns Map of line:markerIndex to target column position
+ */
 export function buildPairwisePositionMap(parsedLines: ParsedLine[], maxSpaces: number): Map<string, number> {
     const posMap = new Map<string, number>()
     if(parsedLines.length < 2) { return posMap }
@@ -280,6 +312,12 @@ export function buildPairwisePositionMap(parsedLines: ParsedLine[], maxSpaces: n
 }
 
 // ── 8. APPLY POSITION MAP — FIXED ─────────────────────────────
+/**
+ * Applies the position map to reconstruct aligned lines.
+ * @param parsedLines - Parsed lines with markers
+ * @param posMap - Position map with target columns
+ * @returns Array of aligned line strings
+ */
 export function applyPositionMap(parsedLines: ParsedLine[], posMap: Map<string, number>): string[] {
     return parsedLines.map((pl: ParsedLine, lineIdx: number) => {
         let out = '', srcPos = 0
@@ -302,11 +340,18 @@ export function applyPositionMap(parsedLines: ParsedLine[], posMap: Map<string, 
     })
 }
 
+/**
+ * Aligns a block of parsed lines.
+ * @param parsedLines - Array of parsed lines in a block
+ * @param maxSpaces - Maximum spaces to add for alignment
+ * @returns Aligned line strings
+ */
 export function alignBlock(parsedLines: ParsedLine[], maxSpaces: number): string[] {
     if(parsedLines.length < 2) { return parsedLines.map(pl => pl.raw) }
     return buildAndApply(parsedLines, maxSpaces)
 }
 
+/** Internal: builds position map and applies to parsed lines. */
 function buildAndApply(parsedLines: ParsedLine[], maxSpaces: number): string[] {
     const posMap = buildPairwisePositionMap(parsedLines, maxSpaces)
     if(posMap.size === 0) { return parsedLines.map(pl => pl.raw) }
@@ -343,17 +388,30 @@ export type NSData = {
     alignedLines: string[][]
 }
 
+/** Checks if the namespace has an error. */
 export function ns_Error(ns: NS): boolean { return ns.result.ok === false }
+/** Sets an error on the namespace. */
 export function ns_SetError(ns: NS, e: string): void { ns.result = err(e); ns.s_Error = e }
 
+/**
+ * Builds a pipeline FSM that orchestrates the alignment process.
+ * @param config_Load_Decor - Decorator for loading config
+ * @param language_Detect_Decor - Decorator for detecting language
+ * @param block_Find_Decor - Decorator for finding blocks
+ * @param lines_Parse_Decor - Decorator for parsing lines
+ * @param alignment_Apply_Decor - Decorator for applying alignment
+ * @param text_Replace_Decor - Decorator for replacing text
+ * @param rwd - Run-with-decorator function
+ * @returns Pipeline FSM function
+ */
 export function buildPipelineFSM(
-    config_Load_Decor: Decorator,
+    config_Load_Decor    : Decorator,
     language_Detect_Decor: Decorator,
-    block_Find_Decor: Decorator,
-    lines_Parse_Decor: Decorator,
+    block_Find_Decor     : Decorator,
+    lines_Parse_Decor    : Decorator,
     alignment_Apply_Decor: Decorator,
-    text_Replace_Decor: Decorator,
-    rwd: (fn: Decorator, ns: NS) => void
+    text_Replace_Decor   : Decorator,
+    rwd                  : (fn: Decorator, ns: NS) => void
 ): (ns: NS) => void {
     return function pipelineFSM(ns: NS): void {
         let state = PipelineState.Idle
