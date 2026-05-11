@@ -38,10 +38,30 @@
 	"type": "node",
 	"request": "launch",
 	"runtimeExecutable": "npx",
-	"runtimeArgs": ["ts-mocha", "-p", "tsconfig.json", "src/test/test.align.test.ts", "--timeout", "10000"],
+	"runtimeArgs": ["ts-mocha", "-p", "tsconfig.json", "src/test/test.align.test.ts", "--timeout", "30000", "--inspect-brk"],
 	"cwd": "${workspaceFolder}",
 	"console": "integratedTerminal",
-	"skipFiles": ["<node_internals>/**"]
+	"skipFiles": ["<node_internals>/**"],
+	"env": {
+		"TS_NODE_PROJECT": "tsconfig.json"
+	}
+},
+{
+	"name": "Debug Test File",
+	"type": "node",
+	"request": "launch",
+	"program": "${workspaceFolder}/node_modules/ts-mocha/bin/ts-mocha",
+	"args": [
+		"-p", "tsconfig.json",
+		"src/test/test.align.test.ts",
+		"--timeout", "30000"
+	],
+	"cwd": "${workspaceFolder}",
+	"console": "integratedTerminal",
+	"resolveSourceMapLocations": [
+		"${workspaceFolder}/src/**/*.ts"
+	],
+	"sourceMaps": true
 },
 		{
 			"name": "Run Web Extension in VS Code",

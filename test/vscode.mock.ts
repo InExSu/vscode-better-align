@@ -6,16 +6,16 @@ const vscode = {
     },
     window: {
         activeTextEditor: false,
-        showErrorMessage: () => {},
-        showInformationMessage: () => {}
+        showErrorMessage: () => { },
+        showInformationMessage: () => { }
     },
     commands: {
-        registerCommand: () => {},
-        executeCommand: () => {}
+        registerCommand: () => { },
+        executeCommand: () => { }
     },
-    ExtensionContext: class {},
-    TextEditor: class {},
-    TextDocument: class {}
+    ExtensionContext: class { },
+    TextEditor: class { },
+    TextDocument: class { }
 }
 
 module.exports = vscode

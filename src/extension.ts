@@ -6,41 +6,41 @@
 // ── 1. IMPORTS ───────────────────────────────────────────────
 import * as vscode from 'vscode'
 import {
-    type LanguageRules                                              ,
-    type LineBlock                                                  ,
-    type ParsedLine                                                 ,
-    type Marker                                                     ,
-    type Result                                                     ,
-    type NS                                                         ,
-    type NSData                                                     ,
-    DEFAULT_CONFIG                                                  ,
-    DEFAULT_LANGUAGE_RULES                                          ,
-    LANGUAGE_RULES                                                  ,
-    languageRules_Detect                                            ,
-    line_Parse                                                      ,
-    blocks_Find                                                     ,
-    block_Align                                                     ,
-    positionMap_Build                                               ,
-    positionMap_Apply                                               ,
-    pipeline_Build                                                  ,
-    ns_Error                                                        ,
-    ns_SetError                                                     ,
-    parseLineIgnoringStrings                                        ,
-    findLineBlocks                                                  ,
-    alignBlock                                                      ,
-    buildPairwisePositionMap                                        ,
-    applyPositionMap                                                ,
-    detectLanguageRules                                             ,
+    type LanguageRules,
+    type LineBlock,
+    type ParsedLine,
+    type Marker    ,
+    type Result    ,
+    type NS        ,
+    type NSData,
+    DEFAULT_CONFIG,
+    DEFAULT_LANGUAGE_RULES,
+    LANGUAGE_RULES,
+    languageRules_Detect,
+    line_Parse,
+    blocks_Find,
+    block_Align,
+    positionMap_Build,
+    positionMap_Apply,
+    pipeline_Build,
+    ns_Error,
+    ns_SetError,
+    parseLineIgnoringStrings,
+    findLineBlocks,
+    alignBlock,
+    buildPairwisePositionMap,
+    applyPositionMap,
+    detectLanguageRules,
 } from './fsm_Main'
 
 // ── 2. RESULT HELPERS (re-export) ──────────────────────────────
-const ok                                          = <T,>(v: T): Result<T> => ({ ok: true, value: v })
-const err                                         = <E,>(e: E): Result<never, E> => ({ ok: false, error: e })
+const ok = <T,>(v: T): Result<T> => ({ ok: true, value: v })
+const err = <E,>(e: E): Result<never, E> => ({ ok: false, error: e })
 
 // ── 3. CONFIG ──────────────────────────────────────────────────
-const CONFIG                                         = {
-    ...DEFAULT_CONFIG                                        ,
-    testData                                        : {} as Record<string, unknown>,
+const CONFIG = {
+    ...DEFAULT_CONFIG,
+    testData: {} as Record<string, unknown>,
 }
 
 // ── 4. LANGUAGE DETECTION ─────────────────────────────────────
@@ -54,8 +54,8 @@ function detectLanguageRulesFromEditor(o_Editor: vscode.TextEditor): LanguageRul
 }
 
 // ── 5. LOGGING DECORATORS (no VS Code API) ────────────────────
-const timers                                         = new Map<string, number>()
-const line                                           = (ch: string): string => ch.repeat(50)
+const timers = new Map<string, number>()
+const line = (ch: string): string => ch.repeat(50)
 
 /** Starts timing for a function and logs the start. */
 function decor_Start(name: string): void {
@@ -65,14 +65,14 @@ function decor_Start(name: string): void {
 
 /** Logs the finish of a function with elapsed time. */
 function decor_Finish(name: string): void {
-    const start                                            = timers.get(name)
-    const duration                                         = start ? (performance.now() - start).toFixed(2) : '?'
+    const start = timers.get(name)
+    const duration = start ? (performance.now() - start).toFixed(2) : '?'
     console.log(`${line('─')}\n◀  ${name} (${duration}ms)\n${line('═')}\n`)
     timers.delete(name)
 }
 
 /** Runs a decorator function with timing. */
-function rwd(fn: (ns: NS) => void                                        , ns: NS): void {
+function rwd(fn: (ns: NS) => void, ns: NS): void {
     if(ns_Error(ns)) { return }
     decor_Start(fn.name)
     fn(ns)
@@ -83,22 +83,22 @@ function rwd(fn: (ns: NS) => void                                        , ns: N
 /** Creates a new NooShere container with initial state. */
 function NS_Container(cfg: typeof CONFIG): NS {
     return {
-        result                                         : ok({})                                                                                ,
-        s_Error                                        : ''                                                                                    ,
-        config                                         : cfg                                                                                   ,
-        data                                           : { editor: false, languageRules: false, blocks: [], parsedLines: [], alignedLines: [] },
-        ...cfg.testData                                        ,
+        result: ok({}),
+        s_Error: '',
+        config: cfg,
+        data: { editor: false, languageRules: false, blocks: [], parsedLines: [], alignedLines: [] },
+        ...cfg.testData,
     }
 }
 
 // ── 7. PIPELINE FSM SETUP ─────────────────────────────────────
-const pipelineFSM                                         = pipeline_Build(
-    config_Load_Decor                                            ,
-    language_Detect_Decor                                        ,
-    block_Find_Decor                                             ,
-    lines_Parse_Decor                                            ,
-    alignment_Apply_Decor                                        ,
-    text_Replace_Decor                                           ,
+const pipelineFSM = pipeline_Build(
+    config_Load_Decor,
+    language_Detect_Decor,
+    block_Find_Decor,
+    lines_Parse_Decor,
+    alignment_Apply_Decor,
+    text_Replace_Decor,
     rwd
 )
 
@@ -111,18 +111,18 @@ function a_Chain(ns: NS): void { pipelineFSM(ns) }
 function config_Load_Decor(ns: NS): void {
     if(ns.config.b_Debug) { ns.data.languageRules = DEFAULT_LANGUAGE_RULES; return }
     try {
-        const vsConfig                                           = vscode.workspace.getConfiguration('codeAlign')
-        const alignChars                                         = vsConfig.get<string[]>('alignChars', ns.config.defaultAlignChars)
-        ns.config                                                = {
-            ...ns.config                                        ,
-            defaultAlignChars                                        : alignChars                                                  ,
-            maxBlockSize                                             : vsConfig.get('maxBlockSize', ns.config.maxBlockSize)        ,
-            preserveComments                                         : vsConfig.get('preserveComments', ns.config.preserveComments),
-            preserveStrings                                          : vsConfig.get('preserveStrings', ns.config.preserveStrings)  ,
-            maxSpaces                                                : vsConfig.get('maxSpaces', ns.config.maxSpaces)              ,
-            greedyMatch                                              : vsConfig.get('greedyMatch', ns.config.greedyMatch)          ,
+        const vsConfig = vscode.workspace.getConfiguration('codeAlign')
+        const alignChars = vsConfig.get<string[]>('alignChars', ns.config.defaultAlignChars)
+        ns.config = {
+            ...ns.config,
+            defaultAlignChars: alignChars,
+            maxBlockSize: vsConfig.get('maxBlockSize', ns.config.maxBlockSize),
+            preserveComments: vsConfig.get('preserveComments', ns.config.preserveComments),
+            preserveStrings: vsConfig.get('preserveStrings', ns.config.preserveStrings),
+            maxSpaces: vsConfig.get('maxSpaces', ns.config.maxSpaces),
+            greedyMatch: vsConfig.get('greedyMatch', ns.config.greedyMatch),
         }
-        ns.result                                         = ok(ns.config)
+        ns.result = ok(ns.config)
     } catch(e) { ns_SetError(ns, (e as Error).message) }
 }
 
@@ -130,37 +130,37 @@ function config_Load_Decor(ns: NS): void {
 function language_Detect_Decor(ns: NS): void {
     if(ns.config.b_Debug) { ns.data.languageRules = DEFAULT_LANGUAGE_RULES; return }
     try {
-        const editor                                         = vscode.window.activeTextEditor
+        const editor = vscode.window.activeTextEditor
         if(!editor) { ns_SetError(ns, 'No active editor'); return }
-        ns.data.editor                                                = editor
-        ns.data.languageRules                                         = detectLanguageRulesFromEditor(editor)
-        ns.result                                                     = ok(ns.data.languageRules)
+        ns.data.editor = editor
+        ns.data.languageRules = detectLanguageRulesFromEditor(editor)
+        ns.result = ok(ns.data.languageRules)
     } catch(e) { ns_SetError(ns, (e as Error).message) }
 }
 
 /** Parses lines in each block, ignoring strings and comments. */
 function lines_Parse_Decor(ns: NS): void {
     if(ns.config.b_Debug) {
-        ns.data.parsedLines                                         = (ns['testParsedLines'] as ParsedLine[][] | undefined) ?? []
-        ns.result                                                   = ok(ns.data.parsedLines); return
+        ns.data.parsedLines = (ns['testParsedLines'] as ParsedLine[][] | undefined) ?? []
+        ns.result = ok(ns.data.parsedLines); return
     }
     try {
-        const o_Rules                                         = ns.data.languageRules
+        const o_Rules = ns.data.languageRules
         if(!o_Rules) { ns_SetError(ns, 'No language rules'); return }
-        ns.data.parsedLines                                         = ns.data.blocks.map(o_Block => o_Block.lines.map(s_Raw => line_Parse(s_Raw, o_Rules)))
-        ns.result                                                   = ok(ns.data.parsedLines)
+        ns.data.parsedLines = ns.data.blocks.map(o_Block => o_Block.lines.map(s_Raw => line_Parse(s_Raw, o_Rules)))
+        ns.result = ok(ns.data.parsedLines)
     } catch(e) { ns_SetError(ns, (e as Error).message) }
 }
 
 /** Applies alignment to parsed lines in each block. */
 function alignment_Apply_Decor(ns: NS): void {
     if(ns.config.b_Debug) {
-        ns.data.alignedLines                                         = (ns['testAlignedLines'] as string[][] | undefined) ?? []
-        ns.result                                                    = ok(ns.data.alignedLines); return
+        ns.data.alignedLines = (ns['testAlignedLines'] as string[][] | undefined) ?? []
+        ns.result = ok(ns.data.alignedLines); return
     }
     try {
-        ns.data.alignedLines                                         = ns.data.parsedLines.map(a_BlockLines => block_Align(a_BlockLines, ns.config.maxSpaces))
-        ns.result                                                    = ok(ns.data.alignedLines)
+        ns.data.alignedLines = ns.data.parsedLines.map(a_BlockLines => block_Align(a_BlockLines, ns.config.maxSpaces))
+        ns.result = ok(ns.data.alignedLines)
     } catch(e) { ns_SetError(ns, (e as Error).message) }
 }
 
@@ -168,10 +168,10 @@ function alignment_Apply_Decor(ns: NS): void {
 function text_Replace_Decor(ns: NS): void {
     if(ns.config.b_Debug) { ns.result = ok('debug-no-replace'); return }
     try {
-        const editor                                         = ns.data.editor as vscode.TextEditor | false
+        const editor = ns.data.editor as vscode.TextEditor | false
         if(!editor) { ns_SetError(ns, 'No active editor'); return }
         applyEditorReplacements(editor, ns.data.blocks, ns.data.alignedLines)
-        ns.result                                         = ok('replaced')
+        ns.result = ok('replaced')
     } catch(e) { ns_SetError(ns, (e as Error).message) }
 }
 
@@ -179,33 +179,33 @@ function text_Replace_Decor(ns: NS): void {
 
 // A5 states (PascalCase)
 enum BlockSearchState {
-    WaitingForData                                             = 'WaitingForData'    ,
-    ValidatingContext                                          = 'ValidatingContext' ,
-    AnalyzingSelection                                         = 'AnalyzingSelection',
-    ScanningUp                                                 = 'ScanningUp'        ,
-    ScanningDown                                               = 'ScanningDown'      ,
-    ExtractingLines                                            = 'ExtractingLines'   ,
-    GroupingBlocks                                             = 'GroupingBlocks'    ,
-    Done                                                       = 'Done'              ,
-    Error                                                      = 'Error'             ,
+    WaitingForData = 'WaitingForData',
+    ValidatingContext = 'ValidatingContext',
+    AnalyzingSelection = 'AnalyzingSelection',
+    ScanningUp = 'ScanningUp',
+    ScanningDown = 'ScanningDown',
+    ExtractingLines = 'ExtractingLines',
+    GroupingBlocks = 'GroupingBlocks',
+    Done = 'Done',
+    Error = 'Error',
 }
 
 enum SelectionAnalysisState {
-    CheckingEmpty                                            = 'CheckingEmpty'   ,
-    AutoSearchIndent                                         = 'AutoSearchIndent',
-    UsingSelection                                           = 'UsingSelection'  ,
+    CheckingEmpty = 'CheckingEmpty',
+    AutoSearchIndent = 'AutoSearchIndent',
+    UsingSelection = 'UsingSelection',
 }
 
-type BlockSearchContext           = {
-    editor                 : vscode.TextEditor
-    rules                  : LanguageRules
-    doc                    : vscode.TextDocument
-    selection              : vscode.Selection
-    startLine              : number
-    endLine                : number
-    initialIndent          : string
-    activeLine             : number
-    rawLines               : string[]
+type BlockSearchContext = {
+    editor: vscode.TextEditor
+    rules: LanguageRules
+    doc: vscode.TextDocument
+    selection: vscode.Selection
+    startLine: number
+    endLine: number
+    initialIndent: string
+    activeLine: number
+    rawLines: string[]
 }
 
 /**
@@ -228,25 +228,25 @@ function analyzeSelection(ctx: BlockSearchContext): { startLine: number; endLine
         return { startLine: 0, endLine: lastLineIdx }
     }
 
-    let s_State                                         = SelectionAnalysisState.CheckingEmpty
+    let s_State = SelectionAnalysisState.CheckingEmpty
     while(true) {
         switch(s_State) {
-            case SelectionAnalysisState.CheckingEmpty                                        :
-                s_State                                         = ctx.selection.isEmpty ? SelectionAnalysisState.AutoSearchIndent : SelectionAnalysisState.UsingSelection; break
-            case SelectionAnalysisState.AutoSearchIndent                                        :
+            case SelectionAnalysisState.CheckingEmpty:
+                s_State = ctx.selection.isEmpty ? SelectionAnalysisState.AutoSearchIndent : SelectionAnalysisState.UsingSelection; break
+            case SelectionAnalysisState.AutoSearchIndent:
                 return fn_AutoSearchIndent(ctx)
-            case SelectionAnalysisState.UsingSelection                                        :
+            case SelectionAnalysisState.UsingSelection:
                 return { startLine: ctx.selection.start.line, endLine: ctx.selection.end.line }
-            default                                        : fn_Unreachable(s_State as never)
+            default: fn_Unreachable(s_State as never)
         }
     }
 }
 
 /** Scans upward from the active line to find block boundary. */
 function scanUp(ctx: BlockSearchContext): number | null {
-    let line                                         = ctx.activeLine
+    let line = ctx.activeLine
     while(line > 0) {
-        const prev                                         = ctx.doc.lineAt(line - 1)
+        const prev = ctx.doc.lineAt(line - 1)
         if(prev.isEmptyOrWhitespace) { break }
         if((prev.text.match(/^\s*/)?.[0] ?? '') !== ctx.initialIndent) { break }
         line--
@@ -259,18 +259,18 @@ function fn_Unreachable(s_State: never): never {
 }
 
 function fn_AutoSearchIndent(ctx: BlockSearchContext): { startLine: number; endLine: number } | null {
-    ctx.activeLine                                            = ctx.selection.active.line
-    ctx.initialIndent                                         = ctx.doc.lineAt(ctx.activeLine).text.match(/^\s*/)?.[0] ?? ''
-    const up                                                  = scanUp(ctx); if(up === null) { return null } ctx.startLine = up
-    const down                                                = scanDown(ctx); if(down === null) { return null } ctx.endLine = down
+    ctx.activeLine = ctx.selection.active.line
+    ctx.initialIndent = ctx.doc.lineAt(ctx.activeLine).text.match(/^\s*/)?.[0] ?? ''
+    const up = scanUp(ctx); if(up === null) { return null } ctx.startLine = up
+    const down = scanDown(ctx); if(down === null) { return null } ctx.endLine = down
     return { startLine: ctx.startLine, endLine: ctx.endLine }
 }
 
 /** Scans downward from the active line to find block boundary. */
 function scanDown(ctx: BlockSearchContext): number | null {
-    let line                                         = ctx.activeLine, last = ctx.doc.lineCount - 1
+    let line = ctx.activeLine, last = ctx.doc.lineCount - 1
     while(line < last) {
-        const next                                         = ctx.doc.lineAt(line + 1)
+        const next = ctx.doc.lineAt(line + 1)
         if(next.isEmptyOrWhitespace) { break }
         if((next.text.match(/^\s*/)?.[0] ?? '') !== ctx.initialIndent) { break }
         line++
@@ -279,28 +279,7 @@ function scanDown(ctx: BlockSearchContext): number | null {
 }
 
 function fn_GroupBlocks(ns: NS, ctx: BlockSearchContext): void {
-    const b_IsFullSelection                                         = ctx.startLine === 0 && ctx.endLine === ctx.doc.lineCount - 1
-
-    // When user has selection - split into blocks by indentation and align each block
-    if(!ctx.selection.isEmpty) {
-        ns.data.blocks = blocks_Find(ctx.rawLines, ctx.startLine, ctx.rules, ns.config.maxBlockSize)
-    } else if(fn_ShouldUseCustomGrouping(b_IsFullSelection, ctx.rawLines, ctx.rules)) {
-        ns.data.blocks                                         = fn_GetBlocksWithCustomGrouping(ctx, ctx.rawLines)
-    } else {
-        ns.data.blocks                                         = blocks_Find(ctx.rawLines, ctx.startLine, ctx.rules, ns.config.maxBlockSize)
-    }
-}
-
-function fn_ShouldUseCustomGrouping(b_IsFullSelection: boolean, a_Lines: string[], o_Rules: LanguageRules): boolean {
-    return b_IsFullSelection && a_Lines.length > 1 && o_Rules.lineComments.length > 0
-}
-
-function fn_GetBlocksWithCustomGrouping(ctx: BlockSearchContext, a_Lines: string[]): LineBlock[] {
-    const b_HasMultipleIndents                                         = new Set(a_Lines.map(s_L => s_L.match(/^(\s*)/)?.[1] ?? '')).size > 1
-    if(b_HasMultipleIndents) {
-        return [{ startLine: ctx.startLine, lines: ctx.rawLines }]
-    }
-    return blocks_Find(ctx.rawLines, ctx.startLine, ctx.rules, 500)
+    ns.data.blocks = blocks_Find(ctx.rawLines, ctx.startLine, ctx.rules, ns.config.maxBlockSize)
 }
 
 /**
@@ -308,43 +287,43 @@ function fn_GetBlocksWithCustomGrouping(ctx: BlockSearchContext, a_Lines: string
  * @param ns - NooShere containing editor state and data
  */
 function blockSearchFSM(ns: NS): void {
-    const ctx                                                : BlockSearchContext = {
-        editor                                               : ns.data.editor as vscode.TextEditor            ,
-        rules                                                : ns.data.languageRules as LanguageRules         ,
-        doc                                                  : (ns.data.editor as vscode.TextEditor).document ,
-        selection                                            : (ns.data.editor as vscode.TextEditor).selection,
-        startLine                                            : 0                                              ,
-        endLine                                              : 0                                              ,
-        initialIndent                                        : ''                                             ,
-        activeLine                                           : 0                                              ,
-        rawLines                                             : []                                             ,
+    const ctx: BlockSearchContext = {
+        editor: ns.data.editor as vscode.TextEditor,
+        rules: ns.data.languageRules as LanguageRules,
+        doc: (ns.data.editor as vscode.TextEditor).document,
+        selection: (ns.data.editor as vscode.TextEditor).selection,
+        startLine: 0,
+        endLine: 0,
+        initialIndent: '',
+        activeLine: 0,
+        rawLines: [],
     }
-    let s_State                                         = BlockSearchState.WaitingForData
+    let s_State = BlockSearchState.WaitingForData
 
-    main                                        : while(true) {
+    main: while(true) {
         switch(s_State) {
-            case BlockSearchState.WaitingForData                                        :
-                s_State                                         = BlockSearchState.ValidatingContext; break
-            case BlockSearchState.ValidatingContext                                        :
+            case BlockSearchState.WaitingForData:
+                s_State = BlockSearchState.ValidatingContext; break
+            case BlockSearchState.ValidatingContext:
                 if(!ctx.editor) { ns_SetError(ns, 'No active editor'); s_State = BlockSearchState.Error; break }
                 if(!ctx.rules) { ns_SetError(ns, 'No language rules'); s_State = BlockSearchState.Error; break }
-                ctx.doc                                         = ctx.editor.document; ctx.selection = ctx.editor.selection
-                s_State                                         = BlockSearchState.AnalyzingSelection; break
-            case BlockSearchState.AnalyzingSelection                                        : {
-                const res                                         = analyzeSelection(ctx)
+                ctx.doc = ctx.editor.document; ctx.selection = ctx.editor.selection
+                s_State = BlockSearchState.AnalyzingSelection; break
+            case BlockSearchState.AnalyzingSelection: {
+                const res = analyzeSelection(ctx)
                 if(!res) { s_State = BlockSearchState.Error; break }
-                ctx.startLine                                         = res.startLine; ctx.endLine = res.endLine
-                s_State                                               = BlockSearchState.ExtractingLines; break
+                ctx.startLine = res.startLine; ctx.endLine = res.endLine
+                s_State = BlockSearchState.ExtractingLines; break
             }
-            case BlockSearchState.ExtractingLines                                        :
-                ctx.rawLines                                         = extractRawLines(ctx.doc, ctx.startLine, ctx.endLine)
-                s_State                                              = BlockSearchState.GroupingBlocks; break
-            case BlockSearchState.GroupingBlocks                                        :
+            case BlockSearchState.ExtractingLines:
+                ctx.rawLines = extractRawLines(ctx.doc, ctx.startLine, ctx.endLine)
+                s_State = BlockSearchState.GroupingBlocks; break
+            case BlockSearchState.GroupingBlocks:
                 fn_GroupBlocks(ns, ctx)
-                s_State                                         = BlockSearchState.Done; break
-            case BlockSearchState.Done                                         : ns.result = ok(ns.data.blocks); break main
-            case BlockSearchState.Error                                        : break main
-            default                                                            : fn_Unreachable(s_State as never)
+                s_State = BlockSearchState.Done; break
+            case BlockSearchState.Done: ns.result = ok(ns.data.blocks); break main
+            case BlockSearchState.Error: break main
+            default: fn_Unreachable(s_State as never)
         }
     }
 }
@@ -358,7 +337,7 @@ function block_Find_Decor(ns: NS): void {
 // ── 10. EDITOR HELPERS (VS Code API) ──────────────────────────
 /** Extracts raw text lines from a document within a range. */
 function extractRawLines(doc: vscode.TextDocument, start: number, end: number): string[] {
-    const out                                        : string[] = []
+    const out: string[] = []
     for(let i = start; i <= end; i++) { out.push(doc.lineAt(i).text) }
     return out
 }
@@ -367,9 +346,9 @@ function extractRawLines(doc: vscode.TextDocument, start: number, end: number): 
 function applyEditorReplacements(editor: vscode.TextEditor, blocks: LineBlock[], aligned: string[][]): void {
     editor.edit(builder => {
         for(let bi = 0; bi < blocks.length; bi++) {
-            const block                                         = blocks[bi], lines = aligned[bi]
+            const block = blocks[bi], lines = aligned[bi]
             for(let li = 0; li < block.lines.length; li++) {
-                const idx                                         = block.startLine + li
+                const idx = block.startLine + li
                 builder.replace(editor.document.lineAt(idx).range, lines[li])
             }
         }
@@ -385,8 +364,8 @@ function findAlignCharsGreedy(s_Code: string, a_AlignChars: string[], o_Rules: L
 // ── 12. ACTIVATE / DEACTIVATE ─────────────────────────────────
 /** Entry point called when extension is activated. */
 export function activate(context: vscode.ExtensionContext): void {
-    const runAlign                                         = (): void => {
-        const ns                                           = NS_Container(CONFIG)
+    const runAlign = (): void => {
+        const ns = NS_Container(CONFIG)
         a_Chain(ns)
         if(ns.s_Error) {
             vscode.window.showErrorMessage(`Code.Align: ${ns.s_Error}`)
@@ -395,8 +374,8 @@ export function activate(context: vscode.ExtensionContext): void {
         }
     }
     context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-better-align-columns.align', runAlign)                                        ,
-        vscode.commands.registerCommand('CodeAlign.AlignBlock', runAlign)                                                     ,
+        vscode.commands.registerCommand('vscode-better-align-columns.align', runAlign),
+        vscode.commands.registerCommand('CodeAlign.AlignBlock', runAlign),
         vscode.commands.registerCommand('CodeAlign.Configure', () => vscode.commands.executeCommand('workbench.action.openSettings', 'codeAlign')),
     )
 }
@@ -406,20 +385,20 @@ export function deactivate(): void { }
 
 // ── EXPORTS ──────────────────────────────────────────────────
 export {
-    ok                                                              , err,
-    NS_Container                                                    ,
-    a_Chain                                                         ,
-    findAlignCharsGreedy                                            ,
-    buildPairwisePositionMap                                        ,
-    applyPositionMap                                                ,
-    parseLineIgnoringStrings                                        ,
-    findLineBlocks                                                  ,
-    alignBlock                                                      ,
-    detectLanguageRules                                             ,
-    DEFAULT_LANGUAGE_RULES                                          ,
-    CONFIG                                                          ,
-    LanguageRules                                                   ,
-    ParsedLine                                                      ,
-    Marker                                                          ,
-    LineBlock                                                       ,
+    ok, err,
+    NS_Container,
+    a_Chain,
+    findAlignCharsGreedy,
+    buildPairwisePositionMap,
+    applyPositionMap,
+    parseLineIgnoringStrings,
+    findLineBlocks,
+    alignBlock,
+    detectLanguageRules,
+    DEFAULT_LANGUAGE_RULES,
+    CONFIG,
+    LanguageRules,
+    ParsedLine,
+    Marker,
+    LineBlock,
 }

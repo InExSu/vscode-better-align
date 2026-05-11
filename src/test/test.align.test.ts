@@ -1,18 +1,18 @@
 import * as assert from 'assert'
 import {
-    line_Parse             ,
-    blocks_Find            ,
-    block_Align            ,
-    positionMap_Build      ,
-    positionMap_Apply      ,
-    DEFAULT_LANGUAGE_RULES ,
-    DEFAULT_CONFIG         ,
+    line_Parse,
+    blocks_Find,
+    block_Align,
+    positionMap_Build,
+    positionMap_Apply,
+    DEFAULT_LANGUAGE_RULES,
+    DEFAULT_CONFIG,
     fn_ExecutePipelineState,
-    PipelineState          ,
-    NS                     ,
-    ok                     ,
-    LineBlock              ,
-    ParsedLine             ,
+    PipelineState,
+    NS,
+    ok,
+    LineBlock,
+    ParsedLine,
 } from '../fsm_Main'
 
 function lines(...args: string[]): string[] { return args }
@@ -89,13 +89,11 @@ describe('blocks_Find', () => {
         assert.strictEqual(blocks[0].lines[0], 'const a = 1')
     })
 
-    it('separates blocks by different indentation', () => {
+    it('does not separate blocks by different indentation', () => {
         const input = lines('const a = 1', 'const b = 2', '    const c = 3', '    const d = 4')
         const blocks = blocks_Find(input, 0, DEFAULT_LANGUAGE_RULES, 500)
-        assert.strictEqual(blocks.length, 2)
-        assert.strictEqual(blocks[0].lines.length, 2)
-        assert.strictEqual(blocks[1].lines.length, 2)
-        assert.strictEqual(blocks[1].startLine, 2)
+        assert.strictEqual(blocks.length, 1, "Should not split by indentation, so one block is expected.")
+        assert.strictEqual(blocks[0].lines.length, 4)
     })
 
     it('returns empty array for empty input', () => {
@@ -366,13 +364,13 @@ describe('positionMap_Apply', () => {
 })
 
 describe('idempotency - real file test', () => {
-it('aligns extension.ts code (sanity check)', () => {
+    it('aligns extension.ts code (sanity check)', () => {
         const fs = require('fs')
         const input: string[] = fs.readFileSync('src/extension.ts', 'utf8').split('\n')
         const rules = DEFAULT_LANGUAGE_RULES
 
-        const blocks = blocks_Find(input, 0, rules, 500)
-        const parsed = blocks.map(b => b.lines.map(l => line_Parse(l, rules)))
+        const blocks  = blocks_Find(input, 0, rules, 500)
+        const parsed  = blocks.map(b => b.lines.map(l => line_Parse(l, rules)))
         const aligned = parsed.map(pl => block_Align(pl, 30))
 
         const flat = aligned.flat()
@@ -384,7 +382,7 @@ it('aligns extension.ts code (sanity check)', () => {
         const input: string[] = fs.readFileSync('src/extension.ts', 'utf8').split('\n')
         const rules = DEFAULT_LANGUAGE_RULES
 
-        const fn_DoNothing = (): void => {}
+        const fn_DoNothing = (): void => { }
 
         const runPipeline = (code: string[]): string[] => {
             const fn_BlockFind = (ns: NS): void => {
@@ -412,14 +410,14 @@ it('aligns extension.ts code (sanity check)', () => {
             }
 
             let s_State = PipelineState.Idle
-            s_State = fn_ExecutePipelineState(s_State, ns, fn_DoNothing, fn_DoNothing, fn_BlockFind, fn_LinesParse, fn_AlignmentApply, fn_DoNothing, fn_DoNothing)
+            s_State     = fn_ExecutePipelineState(s_State, ns, fn_DoNothing, fn_DoNothing, fn_BlockFind, fn_LinesParse, fn_AlignmentApply, fn_DoNothing, fn_DoNothing)
 
             return (ns.data.alignedLines as string[][]).flat()
         }
 
-        const first = runPipeline(input)
+        const first  = runPipeline(input)
         const second = runPipeline(first)
-        const third = runPipeline(second)
+        const third  = runPipeline(second)
 
         assert.strictEqual(second.length, first.length, 'Second pass should not add spaces')
         assert.strictEqual(third.length, first.length, 'Third pass should not add spaces')

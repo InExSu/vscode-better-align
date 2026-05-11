@@ -16,8 +16,8 @@ export type LineBlock = { startLine: number; lines: string[] }
 export type ParsedLine = { raw: string; tokens: Token[]; markers: Marker[]; originalMarkers?: Marker[] }
 
 export type Token =
-    | { kind: 'code'; text: string }
-    | { kind: 'string'; text: string }
+    | { kind: 'code'; text   : string }
+    | { kind: 'string'; text : string }
     | { kind: 'comment'; text: string }
 
 export type Marker = { symbol: string; startCol: number }
@@ -82,9 +82,9 @@ export interface SanitizeFlags {
 }
 
 export interface FSMContext {
-    lines           : string[]
-    alignChars      : string[]
-    preserveStrings : boolean
+    lines: string[]
+    alignChars: string[]
+    preserveStrings: boolean
     preserveComments: boolean
 }
 
@@ -115,15 +115,15 @@ export function ns_Error(ns: NS): boolean { return ns.result.ok === false }
 export function ns_SetError(ns: NS, s_Error: string): void { ns.result = err(s_Error); ns.s_Error = s_Error }
 
 export enum PipelineState {
-    Idle           = 'Idle'          ,
-    LoadConfig     = 'LoadConfig'    ,
+    Idle = 'Idle',
+    LoadConfig = 'LoadConfig',
     DetectLanguage = 'DetectLanguage',
-    FindBlocks     = 'FindBlocks'    ,
-    ParseLines     = 'ParseLines'    ,
-    Align          = 'Align'         ,
-    ReplaceText    = 'ReplaceText'   ,
-    Done           = 'Done'          ,
-    Error          = 'Error'         ,
+    FindBlocks = 'FindBlocks',
+    ParseLines = 'ParseLines',
+    Align = 'Align',
+    ReplaceText = 'ReplaceText',
+    Done = 'Done',
+    Error = 'Error',
 }
 
 export type Decorator = (ns: NS) => void
@@ -134,21 +134,21 @@ export type Decorator = (ns: NS) => void
  */
 export function a_FSM_Main(ctx: FSMContext): FSMResult {
     const stateCtx: FSMStateContext = {
-        a_Lines           : ctx.lines           ,
-        a_AlignChars      : ctx.alignChars      ,
-        b_PreserveStrings : ctx.preserveStrings ,
+        a_Lines: ctx.lines,
+        a_AlignChars: ctx.alignChars,
+        b_PreserveStrings: ctx.preserveStrings,
         b_PreserveComments: ctx.preserveComments,
-        a_MaskedLines     : []                  ,
-        a_RawMap          : []                  ,
-        a_Columns         : []                  ,
-        a_AlignedLines    : [...ctx.lines]      ,
-        b_Changed         : false               ,
+        a_MaskedLines: [],
+        a_RawMap: [],
+        a_Columns: [],
+        a_AlignedLines: [...ctx.lines],
+        b_Changed: false,
     }
 
     let state: FSMState = 'block_Find'
 
-    outerLoop: while (true) {
-        switch (state) {
+    outerLoop: while(true) {
+        switch(state) {
             case 'block_Find':
                 state = fn_BlockFind(stateCtx)
                 break
@@ -175,15 +175,15 @@ export function a_FSM_Main(ctx: FSMContext): FSMResult {
 }
 
 interface FSMStateContext {
-    a_Lines           : string[]
-    a_AlignChars      : string[]
-    b_PreserveStrings : boolean
+    a_Lines: string[]
+    a_AlignChars: string[]
+    b_PreserveStrings: boolean
     b_PreserveComments: boolean
-    a_MaskedLines     : string[]
-    a_RawMap          : AlignToken[][]
-    a_Columns         : AlignColumn[]
-    a_AlignedLines    : string[]
-    b_Changed         : boolean
+    a_MaskedLines: string[]
+    a_RawMap: AlignToken[][]
+    a_Columns: AlignColumn[]
+    a_AlignedLines: string[]
+    b_Changed: boolean
 }
 
 function fn_Unreachable(s_State: never): never {
@@ -223,7 +223,7 @@ function fn_LinesAlign(ctx: FSMStateContext): FSMState {
 
 export function lines_Sanitize(a_Lines: string[], flags: SanitizeFlags): string[] {
     const result: string[] = []
-    for (const s_Line of a_Lines) {
+    for(const s_Line of a_Lines) {
         result.push(fn_SanitizeLine(s_Line, flags))
     }
     return result
@@ -233,30 +233,30 @@ function fn_SanitizeLine(s_Line: string, flags: SanitizeFlags): string {
     let s_Result = ''
     let i_Idx = 0
 
-    while (i_Idx < s_Line.length) {
+    while(i_Idx < s_Line.length) {
         // String delimiters
-        if (flags.b_PreserveStrings) {
-            for (const delim of ['"', "'", '`']) {
-                if (s_Line.startsWith(delim, i_Idx)) {
+        if(flags.b_PreserveStrings) {
+            for(const delim of ['"', "'", '`']) {
+                if(s_Line.startsWith(delim, i_Idx)) {
                     const endIdx = fn_FindStringEnd(s_Line, i_Idx, delim)
                     s_Result += s_Line.slice(i_Idx, endIdx).replace(/./g, '\0')
                     i_Idx = endIdx
                     break
                 }
             }
-            if (i_Idx < s_Line.length && s_Line[i_Idx] === '\0') { continue }
+            if(i_Idx < s_Line.length && s_Line[i_Idx] === '\0') { continue }
         }
 
         // Block comments
-        if (flags.b_PreserveComments) {
-            if (s_Line.startsWith('/*', i_Idx)) {
+        if(flags.b_PreserveComments) {
+            if(s_Line.startsWith('/*', i_Idx)) {
                 const endIdx = s_Line.indexOf('*/', i_Idx + 2)
                 const end = endIdx >= 0 ? endIdx + 2 : s_Line.length
                 s_Result += s_Line.slice(i_Idx, end).replace(/./g, '\0')
                 i_Idx = end
                 continue
             }
-            if (s_Line.startsWith('//', i_Idx) || s_Line.startsWith('#', i_Idx)) {
+            if(s_Line.startsWith('//', i_Idx) || s_Line.startsWith('#', i_Idx)) {
                 s_Result += s_Line.slice(i_Idx).replace(/./g, '\0')
                 break
             }
@@ -271,9 +271,9 @@ function fn_SanitizeLine(s_Line: string, flags: SanitizeFlags): string {
 
 function fn_FindStringEnd(s_Line: string, i_Start: number, s_Delim: string): number {
     let i_Idx = i_Start + s_Delim.length
-    while (i_Idx < s_Line.length) {
-        if (s_Line[i_Idx] === '\\') { i_Idx += 2; continue }
-        if (s_Line.startsWith(s_Delim, i_Idx)) { return i_Idx + s_Delim.length }
+    while(i_Idx < s_Line.length) {
+        if(s_Line[i_Idx] === '\\') { i_Idx += 2; continue }
+        if(s_Line.startsWith(s_Delim, i_Idx)) { return i_Idx + s_Delim.length }
         i_Idx++
     }
     return s_Line.length
@@ -284,19 +284,19 @@ export function chars_FindGreedy(s_Masked: string, a_AlignChars: string[]): Alig
     const a_SortedChars = [...a_AlignChars].sort((a, b) => b.length - a.length)
     let i_Idx = 0
 
-    while (i_Idx < s_Masked.length) {
-        if (s_Masked[i_Idx] === '\0') { i_Idx++; continue }
+    while(i_Idx < s_Masked.length) {
+        if(s_Masked[i_Idx] === '\0') { i_Idx++; continue }
 
         let b_Found = false
-        for (const s_Char of a_SortedChars) {
-            if (s_Masked.startsWith(s_Char, i_Idx)) {
+        for(const s_Char of a_SortedChars) {
+            if(s_Masked.startsWith(s_Char, i_Idx)) {
                 a_Tokens.push({ s_Char, i_Pos: i_Idx })
                 i_Idx += s_Char.length
                 b_Found = true
                 break
             }
         }
-        if (!b_Found) { i_Idx++ }
+        if(!b_Found) { i_Idx++ }
     }
 
     return a_Tokens
@@ -307,22 +307,22 @@ export function map_BuildRaw(a_MaskedLines: string[], a_AlignChars: string[]): A
 }
 
 export function map_Normalize(a_RawMap: AlignToken[][]): AlignColumn[] {
-    if (a_RawMap.length === 0 || a_RawMap[0].length === 0) { return [] }
+    if(a_RawMap.length === 0 || a_RawMap[0].length === 0) { return [] }
 
     const a_Columns: AlignColumn[] = []
     const i_ColCount = Math.min(...a_RawMap.map(a_Row => a_Row.length))
 
-    outer: for (let i_Col = 0; i_Col < i_ColCount; i_Col++) {
+    outer: for(let i_Col = 0; i_Col < i_ColCount; i_Col++) {
         const s_Char = a_RawMap[0][i_Col].s_Char
 
-        for (let i_Row = 1; i_Row < a_RawMap.length; i_Row++) {
-            if (a_RawMap[i_Row][i_Col].s_Char !== s_Char) {
+        for(let i_Row = 1; i_Row < a_RawMap.length; i_Row++) {
+            if(a_RawMap[i_Row][i_Col].s_Char !== s_Char) {
                 break outer
             }
         }
 
         let i_MaxPos = 0
-        for (const a_Row of a_RawMap) {
+        for(const a_Row of a_RawMap) {
             i_MaxPos = Math.max(i_MaxPos, a_Row[i_Col].i_Pos)
         }
 
@@ -333,20 +333,20 @@ export function map_Normalize(a_RawMap: AlignToken[][]): AlignColumn[] {
 }
 
 export function lines_Align(a_OrigLines: string[], a_Columns: AlignColumn[], a_RawMap: AlignToken[][]): string[] {
-    if (a_Columns.length === 0) { return [...a_OrigLines] }
+    if(a_Columns.length === 0) { return [...a_OrigLines] }
 
     return a_OrigLines.map((s_Line, i_LineIdx) => {
         let s_Result = ''
         let i_SrcPos = 0
 
-        for (let i_ColIdx = 0; i_ColIdx < a_Columns.length; i_ColIdx++) {
+        for(let i_ColIdx = 0; i_ColIdx < a_Columns.length; i_ColIdx++) {
             const col = a_Columns[i_ColIdx]
             const token = a_RawMap[i_LineIdx][i_ColIdx]
 
-            if (token && token.s_Char === col.s_Char) {
+            if(token && token.s_Char === col.s_Char) {
                 s_Result += s_Line.slice(i_SrcPos, token.i_Pos)
                 const i_Pad = col.i_MaxPos - s_Result.length
-                if (i_Pad > 0) { s_Result += ' '.repeat(i_Pad) }
+                if(i_Pad > 0) { s_Result += ' '.repeat(i_Pad) }
                 s_Result += token.s_Char
                 i_SrcPos = token.i_Pos + token.s_Char.length
             }
@@ -366,7 +366,7 @@ export function blocks_Find(rawLines: string[], i_StartOffset: number, rules: La
     let o_CurBlock: LineBlock = { startLine: 0, lines: [] }, s_CurIndent = ''
 
     const fn_Flush = (): void => {
-        if (o_CurBlock.lines.length > 1) { a_Blocks.push(o_CurBlock) }
+        if(o_CurBlock.lines.length > 1) { a_Blocks.push(o_CurBlock) }
         o_CurBlock = { startLine: 0, lines: [] }
         s_CurIndent = ''
     }
@@ -376,19 +376,23 @@ export function blocks_Find(rawLines: string[], i_StartOffset: number, rules: La
     }
     const fn_GetIndent = (s_Raw: string): string => s_Raw.match(/^(\s*)/)?.[1] ?? ''
 
-    for (let i_Idx = 0; i_Idx < rawLines.length; i_Idx++) {
+    for(let i_Idx = 0; i_Idx < rawLines.length; i_Idx++) {
         const s_Raw = rawLines[i_Idx]
         const s_Indent = fn_GetIndent(s_Raw)
-        switch (s_State) {
+        switch(s_State) {
             case GroupingState.WaitingForStart:
-                if (fn_IsBlankOrComment(s_Raw)) { continue }
+                if(fn_IsBlankOrComment(s_Raw)) { continue }
                 s_CurIndent = s_Indent
                 o_CurBlock = { startLine: i_StartOffset + i_Idx, lines: [s_Raw] }
                 s_State = GroupingState.Accumulating
                 break
             case GroupingState.Accumulating:
-                if (fn_IsBlankOrComment(s_Raw)) { fn_Flush(); continue }
-                if (s_Indent !== s_CurIndent || o_CurBlock.lines.length >= i_MaxBlockSize) {
+                if(fn_IsBlankOrComment(s_Raw)) {
+                    fn_Flush()
+                    s_State = GroupingState.WaitingForStart
+                    continue
+                }
+                if(o_CurBlock.lines.length >= i_MaxBlockSize) {
                     fn_Flush()
                     s_CurIndent = s_Indent
                     o_CurBlock = { startLine: i_StartOffset + i_Idx, lines: [s_Raw] }
@@ -411,6 +415,8 @@ enum GroupingState {
     Accumulating = 'Accumulating',
 }
 
+
+
 // ── 6. PIPELINE FSM (per AI Prompt_This.md) ─────────────────────
 
 export function pipeline_Build(
@@ -425,9 +431,9 @@ export function pipeline_Build(
     return function pipelineFSM(ns: NS): void {
         let s_State = PipelineState.Idle
 
-        mainLoop: while (true) {
+        mainLoop: while(true) {
             s_State = fn_ExecutePipelineState(s_State, ns, fn_ConfigLoad, fn_LanguageDetect, fn_BlockFind, fn_LinesParse, fn_AlignmentApply, fn_TextReplace, fn_Rwd)
-            if (s_State === PipelineState.Done || s_State === PipelineState.Error) { break }
+            if(s_State === PipelineState.Done || s_State === PipelineState.Error) { break }
         }
     }
 }
@@ -443,7 +449,7 @@ export function fn_ExecutePipelineState(
     fn_TextReplace: Decorator,
     fn_Rwd: (fn: Decorator, ns: NS) => void
 ): PipelineState {
-    switch (s_State) {
+    switch(s_State) {
         case PipelineState.Idle:
             return PipelineState.LoadConfig
         case PipelineState.LoadConfig:
@@ -481,7 +487,7 @@ export function line_Parse(raw: string, rules: LanguageRules): ParsedLine {
     const a_Masked = lines_Sanitize([raw], { b_PreserveStrings: true, b_PreserveComments: true })
     const tokens = chars_FindGreedy(a_Masked[0], a_AlignChars)
 
-    for (const tok of tokens) {
+    for(const tok of tokens) {
         a_Markers.push({ symbol: tok.s_Char, startCol: tok.i_Pos })
     }
 
@@ -489,7 +495,7 @@ export function line_Parse(raw: string, rules: LanguageRules): ParsedLine {
 }
 
 export function block_Align(parsedLines: ParsedLine[], i_MaxSpaces: number): string[] {
-    if (parsedLines.length < 2) { return parsedLines.map(pl => pl.raw) }
+    if(parsedLines.length < 2) { return parsedLines.map(pl => pl.raw) }
 
     const ctx: FSMContext = {
         lines: parsedLines.map(pl => pl.raw),
@@ -514,13 +520,13 @@ export function positionMap_Build(parsedLines: ParsedLine[], i_MaxSpaces: number
     const o_Map = new Map<string, number>()
 
     // Extract positions from aligned lines
-    for (let i_Line = 0; i_Line < result.alignedLines.length; i_Line++) {
+    for(let i_Line = 0; i_Line < result.alignedLines.length; i_Line++) {
         const orig = parsedLines[i_Line].raw
         const aligned = result.alignedLines[i_Line]
-        for (let i_Mk = 0; i_Mk < parsedLines[i_Line].markers.length; i_Mk++) {
+        for(let i_Mk = 0; i_Mk < parsedLines[i_Line].markers.length; i_Mk++) {
             const origPos = parsedLines[i_Line].markers[i_Mk].startCol
             const alignedPos = aligned.indexOf(parsedLines[i_Line].markers[i_Mk].symbol, origPos)
-            if (alignedPos > origPos && alignedPos - origPos <= i_MaxSpaces) {
+            if(alignedPos > origPos && alignedPos - origPos <= i_MaxSpaces) {
                 o_Map.set(`${i_Line}:${i_Mk}`, alignedPos)
             }
         }
@@ -532,15 +538,15 @@ export function positionMap_Build(parsedLines: ParsedLine[], i_MaxSpaces: number
 export function positionMap_Apply(parsedLines: ParsedLine[], o_PosMap: Map<string, number>): string[] {
     return parsedLines.map((o_Pl, i_LineIdx) => {
         let s_Out = '', i_SrcPos = 0
-        for (let i_Mk = 0; i_Mk < o_Pl.markers.length; i_Mk++) {
+        for(let i_Mk = 0; i_Mk < o_Pl.markers.length; i_Mk++) {
             const o_Marker = o_Pl.markers[i_Mk]
             s_Out += o_Pl.raw.slice(i_SrcPos, o_Marker.startCol)
             i_SrcPos = o_Marker.startCol
             const s_Key = `${i_LineIdx}:${i_Mk}`
-            if (o_PosMap.has(s_Key)) {
+            if(o_PosMap.has(s_Key)) {
                 const i_Target = o_PosMap.get(s_Key)
                 const i_Pad = i_Target! - s_Out.length
-                if (i_Pad > 0) { s_Out += ' '.repeat(i_Pad) }
+                if(i_Pad > 0) { s_Out += ' '.repeat(i_Pad) }
             }
             s_Out += o_Marker.symbol
             i_SrcPos = o_Marker.startCol + o_Marker.symbol.length

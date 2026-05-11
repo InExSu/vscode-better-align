@@ -3,3 +3,4 @@ dist
 node_modules
 .vscode-test/
 *.vsix
+qwen_free_cli/credentials.json

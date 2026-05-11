@@ -1,4 +1,7 @@
-# v6.14.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.14.0)
+# v6.15.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.15.0)
+
+- fix: Full file selection (Cmd+A) now properly aligns code by using standard block splitting
+- refactor: Removed custom grouping logic that caused incorrect alignment with multiple indentation levels
 
 - refactor: Improve alignment logic robustness based on user feedback. The `lines_Align` function now uses a pre-calculated token map (`a_RawMap`) instead of re-parsing lines, which prevents inconsistencies and ensures idempotent behavior.
 - chore: Thanks to the user for reporting the issue and providing a test case.
