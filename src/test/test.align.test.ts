@@ -102,16 +102,16 @@ describe('blocks_Find', () => {
         assert.strictEqual(blocks.length, 0)
     })
 
-    it('returns empty for single line (needs 2+ lines to form block)', () => {
+    it('single line forms a block', () => {
         const input = lines('const a = 1')
         const blocks = blocks_Find(input, 0, DEFAULT_LANGUAGE_RULES, 500)
-        assert.strictEqual(blocks.length, 0, 'Single line does not form a block')
+        assert.strictEqual(blocks.length, 1, 'Single line now forms a block')
     })
 
-    it('skips empty lines between blocks (needs 2+ lines per block)', () => {
+    it('handles lines with empty line between', () => {
         const input = lines('const a = 1', '', 'const b = 2')
         const blocks = blocks_Find(input, 0, DEFAULT_LANGUAGE_RULES, 500)
-        assert.strictEqual(blocks.length, 0, 'Each group has only 1 line so no blocks are created')
+        assert.strictEqual(blocks.length, 2, 'Should create two single-line blocks')
     })
 
     it('respects maxBlockSize limit', () => {
@@ -369,8 +369,12 @@ describe('idempotency - real file test', () => {
         const input: string[] = fs.readFileSync('src/extension.ts', 'utf8').split('\n')
         const rules = DEFAULT_LANGUAGE_RULES
 
-        const blocks  = blocks_Find(input, 0, rules, 500)
-        const parsed  = blocks.map(b => b.lines.map(l => line_Parse(l, rules)))
+        const blocks = blocks_Find(input, 0, rules, 500)
+        console.log(`[TEST] blocks_Find found ${blocks.length} blocks from ${input.length} lines`)
+        blocks.forEach((b, i) => {
+            console.log(`[TEST] Block ${i}: ${b.lines.length} lines, startLine=${b.startLine}`)
+        })
+        const parsed = blocks.map(b => b.lines.map(l => line_Parse(l, rules)))
         const aligned = parsed.map(pl => block_Align(pl, 30))
 
         const flat = aligned.flat()

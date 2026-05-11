@@ -16,8 +16,8 @@ export type LineBlock = { startLine: number; lines: string[] }
 export type ParsedLine = { raw: string; tokens: Token[]; markers: Marker[]; originalMarkers?: Marker[] }
 
 export type Token =
-    | { kind: 'code'; text   : string }
-    | { kind: 'string'; text : string }
+    | { kind: 'code'; text: string }
+    | { kind: 'string'; text: string }
     | { kind: 'comment'; text: string }
 
 export type Marker = { symbol: string; startCol: number }
@@ -366,7 +366,7 @@ export function blocks_Find(rawLines: string[], i_StartOffset: number, rules: La
     let o_CurBlock: LineBlock = { startLine: 0, lines: [] }, s_CurIndent = ''
 
     const fn_Flush = (): void => {
-        if(o_CurBlock.lines.length > 1) { a_Blocks.push(o_CurBlock) }
+        if(o_CurBlock.lines.length > 0) { a_Blocks.push(o_CurBlock) }
         o_CurBlock = { startLine: 0, lines: [] }
         s_CurIndent = ''
     }

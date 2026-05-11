@@ -160,6 +160,15 @@ function alignment_Apply_Decor(ns: NS): void {
     }
     try {
         ns.data.alignedLines = ns.data.parsedLines.map(a_BlockLines => block_Align(a_BlockLines, ns.config.maxSpaces))
+        let totalChanges = 0
+        ns.data.alignedLines.forEach((block, i) => {
+            block.forEach((line, j) => {
+                if (line !== ns.data.parsedLines[i][j].raw) {
+                    totalChanges++
+                }
+            })
+        })
+        console.log(`[DEBUG] Alignment applied: ${totalChanges} lines changed`)
         ns.result = ok(ns.data.alignedLines)
     } catch(e) { ns_SetError(ns, (e as Error).message) }
 }
@@ -170,6 +179,8 @@ function text_Replace_Decor(ns: NS): void {
     try {
         const editor = ns.data.editor as vscode.TextEditor | false
         if(!editor) { ns_SetError(ns, 'No active editor'); return }
+        const alignedCount = ns.data.alignedLines.reduce((sum, block) => sum + block.length, 0)
+        console.log(`[DEBUG] Replacing text in editor: ${alignedCount} lines in ${ns.data.blocks.length} blocks`)
         applyEditorReplacements(editor, ns.data.blocks, ns.data.alignedLines)
         ns.result = ok('replaced')
     } catch(e) { ns_SetError(ns, (e as Error).message) }
@@ -215,14 +226,12 @@ type BlockSearchContext = {
  */
 function analyzeSelection(ctx: BlockSearchContext): { startLine: number; endLine: number } | null {
     const lastLineIdx = ctx.doc.lineCount - 1
-    const lastLineLength = ctx.doc.lineAt(lastLineIdx).text.length
 
-    // Check if selection covers entire file (from line 0 to last line with full width)
+    // Check if selection covers entire file (from line 0 to last line)
     const isFullSelection = !ctx.selection.isEmpty &&
         ctx.selection.start.line === 0 &&
         ctx.selection.start.character === 0 &&
-        ctx.selection.end.line === lastLineIdx &&
-        (ctx.selection.end.character >= lastLineLength || ctx.selection.end.character === ctx.doc.lineAt(lastLineIdx).range.end.character)
+        ctx.selection.end.line === lastLineIdx
 
     if(isFullSelection) {
         return { startLine: 0, endLine: lastLineIdx }
@@ -279,7 +288,13 @@ function scanDown(ctx: BlockSearchContext): number | null {
 }
 
 function fn_GroupBlocks(ns: NS, ctx: BlockSearchContext): void {
+    console.log(`[DEBUG] fn_GroupBlocks: rawLines count=${ctx.rawLines.length}, startLine=${ctx.startLine}`)
     ns.data.blocks = blocks_Find(ctx.rawLines, ctx.startLine, ctx.rules, ns.config.maxBlockSize)
+    console.log(`[DEBUG] fn_GroupBlocks result: ${ns.data.blocks.length} blocks`)
+    if(ns.data.blocks.length === 0) {
+        console.log(`[DEBUG] WARNING: No blocks found! Creating fallback block.`)
+        ns.data.blocks = [{ startLine: 0, lines: ctx.rawLines }]
+    }
 }
 
 /**
@@ -343,8 +358,8 @@ function extractRawLines(doc: vscode.TextDocument, start: number, end: number): 
 }
 
 /** Applies aligned lines to the editor using batch edits. */
-function applyEditorReplacements(editor: vscode.TextEditor, blocks: LineBlock[], aligned: string[][]): void {
-    editor.edit(builder => {
+function applyEditorReplacements(editor: vscode.TextEditor, blocks: LineBlock[], aligned: string[][]): Thenable<boolean> {
+    return editor.edit(builder => {
         for(let bi = 0; bi < blocks.length; bi++) {
             const block = blocks[bi], lines = aligned[bi]
             for(let li = 0; li < block.lines.length; li++) {
