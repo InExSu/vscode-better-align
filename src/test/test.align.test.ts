@@ -386,24 +386,24 @@ it('aligns extension.ts code (sanity check)', () => {
 
         const fn_DoNothing = (): void => {}
 
-        const fn_BlockFind = (ns: NS): void => {
-            ns.data.blocks = blocks_Find(input, 0, rules, 500)
-            ns.result = ok(ns.data.blocks)
-        }
+        const runPipeline = (code: string[]): string[] => {
+            const fn_BlockFind = (ns: NS): void => {
+                ns.data.blocks = blocks_Find(code, 0, rules, 500)
+                ns.result = ok(ns.data.blocks)
+            }
 
-        const fn_LinesParse = (ns: NS): void => {
-            const blocks = ns.data.blocks as LineBlock[]
-            ns.data.parsedLines = blocks.map(b => b.lines.map(l => line_Parse(l, rules)))
-            ns.result = ok(ns.data.parsedLines)
-        }
+            const fn_LinesParse = (ns: NS): void => {
+                const blocks = ns.data.blocks as LineBlock[]
+                ns.data.parsedLines = blocks.map(b => b.lines.map(l => line_Parse(l, rules)))
+                ns.result = ok(ns.data.parsedLines)
+            }
 
-        const fn_AlignmentApply = (ns: NS): void => {
-            const parsedLines = ns.data.parsedLines as ParsedLine[][]
-            ns.data.alignedLines = parsedLines.map(pl => block_Align(pl, 30))
-            ns.result = ok(ns.data.alignedLines)
-        }
+            const fn_AlignmentApply = (ns: NS): void => {
+                const parsedLines = ns.data.parsedLines as ParsedLine[][]
+                ns.data.alignedLines = parsedLines.map(pl => block_Align(pl, 30))
+                ns.result = ok(ns.data.alignedLines)
+            }
 
-        const runPipeline = (): string[] => {
             const ns: NS = {
                 result: ok({}),
                 s_Error: '',
@@ -417,9 +417,9 @@ it('aligns extension.ts code (sanity check)', () => {
             return (ns.data.alignedLines as string[][]).flat()
         }
 
-        const first = runPipeline()
-        const second = runPipeline()
-        const third = runPipeline()
+        const first = runPipeline(input)
+        const second = runPipeline(first)
+        const third = runPipeline(second)
 
         assert.strictEqual(second.length, first.length, 'Second pass should not add spaces')
         assert.strictEqual(third.length, first.length, 'Third pass should not add spaces')
