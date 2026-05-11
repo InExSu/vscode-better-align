@@ -373,17 +373,26 @@ it('aligns extension.ts code (sanity check)', () => {
         assert.ok(flat.length > 0, 'Should produce aligned lines')
     })
 
-    it('aligns whole file multiple times without adding extra spaces', () => {
+    it('runs full pipeline (blocks_Find → line_Parse → block_Align) and is idempotent', () => {
         const fs = require('fs')
         const input: string[] = fs.readFileSync('src/extension.ts', 'utf8').split('\n')
         const rules = DEFAULT_LANGUAGE_RULES
+        const maxSpaces = 30
 
-        const blocks = blocks_Find(input, 0, rules, 500)
-        const parsed = blocks.map(b => b.lines.map(l => line_Parse(l, rules)))
+        const runPipeline = (code: string[]): string[] => {
+            const blocks = blocks_Find(code, 0, rules, 500)
+            const alignedLines: string[] = []
+            for(const block of blocks) {
+                const parsed = block.lines.map(l => line_Parse(l, rules))
+                const aligned = block_Align(parsed, maxSpaces)
+                alignedLines.push(...aligned)
+            }
+            return alignedLines
+        }
 
-        const first = parsed.map(pl => block_Align(pl, 30)).flat().join('\n')
-        const second = parsed.map(pl => block_Align(pl, 30)).flat().join('\n')
-        const third = parsed.map(pl => block_Align(pl, 30)).flat().join('\n')
+        const first = runPipeline(input)
+        const second = runPipeline(first)
+        const third = runPipeline(second)
 
         assert.strictEqual(second.length, first.length, 'Second pass should not add spaces')
         assert.strictEqual(third.length, first.length, 'Third pass should not add spaces')

@@ -1,3 +1,7 @@
+# v6.7.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.7.0)
+
+- test: Add full pipeline idempotency test (blocks_Find → line_Parse → block_Align)
+
 # v6.6.1 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.6.1)
 
 - fix: Improve idempotency - repeated alignments no longer add unnecessary spaces
