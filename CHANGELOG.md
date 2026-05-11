@@ -1,3 +1,8 @@
+# v6.8.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.8.0)
+
+- refactor: Export fn_ExecutePipelineState for direct testing
+- test: Add idempotency test using fn_ExecutePipelineState directly
+
 # v6.7.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.7.0)
 
 - test: Add full pipeline idempotency test (blocks_Find → line_Parse → block_Align)

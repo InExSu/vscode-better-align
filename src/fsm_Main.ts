@@ -523,7 +523,7 @@ export function pipeline_Build(
     }
 }
 
-function fn_ExecutePipelineState(
+export function fn_ExecutePipelineState(
     s_State: PipelineState,
     ns: NS,
     fn_ConfigLoad: Decorator,

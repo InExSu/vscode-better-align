@@ -7,6 +7,12 @@ import {
     positionMap_Apply,
     DEFAULT_LANGUAGE_RULES,
     DEFAULT_CONFIG,
+    fn_ExecutePipelineState,
+    PipelineState,
+    NS,
+    ok,
+    LineBlock,
+    ParsedLine,
 } from '../fsm_Main'
 
 function lines(...args: string[]): string[] { return args }
@@ -373,26 +379,47 @@ it('aligns extension.ts code (sanity check)', () => {
         assert.ok(flat.length > 0, 'Should produce aligned lines')
     })
 
-    it('runs full pipeline (blocks_Find → line_Parse → block_Align) and is idempotent', () => {
+    it('runs fn_ExecutePipelineState twice on code and is idempotent', () => {
         const fs = require('fs')
         const input: string[] = fs.readFileSync('src/extension.ts', 'utf8').split('\n')
         const rules = DEFAULT_LANGUAGE_RULES
-        const maxSpaces = 30
 
-        const runPipeline = (code: string[]): string[] => {
-            const blocks = blocks_Find(code, 0, rules, 500)
-            const alignedLines: string[] = []
-            for(const block of blocks) {
-                const parsed = block.lines.map(l => line_Parse(l, rules))
-                const aligned = block_Align(parsed, maxSpaces)
-                alignedLines.push(...aligned)
-            }
-            return alignedLines
+        const fn_DoNothing = (): void => {}
+
+        const fn_BlockFind = (ns: NS): void => {
+            ns.data.blocks = blocks_Find(input, 0, rules, 500)
+            ns.result = ok(ns.data.blocks)
         }
 
-        const first = runPipeline(input)
-        const second = runPipeline(first)
-        const third = runPipeline(second)
+        const fn_LinesParse = (ns: NS): void => {
+            const blocks = ns.data.blocks as LineBlock[]
+            ns.data.parsedLines = blocks.map(b => b.lines.map(l => line_Parse(l, rules)))
+            ns.result = ok(ns.data.parsedLines)
+        }
+
+        const fn_AlignmentApply = (ns: NS): void => {
+            const parsedLines = ns.data.parsedLines as ParsedLine[][]
+            ns.data.alignedLines = parsedLines.map(pl => block_Align(pl, 30))
+            ns.result = ok(ns.data.alignedLines)
+        }
+
+        const runPipeline = (): string[] => {
+            const ns: NS = {
+                result: ok({}),
+                s_Error: '',
+                config: { ...DEFAULT_CONFIG, defaultAlignChars: rules.alignChars },
+                data: { editor: false, languageRules: rules, blocks: [], parsedLines: [], alignedLines: [] },
+            }
+
+            let s_State = PipelineState.Idle
+            s_State = fn_ExecutePipelineState(s_State, ns, fn_DoNothing, fn_DoNothing, fn_BlockFind, fn_LinesParse, fn_AlignmentApply, fn_DoNothing, fn_DoNothing)
+
+            return (ns.data.alignedLines as string[][]).flat()
+        }
+
+        const first = runPipeline()
+        const second = runPipeline()
+        const third = runPipeline()
 
         assert.strictEqual(second.length, first.length, 'Second pass should not add spaces')
         assert.strictEqual(third.length, first.length, 'Third pass should not add spaces')
