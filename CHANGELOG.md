@@ -1,3 +1,7 @@
+# v6.10.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.10.0)
+
+- feat: When user selects code, align all selected lines as one block regardless of indentation
+
 # v6.9.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.9.0)
 
 - refactor: Rewrite fsm_Main.ts per AI Prompt_This.md

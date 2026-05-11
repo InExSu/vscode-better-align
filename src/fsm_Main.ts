@@ -82,9 +82,9 @@ export interface SanitizeFlags {
 }
 
 export interface FSMContext {
-    lines: string[]
-    alignChars: string[]
-    preserveStrings: boolean
+    lines           : string[]
+    alignChars      : string[]
+    preserveStrings : boolean
     preserveComments: boolean
 }
 
@@ -115,15 +115,15 @@ export function ns_Error(ns: NS): boolean { return ns.result.ok === false }
 export function ns_SetError(ns: NS, s_Error: string): void { ns.result = err(s_Error); ns.s_Error = s_Error }
 
 export enum PipelineState {
-    Idle = 'Idle',
-    LoadConfig = 'LoadConfig',
+    Idle           = 'Idle'          ,
+    LoadConfig     = 'LoadConfig'    ,
     DetectLanguage = 'DetectLanguage',
-    FindBlocks = 'FindBlocks',
-    ParseLines = 'ParseLines',
-    Align = 'Align',
-    ReplaceText = 'ReplaceText',
-    Done = 'Done',
-    Error = 'Error',
+    FindBlocks     = 'FindBlocks'    ,
+    ParseLines     = 'ParseLines'    ,
+    Align          = 'Align'         ,
+    ReplaceText    = 'ReplaceText'   ,
+    Done           = 'Done'          ,
+    Error          = 'Error'         ,
 }
 
 export type Decorator = (ns: NS) => void
@@ -134,15 +134,15 @@ export type Decorator = (ns: NS) => void
  */
 export function a_FSM_Main(ctx: FSMContext): FSMResult {
     const stateCtx: FSMStateContext = {
-        a_Lines: ctx.lines,
-        a_AlignChars: ctx.alignChars,
-        b_PreserveStrings: ctx.preserveStrings,
+        a_Lines           : ctx.lines           ,
+        a_AlignChars      : ctx.alignChars      ,
+        b_PreserveStrings : ctx.preserveStrings ,
         b_PreserveComments: ctx.preserveComments,
-        a_MaskedLines: [],
-        a_RawMap: [],
-        a_Columns: [],
-        a_AlignedLines: [...ctx.lines],
-        b_Changed: false,
+        a_MaskedLines     : []                  ,
+        a_RawMap          : []                  ,
+        a_Columns         : []                  ,
+        a_AlignedLines    : [...ctx.lines]      ,
+        b_Changed         : false               ,
     }
 
     let state: FSMState = 'block_Find'
@@ -175,15 +175,15 @@ export function a_FSM_Main(ctx: FSMContext): FSMResult {
 }
 
 interface FSMStateContext {
-    a_Lines: string[]
-    a_AlignChars: string[]
-    b_PreserveStrings: boolean
+    a_Lines           : string[]
+    a_AlignChars      : string[]
+    b_PreserveStrings : boolean
     b_PreserveComments: boolean
-    a_MaskedLines: string[]
-    a_RawMap: AlignToken[][]
-    a_Columns: AlignColumn[]
-    a_AlignedLines: string[]
-    b_Changed: boolean
+    a_MaskedLines     : string[]
+    a_RawMap          : AlignToken[][]
+    a_Columns         : AlignColumn[]
+    a_AlignedLines    : string[]
+    b_Changed         : boolean
 }
 
 function fn_Unreachable(s_State: never): never {
@@ -359,7 +359,16 @@ export function lines_Align(a_OrigLines: string[], a_Columns: AlignColumn[]): st
 
 // ── 5. BLOCK FINDING (per AI Prompt_This.md) ────────────────────
 
-export function blocks_Find(rawLines: string[], i_StartOffset: number, rules: LanguageRules, i_MaxBlockSize: number): LineBlock[] {
+export function blocks_Find(rawLines: string[], i_StartOffset: number, rules: LanguageRules, i_MaxBlockSize: number, b_ForceSingleBlock = false): LineBlock[] {
+    // When force single block (selection), put all lines in one block regardless of indentation
+    if (b_ForceSingleBlock && rawLines.length > 0) {
+        const a_NonEmpty = rawLines.filter(s_Line => s_Line.trim() !== '')
+        if (a_NonEmpty.length > 0) {
+            return [{ startLine: i_StartOffset, lines: a_NonEmpty }]
+        }
+        return []
+    }
+
     const a_Blocks: LineBlock[] = []
     let s_State = GroupingState.WaitingForStart
     let o_CurBlock: LineBlock = { startLine: 0, lines: [] }, s_CurIndent = ''
