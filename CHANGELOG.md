@@ -1,3 +1,9 @@
+# v6.9.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.9.0)
+
+- refactor: Rewrite fsm_Main.ts per AI Prompt_This.md
+- refactor: Add a_FSM_Main main FSM with states block_Find → lines_Sanitize → chars_Scan → map_Normalize → lines_Align → result_Emit
+- refactor: Add pure functions: lines_Sanitize, chars_FindGreedy, map_BuildRaw, map_Normalize, lines_Align
+
 # v6.8.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.8.0)
 
 - refactor: Export fn_ExecutePipelineState for direct testing
@@ -104,7 +110,7 @@
 
 # v6.0.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.0.0)
 
-- Refactor: Complete rewrite following AI Prompt.md architecture
+- Refactor: Complete rewrite following AI Prompt_General.md architecture
 - Add: FSM-based state machines with noun_Verb naming
 - Add: Result type pattern with ok/err
 - Add: Railway programming with rwd/a_Chain

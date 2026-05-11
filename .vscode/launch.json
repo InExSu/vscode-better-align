@@ -6,10 +6,10 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"name": "Run Extension",
-			"type": "extensionHost",
-			"request": "launch",
-			"args": [
+			"name"   : "Run Extension",
+			"type"   : "extensionHost",
+			"request": "launch"    ,
+			"args"   : [
 				"--extensionDevelopmentPath=${workspaceFolder}"
 			],
 			"outFiles": [
@@ -17,33 +17,45 @@
 			],
 			"preLaunchTask": "${defaultBuildTask}"
 		},
-		{
-			"name": "Extension Tests",
-			"type": "extensionHost",
-			"request": "launch",
-			"args": [
-				"${workspaceFolder}/src/test/data",
-				"${workspaceFolder}/src/test/data/testcase.txt",
-				"--extensionDevelopmentPath=${workspaceFolder}",
-				"--extensionTestsPath=${workspaceFolder}/out/test/suite/index"
-			],
-			"outFiles": [
-				"${workspaceFolder}/out/**/*.js",
-				"${workspaceFolder}/dist/**/*.js"
-			],
-			"preLaunchTask": "tasks: watch-tests"
-		},
+{
+	"name": "Extension Tests",
+	"type": "extensionHost",
+	"request": "launch",
+	"args": [
+		"${workspaceFolder}/src/test/data",
+		"${workspaceFolder}/src/test/data/testcase.txt",
+		"--extensionDevelopmentPath=${workspaceFolder}",
+		"--extensionTestsPath=${workspaceFolder}/out/test/suite/index"
+	],
+	"outFiles": [
+		"${workspaceFolder}/out/**/*.js",
+		"${workspaceFolder}/dist/**/*.js"
+	],
+	"preLaunchTask": "tasks: watch-tests"
+},
+{
+	"name": "Debug Tests (ts-mocha)",
+	"type": "node",
+	"request": "launch",
+	"runtimeExecutable": "npx",
+	"runtimeArgs": ["ts-mocha", "-p", "tsconfig.json", "src/test/test.align.test.ts", "--timeout", "10000"],
+	"cwd": "${workspaceFolder}",
+	"console": "integratedTerminal",
+	"skipFiles": ["<node_internals>/**"]
+},
 		{
 			"name": "Run Web Extension in VS Code",
 			"type": "extensionHost",
 			"debugWebWorkerHost": true,
 			"request": "launch",
 			"args": [
-			  "--extensionDevelopmentPath=${workspaceFolder}",
-			  "--extensionDevelopmentKind=web"
+				"--extensionDevelopmentPath=${workspaceFolder}",
+				"--extensionDevelopmentKind=web"
 			],
-			"outFiles": ["${workspaceFolder}/dist/web/**/*.js"],
+			"outFiles": [
+				"${workspaceFolder}/dist/web/**/*.js"
+			],
 			"preLaunchTask": "${defaultBuildTask}"
-		  }
+		}
 	]
 }

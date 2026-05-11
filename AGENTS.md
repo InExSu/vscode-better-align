@@ -146,4 +146,4 @@ git add -A && git commit -m "vX.Y.Z: Описание изменений"
 ```
 
 ## Инструкция по написанию кода 
-- в файле "AI Prompt.md"
+- в файле "AI Prompt_General.md"
