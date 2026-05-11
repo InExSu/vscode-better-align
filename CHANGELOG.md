@@ -1,3 +1,9 @@
+# v6.6.1 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.6.1)
+
+- fix: Improve idempotency - repeated alignments no longer add unnecessary spaces
+- fix: Use actual content length before marker for padding calculation
+- refactor: Updated tests with better assertions and edge cases
+
 # v6.6.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.6.0)
 
 - refactor: Apply noun_Verb naming and Hungarian notation to functions and variables

@@ -393,13 +393,23 @@ function fn_ProcessSymbol(
 ): void {
     if(a_Markers.length < 2) { return }
 
-    const i_MaxCol = Math.max(...a_Markers.map(m => m.startCol))
-    for(const { lineIdx, mk, startCol } of a_Markers) {
-        if(startCol >= i_MaxCol) { continue }
-        if(fn_IsGteOperator(parsedLines[lineIdx].raw, startCol)) { continue }
+    const a_MaxColPerLine = a_Markers.map(m => {
+        const s_Raw = parsedLines[m.lineIdx].raw
+        return s_Raw.slice(0, m.startCol).length
+    })
+    const i_MaxCol = Math.max(...a_MaxColPerLine)
 
-        const i_Target = Math.min(i_MaxCol, startCol + i_MaxSpaces)
-        if(i_Target > startCol) { ctx.o_PosMap.set(`${lineIdx}:${mk}`, i_Target) }
+    for(let i = 0; i < a_Markers.length; i++) {
+        const { lineIdx, mk, startCol } = a_Markers[i]
+        const s_Raw = parsedLines[lineIdx].raw
+        const i_Preceding = s_Raw.slice(0, startCol).length
+
+        if(i_Preceding >= i_MaxCol) { continue }
+        if(fn_IsGteOperator(s_Raw, startCol)) { continue }
+
+        const i_Target = Math.min(i_MaxCol, i_Preceding + i_MaxSpaces)
+
+        if(i_Target > i_Preceding) { ctx.o_PosMap.set(`${lineIdx}:${mk}`, i_Target) }
     }
 }
 
