@@ -99,6 +99,26 @@ function fn_UpdateNestingDepth(ch: string | undefined, i_NestingDepth: number): 
     return i_NestingDepth
 }
 
+function fn_CheckBlockComment(raw: string, rules: LanguageRules, i_Idx: number, fn_PushCode: (i_End: number) => void): { b_Found: boolean; s_EndMarker: string; i_Advance: number } {
+    for(const o_Bc of rules.blockComments) {
+        if(raw.startsWith(o_Bc.start, i_Idx)) {
+            fn_PushCode(i_Idx)
+            return { b_Found: true, s_EndMarker: o_Bc.end, i_Advance: o_Bc.start.length }
+        }
+    }
+    return { b_Found: false, s_EndMarker: '', i_Advance: 0 }
+}
+
+function fn_CheckLineComment(raw: string, rules: LanguageRules, i_Idx: number, a_Tokens: Token[], fn_PushCode: (i_End: number) => void): { b_Found: boolean } {
+    for(const s_Lc of rules.lineComments) {
+        if(raw.startsWith(s_Lc, i_Idx)) {
+            fn_PushCode(i_Idx); a_Tokens.push({ kind: 'comment', text: raw.slice(i_Idx) })
+            return { b_Found: true }
+        }
+    }
+    return { b_Found: false }
+}
+
 function fn_FindAlignMarker(raw: string, a_AlignChars: string[], i_Idx: number, a_Markers: Marker[]): { b_Found: boolean; i_Advance: number } {
     for(const s_Ac of a_AlignChars) {
         if(raw.startsWith(s_Ac, i_Idx)) {
@@ -131,26 +151,17 @@ export function line_Parse(raw: string, rules: LanguageRules): ParsedLine {
         switch(s_State) {
             case ScannerState.CodeReading: {
                 if(i_Idx >= raw.length) { fn_PushCode(i_Idx); break mainLoop }
-                for(const o_Bc of rules.blockComments) {
-                    if(raw.startsWith(o_Bc.start, i_Idx)) {
-                        fn_PushCode(i_Idx); i_CodeStart = i_Idx; s_BlockEndMarker = o_Bc.end
-                        s_State = ScannerState.BlockComment; i_Idx += o_Bc.start.length; continue mainLoop
-                    }
-                }
-                for(const s_Lc of rules.lineComments) {
-                    if(raw.startsWith(s_Lc, i_Idx)) {
-                        fn_PushCode(i_Idx); a_Tokens.push({ kind: 'comment', text: raw.slice(i_Idx) })
-                        s_State = ScannerState.CommentDone; break mainLoop
-                    }
-                }
+
+                const o_BcResult = fn_CheckBlockComment(raw, rules, i_Idx, fn_PushCode)
+                if(o_BcResult.b_Found) { i_CodeStart = i_Idx; s_BlockEndMarker = o_BcResult.s_EndMarker; s_State = ScannerState.BlockComment; i_Idx += o_BcResult.i_Advance; continue mainLoop }
+
+                const o_LcResult = fn_CheckLineComment(raw, rules, i_Idx, a_Tokens, fn_PushCode)
+                if(o_LcResult.b_Found) { s_State = ScannerState.CommentDone; break mainLoop }
+
                 const o_StringResult = fn_HandleStringDelim(raw, rules, i_Idx, a_Tokens, fn_PushCode)
-                if(o_StringResult.s_State !== ScannerState.CodeReading) {
-                    i_CodeStart = o_StringResult.i_CodeStart
-                    s_State = o_StringResult.s_State
-                    i_Idx++
-                    continue mainLoop
-                }
-i_NestingDepth = fn_UpdateNestingDepth(raw[i_Idx], i_NestingDepth)
+                if(o_StringResult.s_State !== ScannerState.CodeReading) { i_CodeStart = o_StringResult.i_CodeStart; s_State = o_StringResult.s_State; i_Idx++; continue mainLoop }
+
+                i_NestingDepth = fn_UpdateNestingDepth(raw[i_Idx], i_NestingDepth)
                 if(i_NestingDepth === 0) {
                     const o_MarkerResult = fn_FindAlignMarker(raw, a_AlignChars, i_Idx, a_Markers)
                     if(o_MarkerResult.b_Found) { i_Idx += o_MarkerResult.i_Advance; continue mainLoop }
