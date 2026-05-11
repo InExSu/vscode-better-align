@@ -81,7 +81,7 @@ function rwd(fn: (ns: NS) => void, ns: NS): void {
 }
 
 // ── 6. NS CONTAINER ───────────────────────────────────────────
-/** Creates a new namespace container with initial state. */
+/** Creates a new NooShere container with initial state. */
 function NS_Container(cfg: typeof CONFIG): NS {
     return {
         result: ok({}),
@@ -267,7 +267,7 @@ function scanDown(ctx: BlockSearchContext): number | null {
 
 /**
  * FSM that finds line blocks based on selection and indentation.
- * @param ns - Namespace containing editor state and data
+ * @param ns - NooShere containing editor state and data
  */
 function blockSearchFSM(ns: NS): void {
     const ctx: BlockSearchContext = {

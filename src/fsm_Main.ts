@@ -257,58 +257,79 @@ export function propagatePositions(parsedLines: ParsedLine[], posMap: Map<string
  * @returns Map of line:markerIndex to target column position
  */
 export function buildPairwisePositionMap(parsedLines: ParsedLine[], maxSpaces: number): Map<string, number> {
-    const posMap = new Map<string, number>()
-    if(parsedLines.length < 2) { return posMap }
+    const ctx = {
+        posMap: new Map<string, number>(),
+        hasOriginal: parsedLines.some(pl => pl.originalMarkers !== undefined),
+        symbolToMarkers: new Map<string, { lineIdx: number; mk: number; startCol: number }[]>()
+    }
 
-    const hasOriginal = parsedLines.some(pl => pl.originalMarkers !== undefined)
+    if(parsedLines.length < 2) {return ctx.posMap}
 
-    const symbolToMarkers = new Map<string, { lineIdx: number; mk: number; startCol: number }[]>()
+    type State = 'COLLECT' | 'PROCESS_SYMBOLS' | 'PROPAGATE' | 'DONE'
+    let state: State = 'COLLECT'
+    let lineIdx = 0, symbolIdx = 0, processState = 0
 
-    for(let lineIdx = 0; lineIdx < parsedLines.length; lineIdx++) {
-        const pl = parsedLines[lineIdx]
-        const markers = hasOriginal ? (pl.originalMarkers || pl.markers) : pl.markers
+    while(state !== 'DONE') {
+        switch(state) {
+            case 'COLLECT':
+                if(lineIdx >= parsedLines.length) {
+                    state = 'PROCESS_SYMBOLS'
+                    break
+                }
 
-        for(let mk = 0; mk < markers.length; mk++) {
-            const m = markers[mk]
-            const key = m.symbol
-            if(!symbolToMarkers.has(key)) {
-                symbolToMarkers.set(key, [])
-            }
-            symbolToMarkers.get(key)!.push({ lineIdx, mk, startCol: m.startCol })
+                const markers = ctx.hasOriginal
+                    ? (parsedLines[lineIdx].originalMarkers || parsedLines[lineIdx].markers)
+                    : parsedLines[lineIdx].markers
+
+                for(let mk = 0; mk < markers.length; mk++) {
+                    const m = markers[mk]
+                    const key = m.symbol
+                    if(!ctx.symbolToMarkers.has(key)) {ctx.symbolToMarkers.set(key, [])}
+                    ctx.symbolToMarkers.get(key)!.push({ lineIdx, mk, startCol: m.startCol })
+                }
+                lineIdx++
+                break
+
+            case 'PROCESS_SYMBOLS':
+                const symbols = Array.from(ctx.symbolToMarkers.keys())
+                if(symbolIdx >= symbols.length) {
+                    state = 'PROPAGATE'
+                    break
+                }
+
+                const markers2 = ctx.symbolToMarkers.get(symbols[symbolIdx])!
+                if(markers2.length >= 2) {
+                    const maxCol = Math.max(...markers2.map(m => m.startCol))
+                    for(const { lineIdx, mk, startCol } of markers2) {
+                        if(startCol >= maxCol) {continue}
+
+                        const raw = parsedLines[lineIdx].raw
+                        if(raw.substr(startCol, 2) === '>=' && raw[startCol - 1] !== '>') {continue}
+
+                        const target = Math.min(maxCol, startCol + maxSpaces)
+                        if(target > startCol) {ctx.posMap.set(`${lineIdx}:${mk}`, target)}
+                    }
+                }
+                symbolIdx++
+                break
+
+            case 'PROPAGATE':
+                for(const symbol of Array.from(ctx.symbolToMarkers.keys())) {
+                    const markers3 = ctx.symbolToMarkers.get(symbol)!
+                    const mks = Array.from(new Set(markers3.map(m => m.mk)))
+                    for(const mk of mks) {
+                        const markersWithSameMk = markers3.filter(m => m.mk === mk)
+                        if(markersWithSameMk.length >= 2) {
+                            propagatePositions(parsedLines, ctx.posMap, mk)
+                        }
+                    }
+                }
+                state = 'DONE'
+                break
         }
     }
 
-    for(const symbol of Array.from(symbolToMarkers.keys())) {
-        const markers = symbolToMarkers.get(symbol)!
-        if(markers.length < 2) { continue }
-
-        const maxCol = Math.max(...markers.map(m => m.startCol))
-
-        for(const { lineIdx, mk, startCol } of markers) {
-            if(startCol >= maxCol) { continue }
-
-            // Skip single = that is part of >=
-            const raw = parsedLines[lineIdx].raw
-            if(raw.substr(startCol, 2) === '>=' && raw[startCol - 1] !== '>') { continue }
-
-            const target = Math.min(maxCol, startCol + maxSpaces)
-            if(target > startCol) {
-                posMap.set(`${lineIdx}:${mk}`, target)
-            }
-        }
-    }
-
-    for(const symbol of Array.from(symbolToMarkers.keys())) {
-        const markers = symbolToMarkers.get(symbol)!
-        const mks = Array.from(new Set(markers.map(m => m.mk)))
-        for(const mk of mks) {
-            const markersWithSameMk = markers.filter(m => m.mk === mk)
-            if(markersWithSameMk.length < 2) { continue }
-            propagatePositions(parsedLines, posMap, mk)
-        }
-    }
-
-    return posMap
+    return ctx.posMap
 }
 
 // ── 8. APPLY POSITION MAP — FIXED ─────────────────────────────
@@ -388,7 +409,7 @@ export type NSData = {
     alignedLines: string[][]
 }
 
-/** Checks if the namespace has an error. */
+/** Checks if the NooShere has an error. */
 export function ns_Error(ns: NS): boolean { return ns.result.ok === false }
 /** Sets an error on the namespace. */
 export function ns_SetError(ns: NS, e: string): void { ns.result = err(e); ns.s_Error = e }
@@ -405,13 +426,13 @@ export function ns_SetError(ns: NS, e: string): void { ns.result = err(e); ns.s_
  * @returns Pipeline FSM function
  */
 export function buildPipelineFSM(
-    config_Load_Decor    : Decorator,
+    config_Load_Decor: Decorator,
     language_Detect_Decor: Decorator,
-    block_Find_Decor     : Decorator,
-    lines_Parse_Decor    : Decorator,
+    block_Find_Decor: Decorator,
+    lines_Parse_Decor: Decorator,
     alignment_Apply_Decor: Decorator,
-    text_Replace_Decor   : Decorator,
-    rwd                  : (fn: Decorator, ns: NS) => void
+    text_Replace_Decor: Decorator,
+    rwd: (fn: Decorator, ns: NS) => void
 ): (ns: NS) => void {
     return function pipelineFSM(ns: NS): void {
         let state = PipelineState.Idle
