@@ -1,3 +1,14 @@
+# v6.6.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.6.0)
+
+- refactor: Apply noun_Verb naming and Hungarian notation to functions and variables
+- refactor: Extract case logic into SRP functions in ScannerState.CodeReading
+- refactor: Add exhaustive switch checking with fn_Unreachable
+- refactor: Extract GroupingBlocks logic into separate SRP functions
+- refactor: Convert buildPairwisePositionMap to FSM with SRP
+- refactor: Extract pipeline state execution to fn_ExecutePipelineState
+- tests: Add comprehensive tests for buildPairwisePositionMap
+- docs: Update FSM documentation with mermaid diagrams
+
 # v6.5.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.5.0)
 
 - feat: Second automated release cycle
