@@ -267,6 +267,29 @@ function scanDown(ctx: BlockSearchContext): number | null {
     return line
 }
 
+function fn_GroupBlocks(ns: NS, ctx: BlockSearchContext): void {
+    const b_IsFullSelection = ctx.startLine === 0 && ctx.endLine === ctx.doc.lineCount - 1
+    const a_Lines = ctx.rawLines
+
+    if(fn_ShouldUseCustomGrouping(b_IsFullSelection, a_Lines, ctx.rules)) {
+        ns.data.blocks = fn_GetBlocksWithCustomGrouping(ctx, a_Lines)
+    } else {
+        ns.data.blocks = blocks_Find(ctx.rawLines, ctx.startLine, ctx.rules, ns.config.maxBlockSize)
+    }
+}
+
+function fn_ShouldUseCustomGrouping(b_IsFullSelection: boolean, a_Lines: string[], o_Rules: LanguageRules): boolean {
+    return b_IsFullSelection && a_Lines.length > 1 && o_Rules.lineComments.length > 0
+}
+
+function fn_GetBlocksWithCustomGrouping(ctx: BlockSearchContext, a_Lines: string[]): LineBlock[] {
+    const b_HasMultipleIndents = new Set(a_Lines.map(s_L => s_L.match(/^(\s*)/)?.[1] ?? '')).size > 1
+    if(b_HasMultipleIndents) {
+        return [{ startLine: ctx.startLine, lines: ctx.rawLines }]
+    }
+    return blocks_Find(ctx.rawLines, ctx.startLine, ctx.rules, 500)
+}
+
 /**
  * FSM that finds line blocks based on selection and indentation.
  * @param ns - NooShere containing editor state and data
@@ -303,21 +326,9 @@ function blockSearchFSM(ns: NS): void {
             case BlockSearchState.ExtractingLines:
                 ctx.rawLines = extractRawLines(ctx.doc, ctx.startLine, ctx.endLine)
                 s_State = BlockSearchState.GroupingBlocks; break
-            case BlockSearchState.GroupingBlocks: {
-                const b_IsFullSelection = ctx.startLine === 0 && ctx.endLine === ctx.doc.lineCount - 1
-                const a_Lines = ctx.rawLines
-                if(b_IsFullSelection && a_Lines.length > 1 && ctx.rules.lineComments.length > 0) {
-                    const b_HasMultipleIndents = new Set(a_Lines.map(s_L => s_L.match(/^(\s*)/)?.[1] ?? '')).size > 1
-                    if(b_HasMultipleIndents) {
-                        ns.data.blocks = [{ startLine: ctx.startLine, lines: ctx.rawLines }]
-                    } else {
-                        ns.data.blocks = blocks_Find(ctx.rawLines, ctx.startLine, ctx.rules, ns.config.maxBlockSize)
-                    }
-                } else {
-                    ns.data.blocks = blocks_Find(ctx.rawLines, ctx.startLine, ctx.rules, ns.config.maxBlockSize)
-                }
+            case BlockSearchState.GroupingBlocks:
+                fn_GroupBlocks(ns, ctx)
                 s_State = BlockSearchState.Done; break
-            }
             case BlockSearchState.Done: ns.result = ok(ns.data.blocks); break main
             case BlockSearchState.Error: break main
         }
