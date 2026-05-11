@@ -1,3 +1,7 @@
+# v6.12.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.12.0)
+
+- fix: Fix full file selection detection - check line position, not just line number
+
 # v6.11.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.11.0)
 
 - fix: When user selects code, split into blocks by indentation and align each block separately

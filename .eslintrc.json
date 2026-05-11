@@ -1,6 +1,6 @@
 {
-    "root"   : true                       ,
-    "parser" : "@typescript-eslint/parser",
+    "root"         : true                       ,
+    "parser"       : "@typescript-eslint/parser",
     "parserOptions": {
         "ecmaVersion" : 6,
         "sourceType"  : "module"
@@ -23,7 +23,7 @@
             },
             {
                 "selector" : "enumMember",
-                "format": [
+                "format"   : [
                     "PascalCase"
                 ]
             }

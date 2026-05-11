@@ -214,12 +214,18 @@ type BlockSearchContext           = {
  * @returns Start and end line numbers                                                                                , or null if no valid block
  */
 function analyzeSelection(ctx: BlockSearchContext): { startLine: number; endLine: number } | null {
-    const isFullSelection                                         = !ctx.selection.isEmpty &&
-        ctx.selection.start.line                                         === 0 &&
-        ctx.selection.end.line                                           === ctx.doc.lineCount - 1
+    const lastLineIdx = ctx.doc.lineCount - 1
+    const lastLineLength = ctx.doc.lineAt(lastLineIdx).text.length
+
+    // Check if selection covers entire file (from line 0 to last line with full width)
+    const isFullSelection = !ctx.selection.isEmpty &&
+        ctx.selection.start.line === 0 &&
+        ctx.selection.start.character === 0 &&
+        ctx.selection.end.line === lastLineIdx &&
+        (ctx.selection.end.character >= lastLineLength || ctx.selection.end.character === ctx.doc.lineAt(lastLineIdx).range.end.character)
 
     if(isFullSelection) {
-        return { startLine: 0, endLine: ctx.doc.lineCount - 1 }
+        return { startLine: 0, endLine: lastLineIdx }
     }
 
     let s_State                                         = SelectionAnalysisState.CheckingEmpty
