@@ -82,6 +82,34 @@ export enum ScannerState {
     CommentDone = 'CommentDone',
 }
 
+function fn_HandleStringDelim(raw: string, rules: LanguageRules, i_Idx: number, a_Tokens: Token[], fn_PushCode: (i_End: number) => void): { s_State: ScannerState; i_CodeStart: number } {
+    const ch = raw[i_Idx]
+    if(ch === '"' && rules.stringDelimiters.includes('"')) { fn_PushCode(i_Idx); return { s_State: ScannerState.StringDouble, i_CodeStart: i_Idx } }
+    if(ch === "'" && rules.stringDelimiters.includes("'")) { fn_PushCode(i_Idx); return { s_State: ScannerState.StringSingle, i_CodeStart: i_Idx } }
+    if(ch === '`' && rules.stringDelimiters.includes('`')) { fn_PushCode(i_Idx); return { s_State: ScannerState.TemplateBacktick, i_CodeStart: i_Idx } }
+    return { s_State: ScannerState.CodeReading, i_CodeStart: 0 }
+}
+
+function fn_UpdateNestingDepth(ch: string | undefined, i_NestingDepth: number): number {
+    if(!ch) { return i_NestingDepth }
+    if(ch === '(' || ch === '[' || ch === '{') { return i_NestingDepth + 1 }
+    if(ch === ')' || ch === ']' || ch === '}') { return Math.max(0, i_NestingDepth - 1) }
+    if(ch === '<') { return i_NestingDepth + 1 }
+    if(ch === '>') { return Math.max(0, i_NestingDepth - 1) }
+    return i_NestingDepth
+}
+
+function fn_FindAlignMarker(raw: string, a_AlignChars: string[], i_Idx: number, a_Markers: Marker[]): { b_Found: boolean; i_Advance: number } {
+    for(const s_Ac of a_AlignChars) {
+        if(raw.startsWith(s_Ac, i_Idx)) {
+            if(s_Ac === '=' && i_Idx > 0 && (raw[i_Idx - 1] === '>' || (raw[i_Idx - 1] === ' ' && raw[i_Idx - 2] === '>'))) { return { b_Found: false, i_Advance: 1 } }
+            if(!(s_Ac === ':' && i_Idx > 0 && raw[i_Idx - 1] === ')')) { a_Markers.push({ symbol: s_Ac, startCol: i_Idx }) }
+            return { b_Found: true, i_Advance: s_Ac.length }
+        }
+    }
+    return { b_Found: false, i_Advance: 0 }
+}
+
 /**
  * Parses a single line, ignoring strings and comments to find alignment markers.
  * @param raw - Raw line of code
@@ -115,24 +143,19 @@ export function line_Parse(raw: string, rules: LanguageRules): ParsedLine {
                         s_State = ScannerState.CommentDone; break mainLoop
                     }
                 }
-                const ch = raw[i_Idx]
-                if(ch === '"' && rules.stringDelimiters.includes('"')) { fn_PushCode(i_Idx); i_CodeStart = i_Idx; s_State = ScannerState.StringDouble; i_Idx++; continue mainLoop }
-                if(ch === "'" && rules.stringDelimiters.includes("'")) { fn_PushCode(i_Idx); i_CodeStart = i_Idx; s_State = ScannerState.StringSingle; i_Idx++; continue mainLoop }
-                if(ch === '`' && rules.stringDelimiters.includes('`')) { fn_PushCode(i_Idx); i_CodeStart = i_Idx; s_State = ScannerState.TemplateBacktick; i_Idx++; continue mainLoop }
-                if(ch === '(' || ch === '[' || ch === '{') { i_NestingDepth++; i_Idx++; continue mainLoop }
-                if(ch === ')' || ch === ']' || ch === '}') { i_NestingDepth = Math.max(0, i_NestingDepth - 1); i_Idx++; continue mainLoop }
-                if(ch === '<') { i_NestingDepth++; i_Idx++; continue mainLoop }
-                if(ch === '>') { i_NestingDepth = Math.max(0, i_NestingDepth - 1); i_Idx++; continue mainLoop }
-                if(i_NestingDepth === 0) {
-                    for(const s_Ac of a_AlignChars) {
-                        if(raw.startsWith(s_Ac, i_Idx)) {
-                            if(s_Ac === '=' && i_Idx > 0 && (raw[i_Idx - 1] === '>' || (raw[i_Idx - 1] === ' ' && raw[i_Idx - 2] === '>'))) { i_Idx++; continue mainLoop }
-                            if(!(s_Ac === ':' && i_Idx > 0 && raw[i_Idx - 1] === ')')) { a_Markers.push({ symbol: s_Ac, startCol: i_Idx }) }
-                            i_Idx += s_Ac.length; continue mainLoop
-                        }
-                    }
-                    i_Idx++; break
+                const o_StringResult = fn_HandleStringDelim(raw, rules, i_Idx, a_Tokens, fn_PushCode)
+                if(o_StringResult.s_State !== ScannerState.CodeReading) {
+                    i_CodeStart = o_StringResult.i_CodeStart
+                    s_State = o_StringResult.s_State
+                    i_Idx++
+                    continue mainLoop
                 }
+i_NestingDepth = fn_UpdateNestingDepth(raw[i_Idx], i_NestingDepth)
+                if(i_NestingDepth === 0) {
+                    const o_MarkerResult = fn_FindAlignMarker(raw, a_AlignChars, i_Idx, a_Markers)
+                    if(o_MarkerResult.b_Found) { i_Idx += o_MarkerResult.i_Advance; continue mainLoop }
+                }
+                i_Idx++; break
             }
             case ScannerState.StringDouble:
                 case ScannerState.StringSingle:
@@ -467,32 +490,47 @@ export function pipeline_Build(
         let s_State = PipelineState.Idle
 
         mainLoop: while(true) {
-            switch(s_State) {
-                case PipelineState.Idle:
-                    s_State = PipelineState.LoadConfig; break
-                case PipelineState.LoadConfig:
-                    fn_Rwd(fn_ConfigLoad, ns)
-                    s_State = ns_Error(ns) ? PipelineState.Error : PipelineState.DetectLanguage; break
-                case PipelineState.DetectLanguage:
-                    fn_Rwd(fn_LanguageDetect, ns)
-                    s_State = ns_Error(ns) ? PipelineState.Error : PipelineState.FindBlocks; break
-                case PipelineState.FindBlocks:
-                    fn_Rwd(fn_BlockFind, ns)
-                    s_State = ns_Error(ns) ? PipelineState.Error : PipelineState.ParseLines; break
-                case PipelineState.ParseLines:
-                    fn_Rwd(fn_LinesParse, ns)
-                    s_State = ns_Error(ns) ? PipelineState.Error : PipelineState.Align; break
-                case PipelineState.Align:
-                    fn_Rwd(fn_AlignmentApply, ns)
-                    s_State = ns_Error(ns) ? PipelineState.Error : PipelineState.ReplaceText; break
-                case PipelineState.ReplaceText:
-                    fn_Rwd(fn_TextReplace, ns)
-                    s_State = ns_Error(ns) ? PipelineState.Error : PipelineState.Done; break
-                case PipelineState.Done:
-                case PipelineState.Error:
-                    break mainLoop
-            }
+            s_State = fn_ExecutePipelineState(s_State, ns, fn_ConfigLoad, fn_LanguageDetect, fn_BlockFind, fn_LinesParse, fn_AlignmentApply, fn_TextReplace, fn_Rwd)
+            if(s_State === PipelineState.Done || s_State === PipelineState.Error) { break }
         }
+    }
+}
+
+function fn_ExecutePipelineState(
+    s_State: PipelineState,
+    ns: NS,
+    fn_ConfigLoad: Decorator,
+    fn_LanguageDetect: Decorator,
+    fn_BlockFind: Decorator,
+    fn_LinesParse: Decorator,
+    fn_AlignmentApply: Decorator,
+    fn_TextReplace: Decorator,
+    fn_Rwd: (fn: Decorator, ns: NS) => void
+): PipelineState {
+    switch(s_State) {
+        case PipelineState.Idle:
+            return PipelineState.LoadConfig
+        case PipelineState.LoadConfig:
+            fn_Rwd(fn_ConfigLoad, ns)
+            return ns_Error(ns) ? PipelineState.Error : PipelineState.DetectLanguage
+        case PipelineState.DetectLanguage:
+            fn_Rwd(fn_LanguageDetect, ns)
+            return ns_Error(ns) ? PipelineState.Error : PipelineState.FindBlocks
+        case PipelineState.FindBlocks:
+            fn_Rwd(fn_BlockFind, ns)
+            return ns_Error(ns) ? PipelineState.Error : PipelineState.ParseLines
+        case PipelineState.ParseLines:
+            fn_Rwd(fn_LinesParse, ns)
+            return ns_Error(ns) ? PipelineState.Error : PipelineState.Align
+        case PipelineState.Align:
+            fn_Rwd(fn_AlignmentApply, ns)
+            return ns_Error(ns) ? PipelineState.Error : PipelineState.ReplaceText
+        case PipelineState.ReplaceText:
+            fn_Rwd(fn_TextReplace, ns)
+            return ns_Error(ns) ? PipelineState.Error : PipelineState.Done
+        case PipelineState.Done:
+        case PipelineState.Error:
+            return s_State
     }
 }
 

@@ -1,42 +1,63 @@
+# FSM Documentation
+
+## ScannerState (A2 - line_Parse)
 ```mermaid
-graph TD
-    subgraph ScannerState
-        A[CodeReading] --> B{StringDouble}
-        A --> C{StringSingle}
-        A --> D{TemplateBacktick}
-        A --> E{BlockComment}
-        A --> F(CommentDone)
-        B --> A
-        C --> A
-        D --> A
-        E --> A
-    end
+graph LR
+    CodeReading --> StringDouble
+    CodeReading --> StringSingle
+    CodeReading --> TemplateBacktick
+    CodeReading --> BlockComment
+    CodeReading --> CommentDone
+```
 
-    subgraph GroupingState
-        G[WaitingForStart] --> H{Accumulating}
-        H --> G
-        H --> H
-    end
+## GroupingState (A3 - blocks_Find)
+```mermaid
+graph LR
+    WaitingForStart --> Accumulating
+    Accumulating --> WaitingForStart
+```
 
-    subgraph PropagationState
-        I[FindingSeries] --> J{Accumulating}
-        J --> I
-        J --> J
-    end
+## PropagationState (A4 - positions_Propagate)
+```mermaid
+graph LR
+    FindingSeries --> Accumulating
+    Accumulating --> FindingSeries
+```
 
-    subgraph PipelineState
-        K[Idle] --> L(LoadConfig)
-        L --> M{DetectLanguage}
-        L --> P(Error)
-        M --> N{FindBlocks}
-        M --> P
-        N --> O{ParseLines}
-        N --> P
-        O --> Q{Align}
-        O --> P
-        Q --> R{ReplaceText}
-        Q --> P
-        R --> S(Done)
-        R --> P
-    end
+## PositionMapState (positionMap_Build)
+```mermaid
+graph LR
+    Collect --> ProcessSymbols
+    ProcessSymbols --> Propagate
+    Propagate --> Done
+```
+
+## PipelineState (pipeline_Build)
+```mermaid
+graph LR
+    Idle --> LoadConfig
+    LoadConfig --> DetectLanguage
+    DetectLanguage --> FindBlocks
+    FindBlocks --> ParseLines
+    ParseLines --> Align
+    Align --> ReplaceText
+    ReplaceText --> Done
+    ReplaceText --> Error
+    LoadConfig --> Error
+    DetectLanguage --> Error
+    FindBlocks --> Error
+    ParseLines --> Error
+    Align --> Error
+```
+
+## BlockSearchState (extension.ts - blockSearchFSM)
+```mermaid
+graph LR
+    WaitingForData --> ValidatingContext
+    ValidatingContext --> AnalyzingSelection
+    AnalyzingSelection --> ExtractingLines
+    ExtractingLines --> GroupingBlocks
+    GroupingBlocks --> Done
+    AnalyzingSelection --> Error
+    ValidatingContext --> Error
 ```
