@@ -1,3 +1,12 @@
+# v6.14.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.14.0)
+
+- refactor: Improve alignment logic robustness based on user feedback. The `lines_Align` function now uses a pre-calculated token map (`a_RawMap`) instead of re-parsing lines, which prevents inconsistencies and ensures idempotent behavior.
+- chore: Thanks to the user for reporting the issue and providing a test case.
+
+# v6.13.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.13.0)
+
+- test: Fix idempotency test to use all lines as one block
+
 # v6.12.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.12.0)
 
 - fix: Fix full file selection detection - check line position, not just line number

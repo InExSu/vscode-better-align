@@ -214,7 +214,7 @@ function fn_MapNormalize(ctx: FSMStateContext): FSMState {
 }
 
 function fn_LinesAlign(ctx: FSMStateContext): FSMState {
-    ctx.a_AlignedLines = lines_Align(ctx.a_Lines, ctx.a_Columns)
+    ctx.a_AlignedLines = lines_Align(ctx.a_Lines, ctx.a_Columns, ctx.a_RawMap)
     ctx.b_Changed = true
     return 'result_Emit'
 }
@@ -332,18 +332,18 @@ export function map_Normalize(a_RawMap: AlignToken[][]): AlignColumn[] {
     return a_Columns
 }
 
-export function lines_Align(a_OrigLines: string[], a_Columns: AlignColumn[]): string[] {
+export function lines_Align(a_OrigLines: string[], a_Columns: AlignColumn[], a_RawMap: AlignToken[][]): string[] {
     if (a_Columns.length === 0) { return [...a_OrigLines] }
 
-    return a_OrigLines.map(s_Line => {
+    return a_OrigLines.map((s_Line, i_LineIdx) => {
         let s_Result = ''
         let i_SrcPos = 0
 
-        for (const col of a_Columns) {
-            const a_Tokens = chars_FindGreedy(s_Line, [col.s_Char])
-            const token = a_Tokens.find(t => t.s_Char === col.s_Char)
+        for (let i_ColIdx = 0; i_ColIdx < a_Columns.length; i_ColIdx++) {
+            const col = a_Columns[i_ColIdx]
+            const token = a_RawMap[i_LineIdx][i_ColIdx]
 
-            if (token) {
+            if (token && token.s_Char === col.s_Char) {
                 s_Result += s_Line.slice(i_SrcPos, token.i_Pos)
                 const i_Pad = col.i_MaxPos - s_Result.length
                 if (i_Pad > 0) { s_Result += ' '.repeat(i_Pad) }
