@@ -6,7 +6,6 @@
 // ── 1. IMPORTS ───────────────────────────────────────────────
 import * as vscode from 'vscode'
 import {
-    // Types
     type LanguageRules,
     type LineBlock,
     type ParsedLine,
@@ -14,24 +13,27 @@ import {
     type Result,
     type NS,
     type NSData,
-    // Types for config
     DEFAULT_CONFIG,
-    // Language rules
     DEFAULT_LANGUAGE_RULES,
     LANGUAGE_RULES,
-    detectLanguageRules,
-    // Pure functions
+    languageRules_Detect,
+    line_Parse,
+    blocks_Find,
+    block_Align,
+    positionMap_Build,
+    positionMap_Apply,
+    PipelineState,
+    Decorator,
+    pipeline_Build,
+    ns_Error,
+    ns_SetError,
     parseLineIgnoringStrings,
     findLineBlocks,
     alignBlock,
     buildPairwisePositionMap,
     applyPositionMap,
-    // FSM types
-    PipelineState,
-    Decorator,
-    buildPipelineFSM,
-    ns_Error,
-    ns_SetError,
+    detectLanguageRules,
+    DEFAULT_DEFAULT_CONFIG,
 } from './fsm_Main'
 
 // ── 2. RESULT HELPERS (re-export) ──────────────────────────────
@@ -50,8 +52,8 @@ const CONFIG = {
  * @param editor - The active text editor
  * @returns Language rules for the document's language
  */
-function detectLanguageRulesFromEditor(editor: vscode.TextEditor): LanguageRules {
-    return detectLanguageRules(editor.document.languageId, CONFIG.defaultAlignChars)
+function detectLanguageRulesFromEditor(o_Editor: vscode.TextEditor): LanguageRules {
+    return languageRules_Detect(o_Editor.document.languageId, CONFIG.defaultAlignChars)
 }
 
 // ── 5. LOGGING DECORATORS (no VS Code API) ────────────────────
@@ -93,7 +95,7 @@ function NS_Container(cfg: typeof CONFIG): NS {
 }
 
 // ── 7. PIPELINE FSM SETUP ─────────────────────────────────────
-const pipelineFSM = buildPipelineFSM(
+const pipelineFSM = pipeline_Build(
     config_Load_Decor,
     language_Detect_Decor,
     block_Find_Decor,
@@ -146,9 +148,9 @@ function lines_Parse_Decor(ns: NS): void {
         ns.result = ok(ns.data.parsedLines); return
     }
     try {
-        const rules = ns.data.languageRules
-        if(!rules) { ns_SetError(ns, 'No language rules'); return }
-        ns.data.parsedLines = ns.data.blocks.map(block => block.lines.map(raw => parseLineIgnoringStrings(raw, rules)))
+        const o_Rules = ns.data.languageRules
+        if(!o_Rules) { ns_SetError(ns, 'No language rules'); return }
+        ns.data.parsedLines = ns.data.blocks.map(o_Block => o_Block.lines.map(s_Raw => line_Parse(s_Raw, o_Rules)))
         ns.result = ok(ns.data.parsedLines)
     } catch(e) { ns_SetError(ns, (e as Error).message) }
 }
@@ -160,7 +162,7 @@ function alignment_Apply_Decor(ns: NS): void {
         ns.result = ok(ns.data.alignedLines); return
     }
     try {
-        ns.data.alignedLines = ns.data.parsedLines.map(blockLines => alignBlock(blockLines, ns.config.maxSpaces))
+        ns.data.alignedLines = ns.data.parsedLines.map(a_BlockLines => block_Align(a_BlockLines, ns.config.maxSpaces))
         ns.result = ok(ns.data.alignedLines)
     } catch(e) { ns_SetError(ns, (e as Error).message) }
 }
@@ -281,40 +283,40 @@ function blockSearchFSM(ns: NS): void {
         activeLine   : 0                                              ,
         rawLines     : []                                             ,
     }
-    let state = BlockSearchState.WaitingForData
+    let s_State = BlockSearchState.WaitingForData
 
     main: while(true) {
-        switch(state) {
+        switch(s_State) {
             case BlockSearchState.WaitingForData:
-                state = BlockSearchState.ValidatingContext; break
+                s_State = BlockSearchState.ValidatingContext; break
             case BlockSearchState.ValidatingContext:
-                if(!ctx.editor) { ns_SetError(ns, 'No active editor'); state = BlockSearchState.Error; break }
-                if(!ctx.rules) { ns_SetError(ns, 'No language rules'); state = BlockSearchState.Error; break }
+                if(!ctx.editor) { ns_SetError(ns, 'No active editor'); s_State = BlockSearchState.Error; break }
+                if(!ctx.rules) { ns_SetError(ns, 'No language rules'); s_State = BlockSearchState.Error; break }
                 ctx.doc            = ctx.editor.document; ctx.selection = ctx.editor.selection
-                state              = BlockSearchState.AnalyzingSelection; break
+                s_State              = BlockSearchState.AnalyzingSelection; break
             case BlockSearchState.AnalyzingSelection: {
                 const res = analyzeSelection(ctx)
-                if(!res) { state = BlockSearchState.Error; break }
+                if(!res) { s_State = BlockSearchState.Error; break }
                 ctx.startLine = res.startLine; ctx.endLine = res.endLine
-                state = BlockSearchState.ExtractingLines; break
+                s_State = BlockSearchState.ExtractingLines; break
             }
             case BlockSearchState.ExtractingLines:
                 ctx.rawLines = extractRawLines(ctx.doc, ctx.startLine, ctx.endLine)
-                state = BlockSearchState.GroupingBlocks; break
+                s_State = BlockSearchState.GroupingBlocks; break
             case BlockSearchState.GroupingBlocks: {
-                const isFullSelection = ctx.startLine === 0 && ctx.endLine === ctx.doc.lineCount - 1
-                const lines = ctx.rawLines
-                if(isFullSelection && lines.length > 1 && ctx.rules.lineComments.length > 0) {
-                    const hasMultipleIndents = new Set(lines.map(l => l.match(/^(\s*)/)?.[1] ?? '')).size > 1
-                    if(hasMultipleIndents) {
+                const b_IsFullSelection = ctx.startLine === 0 && ctx.endLine === ctx.doc.lineCount - 1
+                const a_Lines = ctx.rawLines
+                if(b_IsFullSelection && a_Lines.length > 1 && ctx.rules.lineComments.length > 0) {
+                    const b_HasMultipleIndents = new Set(a_Lines.map(s_L => s_L.match(/^(\s*)/)?.[1] ?? '')).size > 1
+                    if(b_HasMultipleIndents) {
                         ns.data.blocks = [{ startLine: ctx.startLine, lines: ctx.rawLines }]
                     } else {
-                        ns.data.blocks = findLineBlocks(ctx.rawLines, ctx.startLine, ctx.rules, ns.config.maxBlockSize)
+                        ns.data.blocks = blocks_Find(ctx.rawLines, ctx.startLine, ctx.rules, ns.config.maxBlockSize)
                     }
                 } else {
-                    ns.data.blocks = findLineBlocks(ctx.rawLines, ctx.startLine, ctx.rules, ns.config.maxBlockSize)
+                    ns.data.blocks = blocks_Find(ctx.rawLines, ctx.startLine, ctx.rules, ns.config.maxBlockSize)
                 }
-                state = BlockSearchState.Done; break
+                s_State = BlockSearchState.Done; break
             }
             case BlockSearchState.Done: ns.result = ok(ns.data.blocks); break main
             case BlockSearchState.Error: break main
@@ -351,8 +353,8 @@ function applyEditorReplacements(editor: vscode.TextEditor, blocks: LineBlock[],
 
 // ── 11. WRAPPER FOR TESTS ─────────────────────────────────────
 /** Finds alignment markers in code (wrapper for testing). */
-function findAlignCharsGreedy(code: string, alignChars: string[], rules: LanguageRules): Marker[] {
-    return parseLineIgnoringStrings(code, { ...rules, alignChars }).markers
+function findAlignCharsGreedy(s_Code: string, a_AlignChars: string[], o_Rules: LanguageRules): Marker[] {
+    return line_Parse(s_Code, { ...o_Rules, alignChars: a_AlignChars }).markers
 }
 
 // ── 12. ACTIVATE / DEACTIVATE ─────────────────────────────────
@@ -390,6 +392,7 @@ export {
     alignBlock,
     detectLanguageRules,
     DEFAULT_LANGUAGE_RULES,
+    DEFAULT_DEFAULT_CONFIG,
     CONFIG,
     LanguageRules,
     ParsedLine,

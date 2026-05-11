@@ -66,10 +66,10 @@ export const LANGUAGE_RULES: Record<string, LanguageRules> = {
  * @param defaultAlignChars - Default alignment characters to use
  * @returns Language rules for the detected language
  */
-export function detectLanguageRules(langId: string, defaultAlignChars: string[]): LanguageRules {
-    return LANGUAGE_RULES[langId]
-        ? { ...LANGUAGE_RULES[langId], alignChars: defaultAlignChars }
-        : { ...DEFAULT_LANGUAGE_RULES, alignChars: defaultAlignChars }
+export function languageRules_Detect(s_LangId: string, a_DefaultAlignChars: string[]): LanguageRules {
+    return LANGUAGE_RULES[s_LangId]
+        ? { ...LANGUAGE_RULES[s_LangId], alignChars: a_DefaultAlignChars }
+        : { ...DEFAULT_LANGUAGE_RULES, alignChars: a_DefaultAlignChars }
 }
 
 // ── 5. A2 — SCANNER FSM (PascalCase states) ───────────────────
@@ -88,78 +88,77 @@ export enum ScannerState {
  * @param rules - Language rules for parsing
  * @returns Parsed line with tokens and markers
  */
-export function parseLineIgnoringStrings(raw: string, rules: LanguageRules): ParsedLine {
-    const alignChars = [...rules.alignChars].sort((a, b) => b.length - a.length)
-    const tokens: Token[] = []
-    const markers: Marker[] = []
-    let state = ScannerState.CodeReading
-    let i = 0, codeStart = 0, blockEndMarker = '', nestingDepth = 0
+export function line_Parse(raw: string, rules: LanguageRules): ParsedLine {
+    const a_AlignChars = [...rules.alignChars].sort((a, b) => b.length - a.length)
+    const a_Tokens: Token[] = []
+    const a_Markers: Marker[] = []
+    let s_State = ScannerState.CodeReading
+    let i_Idx = 0, i_CodeStart = 0, s_BlockEndMarker = '', i_NestingDepth = 0
 
-    const pushCode = (end: number): void => {
-        if(end > codeStart) { tokens.push({ kind: 'code', text: raw.slice(codeStart, end) }) }
+    const fn_PushCode = (i_End: number): void => {
+        if(i_End > i_CodeStart) { a_Tokens.push({ kind: 'code', text: raw.slice(i_CodeStart, i_End) }) }
     }
 
-    mainLoop: while(i <= raw.length) {
-        switch(state) {
+    mainLoop: while(i_Idx <= raw.length) {
+        switch(s_State) {
             case ScannerState.CodeReading: {
-                if(i >= raw.length) { pushCode(i); break mainLoop }
-                for(const bc of rules.blockComments) {
-                    if(raw.startsWith(bc.start, i)) {
-                        pushCode(i); codeStart = i; blockEndMarker = bc.end
-                        state = ScannerState.BlockComment; i += bc.start.length; continue mainLoop
+                if(i_Idx >= raw.length) { fn_PushCode(i_Idx); break mainLoop }
+                for(const o_Bc of rules.blockComments) {
+                    if(raw.startsWith(o_Bc.start, i_Idx)) {
+                        fn_PushCode(i_Idx); i_CodeStart = i_Idx; s_BlockEndMarker = o_Bc.end
+                        s_State = ScannerState.BlockComment; i_Idx += o_Bc.start.length; continue mainLoop
                     }
                 }
-                for(const lc of rules.lineComments) {
-                    if(raw.startsWith(lc, i)) {
-                        pushCode(i); tokens.push({ kind: 'comment', text: raw.slice(i) })
-                        state = ScannerState.CommentDone; break mainLoop
+                for(const s_Lc of rules.lineComments) {
+                    if(raw.startsWith(s_Lc, i_Idx)) {
+                        fn_PushCode(i_Idx); a_Tokens.push({ kind: 'comment', text: raw.slice(i_Idx) })
+                        s_State = ScannerState.CommentDone; break mainLoop
                     }
                 }
-                const ch = raw[i]
-                if(ch === '"' && rules.stringDelimiters.includes('"')) { pushCode(i); codeStart = i; state = ScannerState.StringDouble; i++; continue mainLoop }
-                if(ch === "'" && rules.stringDelimiters.includes("'")) { pushCode(i); codeStart = i; state = ScannerState.StringSingle; i++; continue mainLoop }
-                if(ch === '`' && rules.stringDelimiters.includes('`')) { pushCode(i); codeStart = i; state = ScannerState.TemplateBacktick; i++; continue mainLoop }
-                if(ch === '(' || ch === '[' || ch === '{') { nestingDepth++; i++; continue mainLoop }
-                if(ch === ')' || ch === ']' || ch === '}') { nestingDepth = Math.max(0, nestingDepth - 1); i++; continue mainLoop }
-                if(ch === '<') { nestingDepth++; i++; continue mainLoop }
-                if(ch === '>') { nestingDepth = Math.max(0, nestingDepth - 1); i++; continue mainLoop }
-                if(nestingDepth === 0) {
-                    for(const ac of alignChars) {
-                        if(raw.startsWith(ac, i)) {
-                            // Skip single = that is part of >=
-                            if(ac === '=' && i > 0 && (raw[i - 1] === '>' || (raw[i - 1] === ' ' && raw[i - 2] === '>'))) { i++; continue mainLoop }
-                            if(!(ac === ':' && i > 0 && raw[i - 1] === ')')) { markers.push({ symbol: ac, startCol: i }) }
-                            i += ac.length; continue mainLoop
+                const ch = raw[i_Idx]
+                if(ch === '"' && rules.stringDelimiters.includes('"')) { fn_PushCode(i_Idx); i_CodeStart = i_Idx; s_State = ScannerState.StringDouble; i_Idx++; continue mainLoop }
+                if(ch === "'" && rules.stringDelimiters.includes("'")) { fn_PushCode(i_Idx); i_CodeStart = i_Idx; s_State = ScannerState.StringSingle; i_Idx++; continue mainLoop }
+                if(ch === '`' && rules.stringDelimiters.includes('`')) { fn_PushCode(i_Idx); i_CodeStart = i_Idx; s_State = ScannerState.TemplateBacktick; i_Idx++; continue mainLoop }
+                if(ch === '(' || ch === '[' || ch === '{') { i_NestingDepth++; i_Idx++; continue mainLoop }
+                if(ch === ')' || ch === ']' || ch === '}') { i_NestingDepth = Math.max(0, i_NestingDepth - 1); i_Idx++; continue mainLoop }
+                if(ch === '<') { i_NestingDepth++; i_Idx++; continue mainLoop }
+                if(ch === '>') { i_NestingDepth = Math.max(0, i_NestingDepth - 1); i_Idx++; continue mainLoop }
+                if(i_NestingDepth === 0) {
+                    for(const s_Ac of a_AlignChars) {
+                        if(raw.startsWith(s_Ac, i_Idx)) {
+                            if(s_Ac === '=' && i_Idx > 0 && (raw[i_Idx - 1] === '>' || (raw[i_Idx - 1] === ' ' && raw[i_Idx - 2] === '>'))) { i_Idx++; continue mainLoop }
+                            if(!(s_Ac === ':' && i_Idx > 0 && raw[i_Idx - 1] === ')')) { a_Markers.push({ symbol: s_Ac, startCol: i_Idx }) }
+                            i_Idx += s_Ac.length; continue mainLoop
                         }
                     }
+                    i_Idx++; break
                 }
-                i++; break
             }
             case ScannerState.StringDouble:
-            case ScannerState.StringSingle:
-            case ScannerState.TemplateBacktick: {
-                const delim = state === ScannerState.StringDouble ? '"' : state === ScannerState.StringSingle ? "'" : '`'
-                if(i >= raw.length) { tokens.push({ kind: 'string', text: raw.slice(codeStart) }); break mainLoop }
-                if(raw[i] === '\\') { i += 2; continue mainLoop }
-                if(raw[i] === delim) {
-                    i++; tokens.push({ kind: 'string', text: raw.slice(codeStart, i) }); codeStart = i
-                    state = ScannerState.CodeReading; continue mainLoop
+                case ScannerState.StringSingle:
+                case ScannerState.TemplateBacktick: {
+                    const s_Delim = s_State === ScannerState.StringDouble ? '"' : s_State === ScannerState.StringSingle ? "'" : '`'
+                    if(i_Idx >= raw.length) { a_Tokens.push({ kind: 'string', text: raw.slice(i_CodeStart) }); break mainLoop }
+                    if(raw[i_Idx] === '\\') { i_Idx += 2; continue mainLoop }
+                    if(raw[i_Idx] === s_Delim) {
+                        i_Idx++; a_Tokens.push({ kind: 'string', text: raw.slice(i_CodeStart, i_Idx) }); i_CodeStart = i_Idx
+                        s_State = ScannerState.CodeReading; continue mainLoop
+                    }
+                    i_Idx++; break
                 }
-                i++; break
-            }
             case ScannerState.BlockComment: {
-                if(i >= raw.length) { tokens.push({ kind: 'comment', text: raw.slice(codeStart) }); break mainLoop }
-                if(raw.startsWith(blockEndMarker, i)) {
-                    i += blockEndMarker.length; tokens.push({ kind: 'comment', text: raw.slice(codeStart, i) }); codeStart = i
-                    state = ScannerState.CodeReading; continue mainLoop
+                if(i_Idx >= raw.length) { a_Tokens.push({ kind: 'comment', text: raw.slice(i_CodeStart) }); break mainLoop }
+                if(raw.startsWith(s_BlockEndMarker, i_Idx)) {
+                    i_Idx += s_BlockEndMarker.length; a_Tokens.push({ kind: 'comment', text: raw.slice(i_CodeStart, i_Idx) }); i_CodeStart = i_Idx
+                    s_State = ScannerState.CodeReading; continue mainLoop
                 }
-                i++; break
+                i_Idx++; break
             }
             default:
                 break mainLoop
         }
     }
-    return { raw, tokens, markers, originalMarkers: [...markers] }
+    return { raw, tokens: a_Tokens, markers: a_Markers, originalMarkers: [...a_Markers] }
 }
 
 // ── 6. A3 — BLOCK GROUPING FSM (PascalCase states) ──────────────
@@ -176,43 +175,43 @@ export enum GroupingState {
  * @param maxBlockSize - Maximum number of lines per block
  * @returns Array of line blocks
  */
-export function findLineBlocks(rawLines: string[], startOffset: number, rules: LanguageRules, maxBlockSize: number): LineBlock[] {
-    const blocks: LineBlock[] = []
-    let state = GroupingState.WaitingForStart
-    let curBlock: LineBlock = { startLine: 0, lines: [] }, curIndent = ''
+export function blocks_Find(rawLines: string[], i_StartOffset: number, rules: LanguageRules, i_MaxBlockSize: number): LineBlock[] {
+    const a_Blocks: LineBlock[] = []
+    let s_State = GroupingState.WaitingForStart
+    let o_CurBlock: LineBlock = { startLine: 0, lines: [] }, s_CurIndent = ''
 
-    const flush = (): void => {
-        if(curBlock.lines.length > 1) { blocks.push(curBlock) }
-        curBlock = { startLine: 0, lines: [] }
-        curIndent = ''
+    const fn_Flush = (): void => {
+        if(o_CurBlock.lines.length > 1) { a_Blocks.push(o_CurBlock) }
+        o_CurBlock = { startLine: 0, lines: [] }
+        s_CurIndent = ''
     }
-    const isBlankOrComment = (r: string): boolean => {
-        const t = r.trim(); return t === '' || rules.lineComments.some(lc => t.startsWith(lc))
+    const fn_IsBlankOrComment = (s_Raw: string): boolean => {
+        const s_Trimmed = s_Raw.trim(); return s_Trimmed === '' || rules.lineComments.some(s_Lc => s_Trimmed.startsWith(s_Lc))
     }
-    const getIndent = (r: string): string => r.match(/^(\s*)/)?.[1] ?? ''
+    const fn_GetIndent = (s_Raw: string): string => s_Raw.match(/^(\s*)/)?.[1] ?? ''
 
-    outer: for(let idx = 0; idx < rawLines.length; idx++) {
-        const raw = rawLines[idx]
-        const indent = getIndent(raw)
-        switch(state) {
+    outer: for(let i_Idx = 0; i_Idx < rawLines.length; i_Idx++) {
+        const s_Raw = rawLines[i_Idx]
+        const s_Indent = fn_GetIndent(s_Raw)
+        switch(s_State) {
             case GroupingState.WaitingForStart:
-                if(isBlankOrComment(raw)) { continue }
-                curIndent = indent; curBlock = { startLine: startOffset + idx, lines: [raw] }
-                state = GroupingState.Accumulating; break
+                if(fn_IsBlankOrComment(s_Raw)) { continue }
+                s_CurIndent = s_Indent; o_CurBlock = { startLine: i_StartOffset + i_Idx, lines: [s_Raw] }
+                s_State = GroupingState.Accumulating; break
             case GroupingState.Accumulating:
-                if(isBlankOrComment(raw)) { flush(); continue }
-                if(indent !== curIndent || curBlock.lines.length >= maxBlockSize) {
-                    flush()
-                    curIndent = indent
-                    curBlock = { startLine: startOffset + idx, lines: [raw] }
-                    state = GroupingState.Accumulating
+                if(fn_IsBlankOrComment(s_Raw)) { fn_Flush(); continue }
+                if(s_Indent !== s_CurIndent || o_CurBlock.lines.length >= i_MaxBlockSize) {
+                    fn_Flush()
+                    s_CurIndent = s_Indent
+                    o_CurBlock = { startLine: i_StartOffset + i_Idx, lines: [s_Raw] }
+                    s_State = GroupingState.Accumulating
                 } else {
-                    curBlock.lines.push(raw)
+                    o_CurBlock.lines.push(s_Raw)
                 }
                 break
         }
     }
-    flush(); return blocks
+    fn_Flush(); return a_Blocks
 }
 
 // ── 7. A4 — PROPAGATION FSM (PascalCase states) ───────────────
@@ -227,27 +226,27 @@ export enum PropagationState {
  * @param posMap - Position map to update
  * @param mk - Marker index to propagate
  */
-export function propagatePositions(parsedLines: ParsedLine[], posMap: Map<string, number>, mk: number): void {
-    let state = PropagationState.FindingSeries, startOfSeries = 0, endOfSeries = 0
-    const applyMax = (): void => {
-        let max = 0
-        for(let i = startOfSeries; i <= endOfSeries; i++) { max = Math.max(max, posMap.get(`${i}:${mk}`) ?? 0) }
-        if(max > 0) { for(let i = startOfSeries; i <= endOfSeries; i++) { const k = `${i}:${mk}`; if(posMap.has(k)) { posMap.set(k, max) } } }
+export function positions_Propagate(parsedLines: ParsedLine[], o_PosMap: Map<string, number>, i_Mk: number): void {
+    let s_State = PropagationState.FindingSeries, i_StartOfSeries = 0, i_EndOfSeries = 0
+    const fn_ApplyMax = (): void => {
+        let i_Max = 0
+        for(let i = i_StartOfSeries; i <= i_EndOfSeries; i++) { i_Max = Math.max(i_Max, o_PosMap.get(`${i}:${i_Mk}`) ?? 0) }
+        if(i_Max > 0) { for(let i = i_StartOfSeries; i <= i_EndOfSeries; i++) { const s_Key = `${i}:${i_Mk}`; if(o_PosMap.has(s_Key)) { o_PosMap.set(s_Key, i_Max) } } }
     }
-    for(let i = 0; i < parsedLines.length; i++) {
-        switch(state) {
+    for(let i_Idx = 0; i_Idx < parsedLines.length; i_Idx++) {
+        switch(s_State) {
             case PropagationState.FindingSeries:
-                if(parsedLines[i].markers[mk] !== undefined) { startOfSeries = endOfSeries = i; state = PropagationState.Accumulating }
+                if(parsedLines[i_Idx].markers[i_Mk] !== undefined) { i_StartOfSeries = i_EndOfSeries = i_Idx; s_State = PropagationState.Accumulating }
                 break
             case PropagationState.Accumulating: {
-                const cur = parsedLines[i].markers[mk]?.symbol, last = parsedLines[endOfSeries].markers[mk]?.symbol
-                if(cur !== undefined && cur === last) { endOfSeries = i }
-                else { applyMax(); state = PropagationState.FindingSeries; if(parsedLines[i].markers[mk] !== undefined) { startOfSeries = endOfSeries = i; state = PropagationState.Accumulating } }
+                const s_Cur = parsedLines[i_Idx].markers[i_Mk]?.symbol, s_Last = parsedLines[i_EndOfSeries].markers[i_Mk]?.symbol
+                if(s_Cur !== undefined && s_Cur === s_Last) { i_EndOfSeries = i_Idx }
+                else { fn_ApplyMax(); s_State = PropagationState.FindingSeries; if(parsedLines[i_Idx].markers[i_Mk] !== undefined) { i_StartOfSeries = i_EndOfSeries = i_Idx; s_State = PropagationState.Accumulating } }
                 break
             }
         }
     }
-    if(state === PropagationState.Accumulating) { applyMax() }
+    if(s_State === PropagationState.Accumulating) { fn_ApplyMax() }
 }
 
 /**
@@ -256,17 +255,17 @@ export function propagatePositions(parsedLines: ParsedLine[], posMap: Map<string
  * @param maxSpaces - Maximum number of spaces to add
  * @returns Map of line:markerIndex to target column position
  */
-export function buildPairwisePositionMap(parsedLines: ParsedLine[], maxSpaces: number): Map<string, number> {
-    if(parsedLines.length < 2) {return new Map()}
+export function positionMap_Build(parsedLines: ParsedLine[], i_MaxSpaces: number): Map<string, number> {
+    if(parsedLines.length < 2) { return new Map() }
 
-    const ctx = createContext(parsedLines)
-    let state = PositionMapState.Collect
+    const ctx = fn_CreateContext(parsedLines)
+    let s_State = PositionMapState.Collect
 
-    while(state !== PositionMapState.Done) {
-        state = executeState(state, ctx, parsedLines, maxSpaces)
+    while(s_State !== PositionMapState.Done) {
+        s_State = fn_ExecuteState(s_State, ctx, parsedLines, i_MaxSpaces)
     }
 
-    return ctx.posMap
+    return ctx.o_PosMap
 }
 
 enum PositionMapState {
@@ -277,106 +276,105 @@ enum PositionMapState {
 }
 
 interface PositionMapContext {
-    posMap: Map<string, number>
-    hasOriginal: boolean
-    symbolToMarkers: Map<string, { lineIdx: number; mk: number; startCol: number }[]>
-    lineIdx: number
-    symbolIdx: number
+    o_PosMap: Map<string, number>
+    b_HasOriginal: boolean
+    o_SymbolToMarkers: Map<string, { lineIdx: number; mk: number; startCol: number }[]>
+    i_LineIdx: number
+    i_SymbolIdx: number
 }
 
-function createContext(parsedLines: ParsedLine[]): PositionMapContext {
+function fn_CreateContext(parsedLines: ParsedLine[]): PositionMapContext {
     return {
-        posMap: new Map(),
-        hasOriginal: parsedLines.some(pl => pl.originalMarkers !== undefined),
-        symbolToMarkers: new Map(),
-        lineIdx: 0,
-        symbolIdx: 0,
+        o_PosMap: new Map(),
+        b_HasOriginal: parsedLines.some(pl => pl.originalMarkers !== undefined),
+        o_SymbolToMarkers: new Map(),
+        i_LineIdx: 0,
+        i_SymbolIdx: 0,
     }
 }
 
-function executeState(
-    state: PositionMapState,
+function fn_ExecuteState(
+    s_State: PositionMapState,
     ctx: PositionMapContext,
     parsedLines: ParsedLine[],
-    maxSpaces: number
+    i_MaxSpaces: number
 ): PositionMapState {
-    switch(state) {
+    switch(s_State) {
         case PositionMapState.Collect:
-            return handleCollect(ctx, parsedLines)
+            return fn_HandleCollect(ctx, parsedLines)
         case PositionMapState.ProcessSymbols:
-            return handleProcessSymbols(ctx, parsedLines, maxSpaces)
+            return fn_HandleProcessSymbols(ctx, parsedLines, i_MaxSpaces)
         case PositionMapState.Propagate:
-            return handlePropagate(ctx, parsedLines)
+            return fn_HandlePropagate(ctx, parsedLines)
         case PositionMapState.Done:
             return PositionMapState.Done
     }
 }
 
-function handleCollect(ctx: PositionMapContext, parsedLines: ParsedLine[]): PositionMapState {
-    if(ctx.lineIdx >= parsedLines.length) {
-        return PositionMapState.ProcessSymbols
-    }
+function fn_HandleCollect(ctx: PositionMapContext, a_Pls: ParsedLine[]): PositionMapState {
+    const b_Finished = ctx.i_LineIdx >= a_Pls.length
+    if(b_Finished) { return PositionMapState.ProcessSymbols }
 
-    const markers = ctx.hasOriginal
-        ? (parsedLines[ctx.lineIdx].originalMarkers || parsedLines[ctx.lineIdx].markers)
-        : parsedLines[ctx.lineIdx].markers
+    const o_Line = a_Pls[ctx.i_LineIdx]
+    const b_HasOriginalMarkers = ctx.b_HasOriginal && !!o_Line.originalMarkers
+    const a_Markers = b_HasOriginalMarkers ? (o_Line.originalMarkers || o_Line.markers) : o_Line.markers
+    fn_CollectMarkersForLine(ctx, a_Markers)
+    ctx.i_LineIdx++
 
-    collectMarkersForLine(ctx, markers)
-    ctx.lineIdx++
     return PositionMapState.Collect
 }
 
-function collectMarkersForLine(ctx: PositionMapContext, markers: Marker[]): void {
-    for(let mk = 0; mk < markers.length; mk++) {
-        const m = markers[mk]
-        const key = m.symbol
-        if(!ctx.symbolToMarkers.has(key)) {ctx.symbolToMarkers.set(key, [])}
-        ctx.symbolToMarkers.get(key)!.push({ lineIdx: ctx.lineIdx, mk, startCol: m.startCol })
+function fn_CollectMarkersForLine(ctx: PositionMapContext, a_Markers: Marker[]): void {
+    for(let i_Mk = 0; i_Mk < a_Markers.length; i_Mk++) {
+        const o_Marker = a_Markers[i_Mk]
+        const s_Key = o_Marker.symbol
+        if(!ctx.o_SymbolToMarkers.has(s_Key)) { ctx.o_SymbolToMarkers.set(s_Key, []) }
+        ctx.o_SymbolToMarkers.get(s_Key)!.push({ lineIdx: ctx.i_LineIdx, mk: i_Mk, startCol: o_Marker.startCol })
     }
 }
 
-function handleProcessSymbols(ctx: PositionMapContext, parsedLines: ParsedLine[], maxSpaces: number): PositionMapState {
-    const symbols = Array.from(ctx.symbolToMarkers.keys())
-    if(ctx.symbolIdx >= symbols.length) {
+function fn_HandleProcessSymbols(ctx: PositionMapContext, parsedLines: ParsedLine[], i_MaxSpaces: number): PositionMapState {
+    const a_Symbols = Array.from(ctx.o_SymbolToMarkers.keys())
+    if(ctx.i_SymbolIdx >= a_Symbols.length) {
         return PositionMapState.Propagate
     }
 
-    const markers = ctx.symbolToMarkers.get(symbols[ctx.symbolIdx])!
-    processSymbol(ctx, parsedLines, maxSpaces, markers)
-    ctx.symbolIdx++
+    const a_Markers = ctx.o_SymbolToMarkers.get(a_Symbols[ctx.i_SymbolIdx])!
+    fn_ProcessSymbol(ctx, parsedLines, i_MaxSpaces, a_Markers)
+    ctx.i_SymbolIdx++
     return PositionMapState.ProcessSymbols
 }
 
-function processSymbol(
+function fn_ProcessSymbol(
     ctx: PositionMapContext,
     parsedLines: ParsedLine[],
-    maxSpaces: number,
-    markers: { lineIdx: number; mk: number; startCol: number }[]
+    i_MaxSpaces: number,
+    a_Markers: { lineIdx: number; mk: number; startCol: number }[]
 ): void {
-    if(markers.length < 2) {return}
+    if(a_Markers.length < 2) { return }
 
-    const maxCol = Math.max(...markers.map(m => m.startCol))
-    for(const { lineIdx, mk, startCol } of markers) {
-        if(startCol >= maxCol) {continue}
-        if(isGteOperator(parsedLines[lineIdx].raw, startCol)) {continue}
+    const i_MaxCol = Math.max(...a_Markers.map(m => m.startCol))
+    for(const { lineIdx, mk, startCol } of a_Markers) {
+        if(startCol >= i_MaxCol) { continue }
+        if(fn_IsGteOperator(parsedLines[lineIdx].raw, startCol)) { continue }
 
-        const target = Math.min(maxCol, startCol + maxSpaces)
-        if(target > startCol) {ctx.posMap.set(`${lineIdx}:${mk}`, target)}
+        const i_Target = Math.min(i_MaxCol, startCol + i_MaxSpaces)
+        if(i_Target > startCol) { ctx.o_PosMap.set(`${lineIdx}:${mk}`, i_Target) }
     }
 }
 
-function isGteOperator(raw: string, startCol: number): boolean {
-    return raw.substr(startCol, 2) === '>=' && raw[startCol - 1] !== '>'
+function fn_IsGteOperator(s_Raw: string, i_StartCol: number): boolean {
+    return s_Raw.substr(i_StartCol, 2) === '>=' && s_Raw[i_StartCol - 1] !== '>'
 }
 
-function handlePropagate(ctx: PositionMapContext, parsedLines: ParsedLine[]): PositionMapState {
-    for(const symbol of Array.from(ctx.symbolToMarkers.keys())) {
-        const markers = ctx.symbolToMarkers.get(symbol)!
-        const mks = Array.from(new Set(markers.map(m => m.mk)))
-        for(const mk of mks) {
-            const markersWithSameMk = markers.filter(m => m.mk === mk)
-            if(markersWithSameMk.length >= 2) {
-                propagatePositions(parsedLines, ctx.posMap, mk)
+function fn_HandlePropagate(ctx: PositionMapContext, parsedLines: ParsedLine[]): PositionMapState {
+    for(const s_Symbol of Array.from(ctx.o_SymbolToMarkers.keys())) {
+        const a_Markers = ctx.o_SymbolToMarkers.get(s_Symbol)!
+        const a_Mks = Array.from(new Set(a_Markers.map(m => m.mk)))
+        for(const i_Mk of a_Mks) {
+            const a_MarkersWithSameMk = a_Markers.filter(m => m.mk === i_Mk)
+            if(a_MarkersWithSameMk.length >= 2) {
+                positions_Propagate(parsedLines, ctx.o_PosMap, i_Mk)
             }
         }
     }
@@ -390,44 +388,36 @@ function handlePropagate(ctx: PositionMapContext, parsedLines: ParsedLine[]): Po
  * @param posMap - Position map with target columns
  * @returns Array of aligned line strings
  */
-export function applyPositionMap(parsedLines: ParsedLine[], posMap: Map<string, number>): string[] {
-    return parsedLines.map((pl: ParsedLine, lineIdx: number) => {
-        let out = '', srcPos = 0
-        for(let mk = 0; mk < pl.markers.length; mk++) {
-            const marker = pl.markers[mk]
-            // Берём сегмент до маркера и убираем trailing пробелы
-            out += pl.raw.slice(srcPos, marker.startCol)
-            srcPos = marker.startCol
-            const key = `${lineIdx}:${mk}`
-            if(posMap.has(key)) {
-                const target = posMap.get(key)
-                const pad = target! - out.length  // out.length = текущая позиция в output
-                if(pad > 0) { out += ' '.repeat(pad) }
+export function positionMap_Apply(parsedLines: ParsedLine[], o_PosMap: Map<string, number>): string[] {
+    return parsedLines.map((o_Pl: ParsedLine, i_LineIdx: number) => {
+        let s_Out = '', i_SrcPos = 0
+        for(let i_Mk = 0; i_Mk < o_Pl.markers.length; i_Mk++) {
+            const o_Marker = o_Pl.markers[i_Mk]
+            s_Out += o_Pl.raw.slice(i_SrcPos, o_Marker.startCol)
+            i_SrcPos = o_Marker.startCol
+            const s_Key = `${i_LineIdx}:${i_Mk}`
+            if(o_PosMap.has(s_Key)) {
+                const i_Target = o_PosMap.get(s_Key)
+                const i_Pad = i_Target! - s_Out.length
+                if(i_Pad > 0) { s_Out += ' '.repeat(i_Pad) }
             }
-            out += marker.symbol
-            srcPos = marker.startCol + marker.symbol.length
+            s_Out += o_Marker.symbol
+            i_SrcPos = o_Marker.startCol + o_Marker.symbol.length
         }
-        out += pl.raw.slice(srcPos)
-        return out
+        s_Out += o_Pl.raw.slice(i_SrcPos)
+        return s_Out
     })
 }
 
-/**
- * Aligns a block of parsed lines.
- * @param parsedLines - Array of parsed lines in a block
- * @param maxSpaces - Maximum spaces to add for alignment
- * @returns Aligned line strings
- */
-export function alignBlock(parsedLines: ParsedLine[], maxSpaces: number): string[] {
+export function block_Align(parsedLines: ParsedLine[], i_MaxSpaces: number): string[] {
     if(parsedLines.length < 2) { return parsedLines.map(pl => pl.raw) }
-    return buildAndApply(parsedLines, maxSpaces)
+    return fn_BuildAndApply(parsedLines, i_MaxSpaces)
 }
 
-/** Internal: builds position map and applies to parsed lines. */
-function buildAndApply(parsedLines: ParsedLine[], maxSpaces: number): string[] {
-    const posMap = buildPairwisePositionMap(parsedLines, maxSpaces)
-    if(posMap.size === 0) { return parsedLines.map(pl => pl.raw) }
-    return applyPositionMap(parsedLines, posMap)
+function fn_BuildAndApply(parsedLines: ParsedLine[], i_MaxSpaces: number): string[] {
+    const o_PosMap = positionMap_Build(parsedLines, i_MaxSpaces)
+    if(o_PosMap.size === 0) { return parsedLines.map(pl => pl.raw) }
+    return positionMap_Apply(parsedLines, o_PosMap)
 }
 
 // ── 9. PIPELINE FSM ───────────────────────────────────────────
@@ -462,54 +452,42 @@ export type NSData = {
 
 /** Checks if the NooShere has an error. */
 export function ns_Error(ns: NS): boolean { return ns.result.ok === false }
-/** Sets an error on the namespace. */
-export function ns_SetError(ns: NS, e: string): void { ns.result = err(e); ns.s_Error = e }
+export function ns_SetError(ns: NS, s_Error: string): void { ns.result = err(s_Error); ns.s_Error = s_Error }
 
-/**
- * Builds a pipeline FSM that orchestrates the alignment process.
- * @param config_Load_Decor - Decorator for loading config
- * @param language_Detect_Decor - Decorator for detecting language
- * @param block_Find_Decor - Decorator for finding blocks
- * @param lines_Parse_Decor - Decorator for parsing lines
- * @param alignment_Apply_Decor - Decorator for applying alignment
- * @param text_Replace_Decor - Decorator for replacing text
- * @param rwd - Run-with-decorator function
- * @returns Pipeline FSM function
- */
-export function buildPipelineFSM(
-    config_Load_Decor: Decorator,
-    language_Detect_Decor: Decorator,
-    block_Find_Decor: Decorator,
-    lines_Parse_Decor: Decorator,
-    alignment_Apply_Decor: Decorator,
-    text_Replace_Decor: Decorator,
-    rwd: (fn: Decorator, ns: NS) => void
+export function pipeline_Build(
+    fn_ConfigLoad: Decorator,
+    fn_LanguageDetect: Decorator,
+    fn_BlockFind: Decorator,
+    fn_LinesParse: Decorator,
+    fn_AlignmentApply: Decorator,
+    fn_TextReplace: Decorator,
+    fn_Rwd: (fn: Decorator, ns: NS) => void
 ): (ns: NS) => void {
     return function pipelineFSM(ns: NS): void {
-        let state = PipelineState.Idle
+        let s_State = PipelineState.Idle
 
         mainLoop: while(true) {
-            switch(state) {
+            switch(s_State) {
                 case PipelineState.Idle:
-                    state = PipelineState.LoadConfig; break
+                    s_State = PipelineState.LoadConfig; break
                 case PipelineState.LoadConfig:
-                    rwd(config_Load_Decor, ns)
-                    state = ns_Error(ns) ? PipelineState.Error : PipelineState.DetectLanguage; break
+                    fn_Rwd(fn_ConfigLoad, ns)
+                    s_State = ns_Error(ns) ? PipelineState.Error : PipelineState.DetectLanguage; break
                 case PipelineState.DetectLanguage:
-                    rwd(language_Detect_Decor, ns)
-                    state = ns_Error(ns) ? PipelineState.Error : PipelineState.FindBlocks; break
+                    fn_Rwd(fn_LanguageDetect, ns)
+                    s_State = ns_Error(ns) ? PipelineState.Error : PipelineState.FindBlocks; break
                 case PipelineState.FindBlocks:
-                    rwd(block_Find_Decor, ns)
-                    state = ns_Error(ns) ? PipelineState.Error : PipelineState.ParseLines; break
+                    fn_Rwd(fn_BlockFind, ns)
+                    s_State = ns_Error(ns) ? PipelineState.Error : PipelineState.ParseLines; break
                 case PipelineState.ParseLines:
-                    rwd(lines_Parse_Decor, ns)
-                    state = ns_Error(ns) ? PipelineState.Error : PipelineState.Align; break
+                    fn_Rwd(fn_LinesParse, ns)
+                    s_State = ns_Error(ns) ? PipelineState.Error : PipelineState.Align; break
                 case PipelineState.Align:
-                    rwd(alignment_Apply_Decor, ns)
-                    state = ns_Error(ns) ? PipelineState.Error : PipelineState.ReplaceText; break
+                    fn_Rwd(fn_AlignmentApply, ns)
+                    s_State = ns_Error(ns) ? PipelineState.Error : PipelineState.ReplaceText; break
                 case PipelineState.ReplaceText:
-                    rwd(text_Replace_Decor, ns)
-                    state = ns_Error(ns) ? PipelineState.Error : PipelineState.Done; break
+                    fn_Rwd(fn_TextReplace, ns)
+                    s_State = ns_Error(ns) ? PipelineState.Error : PipelineState.Done; break
                 case PipelineState.Done:
                 case PipelineState.Error:
                     break mainLoop
@@ -517,3 +495,13 @@ export function buildPipelineFSM(
         }
     }
 }
+
+// Backward compatibility aliases
+export const parseLineIgnoringStrings = line_Parse
+export const findLineBlocks = blocks_Find
+export const alignBlock = block_Align
+export const buildPairwisePositionMap = positionMap_Build
+export const applyPositionMap = positionMap_Apply
+export const buildPipelineFSM = pipeline_Build
+export const detectLanguageRules = languageRules_Detect
+export const DEFAULT_DEFAULT_CONFIG = DEFAULT_CONFIG

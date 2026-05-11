@@ -19,6 +19,15 @@ src/
 └── fsm_Main.ts           # Чистые функции, FSM a_FSM_Main, типы, утилиты
 ```
 
+## 📁 Стиль наименования 
+
+### Имена функций: 
+- `noun_Verb` объект_Действие (например, `block_Find`, `lines_Parse`)
+
+### Переменных - венерская нотация
+- буква или несколько букв - признак типа, затем _ , затем название переменной с заглавной буквы.
+- например i_Counter, b_HasMarkers ... 
+
 ### extension.ts — Эффект-оболочка
 
 - Содержит только `_Decor` функции (каждая с `@effect` JSDoc)
@@ -61,7 +70,7 @@ export function a_FSM_Main(ctx: FSMContext): FSMResult {
 ```
 
 **Требования к `a_FSM_Main`:**
-- Классический FSM Шалыто: `while(true) switch(state)`
+- Классический switch FSM Шалыто: `while(true) switch(state)`
 - Имена состояний: `noun_Verb` (например, `block_Find`, `lines_Parse`)
 - В начале функции — комментарий со списком всех состояний
 - Выход из цикла — `break outerLoop`
