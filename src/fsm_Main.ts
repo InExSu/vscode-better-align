@@ -82,6 +82,10 @@ export enum ScannerState {
     CommentDone = 'CommentDone',
 }
 
+function fn_Unreachable(s_State: never): never {
+    throw new Error(`Unhandled state: ${s_State}`)
+}
+
 function fn_HandleStringDelim(raw: string, rules: LanguageRules, i_Idx: number, a_Tokens: Token[], fn_PushCode: (i_End: number) => void): { s_State: ScannerState; i_CodeStart: number } {
     const ch = raw[i_Idx]
     if(ch === '"' && rules.stringDelimiters.includes('"')) { fn_PushCode(i_Idx); return { s_State: ScannerState.StringDouble, i_CodeStart: i_Idx } }
@@ -188,8 +192,7 @@ export function line_Parse(raw: string, rules: LanguageRules): ParsedLine {
                 }
                 i_Idx++; break
             }
-            default:
-                break mainLoop
+            default: fn_Unreachable(s_State as never)
         }
     }
     return { raw, tokens: a_Tokens, markers: a_Markers, originalMarkers: [...a_Markers] }
@@ -243,6 +246,7 @@ export function blocks_Find(rawLines: string[], i_StartOffset: number, rules: La
                     o_CurBlock.lines.push(s_Raw)
                 }
                 break
+            default: fn_Unreachable(s_State as never)
         }
     }
     fn_Flush(); return a_Blocks
@@ -278,6 +282,7 @@ export function positions_Propagate(parsedLines: ParsedLine[], o_PosMap: Map<str
                 else { fn_ApplyMax(); s_State = PropagationState.FindingSeries; if(parsedLines[i_Idx].markers[i_Mk] !== undefined) { i_StartOfSeries = i_EndOfSeries = i_Idx; s_State = PropagationState.Accumulating } }
                 break
             }
+            default: fn_Unreachable(s_State as never)
         }
     }
     if(s_State === PropagationState.Accumulating) { fn_ApplyMax() }
@@ -342,6 +347,7 @@ function fn_ExecuteState(
             return fn_HandlePropagate(ctx, parsedLines)
         case PositionMapState.Done:
             return PositionMapState.Done
+        default: return fn_Unreachable(s_State as never)
     }
 }
 
@@ -542,6 +548,7 @@ function fn_ExecutePipelineState(
         case PipelineState.Done:
         case PipelineState.Error:
             return s_State
+        default: return fn_Unreachable(s_State as never)
     }
 }
 

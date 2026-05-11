@@ -225,11 +225,11 @@ function analyzeSelection(ctx: BlockSearchContext): { startLine: number; endLine
         return { startLine: 0, endLine: ctx.doc.lineCount - 1 }
     }
     
-    let state = SelectionAnalysisState.CheckingEmpty
+    let s_State = SelectionAnalysisState.CheckingEmpty
     while(true) {
-        switch(state) {
+        switch(s_State) {
             case SelectionAnalysisState.CheckingEmpty:
-                state = ctx.selection.isEmpty ? SelectionAnalysisState.AutoSearchIndent : SelectionAnalysisState.UsingSelection; break
+                s_State = ctx.selection.isEmpty ? SelectionAnalysisState.AutoSearchIndent : SelectionAnalysisState.UsingSelection; break
             case SelectionAnalysisState.AutoSearchIndent: {
                 ctx.activeLine = ctx.selection.active.line
                 ctx.initialIndent = ctx.doc.lineAt(ctx.activeLine).text.match(/^\s*/)?.[0] ?? ''
@@ -239,6 +239,7 @@ function analyzeSelection(ctx: BlockSearchContext): { startLine: number; endLine
             }
             case SelectionAnalysisState.UsingSelection:
                 return { startLine: ctx.selection.start.line, endLine: ctx.selection.end.line }
+            default: fn_Unreachable(s_State as never)
         }
     }
 }
@@ -253,6 +254,10 @@ function scanUp(ctx: BlockSearchContext): number | null {
         line--
     }
     return line
+}
+
+function fn_Unreachable(s_State: never): never {
+    throw new Error(`Unhandled state: ${s_State}`)
 }
 
 /** Scans downward from the active line to find block boundary. */
@@ -331,6 +336,7 @@ function blockSearchFSM(ns: NS): void {
                 s_State = BlockSearchState.Done; break
             case BlockSearchState.Done: ns.result = ok(ns.data.blocks); break main
             case BlockSearchState.Error: break main
+            default: fn_Unreachable(s_State as never)
         }
     }
 }
