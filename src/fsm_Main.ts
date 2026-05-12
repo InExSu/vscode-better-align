@@ -5,10 +5,10 @@
 
 // ── 1. SHARED TYPES ───────────────────────────────────────────
 export type LanguageRules = {
-    lineComments    : string[]
-    blockComments   : { start: string; end: string }[]
+    lineComments: string[]
+    blockComments: { start: string; end: string }[]
     stringDelimiters: string[]
-    alignChars      : string[]
+    alignChars: string[]
 }
 
 export type LineBlock = { startLine: number; lines: string[] }
@@ -82,9 +82,9 @@ export interface SanitizeFlags {
 }
 
 export interface FSMContext {
-    lines: string[]
-    alignChars: string[]
-    preserveStrings: boolean
+    lines           : string[]
+    alignChars      : string[]
+    preserveStrings : boolean
     preserveComments: boolean
 }
 
@@ -365,10 +365,14 @@ export function lines_Align(a_OrigLines: string[], a_Columns: AlignColumn[], a_R
             const token = a_RawMap[i_LineIdx][i_ColIdx]
 
             if(token && token.s_Char === col.s_Char) {
+                // Append raw text up to the token start
                 s_Result += s_Line.slice(i_SrcPos, token.i_Pos)
-                const i_Pad = col.i_MaxPos - s_Result.length
+                // Calculate padding based on current result length (i_SrcPos after slice)
+                const i_Pad = col.i_MaxPos - token.i_Pos
                 if(i_Pad > 0) { s_Result += ' '.repeat(i_Pad) }
+                // Append the alignment character
                 s_Result += token.s_Char
+                // Update source position past the token
                 i_SrcPos = token.i_Pos + token.s_Char.length
             }
         }
@@ -579,10 +583,10 @@ export function positionMap_Apply(parsedLines: ParsedLine[], o_PosMap: Map<strin
 }
 
 export const parseLineIgnoringStrings = line_Parse
-export const findLineBlocks = blocks_Find
-export const alignBlock = block_Align
+export const findLineBlocks           = blocks_Find
+export const alignBlock               = block_Align
 export const buildPairwisePositionMap = positionMap_Build
-export const applyPositionMap = positionMap_Apply
-export const buildPipelineFSM = pipeline_Build
-export const detectLanguageRules = languageRules_Detect
-export const DEFAULT_DEFAULT_CONFIG = DEFAULT_CONFIG
+export const applyPositionMap         = positionMap_Apply
+export const buildPipelineFSM         = pipeline_Build
+export const detectLanguageRules      = languageRules_Detect
+export const DEFAULT_DEFAULT_CONFIG   = DEFAULT_CONFIG
