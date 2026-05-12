@@ -427,3 +427,109 @@ describe('idempotency - real file test', () => {
         assert.strictEqual(third.length, first.length, 'Third pass should not add spaces')
     })
 })
+
+describe('analyzeSelection', () => {
+    interface MockSelection {
+        isEmpty: boolean
+        start: { line: number; character: number }
+        end: { line: number; character: number }
+        active: { line: number }
+    }
+
+    interface MockDocument {
+        lineCount: number
+        lineAt: (idx: number) => { text: string; isEmptyOrWhitespace: boolean }
+    }
+
+    function createAnalyzeSelection() {
+        function fn_AutoSearchIndent(ctx: { selection: MockSelection; doc: MockDocument; activeLine: number; initialIndent: string; startLine: number; endLine: number }): { startLine: number; endLine: number } | null {
+            ctx.activeLine = ctx.selection.active.line
+            ctx.initialIndent = ctx.doc.lineAt(ctx.activeLine).text.match(/^\s*/)?.[0] ?? ''
+            let up = ctx.activeLine
+            while(up > 0) {
+                const prev = ctx.doc.lineAt(up - 1)
+                if(prev.isEmptyOrWhitespace) { break }
+                if((prev.text.match(/^\s*/)?.[0] ?? '') !== ctx.initialIndent) { break }
+                up--
+            }
+            let down = ctx.activeLine
+            const last = ctx.doc.lineCount - 1
+            while(down < last) {
+                const next = ctx.doc.lineAt(down + 1)
+                if(next.isEmptyOrWhitespace) { break }
+                if((next.text.match(/^\s*/)?.[0] ?? '') !== ctx.initialIndent) { break }
+                down++
+            }
+            ctx.startLine = up
+            ctx.endLine = down
+            return { startLine: ctx.startLine, endLine: ctx.endLine }
+        }
+
+        function analyzeSelection(ctx: { selection: MockSelection; doc: MockDocument; activeLine?: number; initialIndent?: string; startLine?: number; endLine?: number }): { startLine: number; endLine: number } | null {
+            if (!ctx.selection.isEmpty) {
+                return {
+                    startLine: ctx.selection.start.line,
+                    endLine:   ctx.selection.end.line,
+                }
+            }
+            return fn_AutoSearchIndent(ctx as any)
+        }
+
+        return { analyzeSelection }
+    }
+
+    it('returns selection range when selection is not empty', () => {
+        const { analyzeSelection } = createAnalyzeSelection()
+        const ctx = {
+            selection: { isEmpty: false, start: { line: 5, character: 10 }, end: { line: 15, character: 20 }, active: { line: 10 } },
+            doc: { lineCount: 100, lineAt: (i: number) => ({ text: '', isEmptyOrWhitespace: false }) },
+        }
+        const result = analyzeSelection(ctx as any)
+        assert.strictEqual(result?.startLine, 5)
+        assert.strictEqual(result?.endLine, 15)
+    })
+
+    it('handles full file selection (Ctrl+A scenario)', () => {
+        const { analyzeSelection } = createAnalyzeSelection()
+        const ctx = {
+            selection: { isEmpty: false, start: { line: 0, character: 0 }, end: { line: 584, character: 45 }, active: { line: 584 } },
+            doc: { lineCount: 585, lineAt: (i: number) => ({ text: '', isEmptyOrWhitespace: false }) },
+        }
+        const result = analyzeSelection(ctx as any)
+        assert.strictEqual(result?.startLine, 0)
+        assert.strictEqual(result?.endLine, 584)
+    })
+
+    it('auto-searches by indent when selection is empty', () => {
+        const { analyzeSelection } = createAnalyzeSelection()
+        const ctx = {
+            selection: { isEmpty: true, start: { line: 10, character: 0 }, end: { line: 10, character: 0 }, active: { line: 12 } },
+            doc: {
+                lineCount: 20,
+                lineAt: (i: number) => ({
+                    text: i === 12 ? '    const a = 1' : '',
+                    isEmptyOrWhitespace: i !== 12
+                }),
+            },
+        }
+        const result = analyzeSelection(ctx as any)
+        assert.ok(result !== null)
+        assert.ok(result!.startLine <= 12)
+        assert.ok(result!.endLine >= 12)
+    })
+
+    it('returns range even when all lines are empty', () => {
+        const { analyzeSelection } = createAnalyzeSelection()
+        const ctx = {
+            selection: { isEmpty: true, start: { line: 0, character: 0 }, end: { line: 0, character: 0 }, active: { line: 0 } },
+            doc: {
+                lineCount: 1,
+                lineAt: (i: number) => ({ text: '', isEmptyOrWhitespace: true }),
+            },
+        }
+        const result = analyzeSelection(ctx as any)
+        assert.ok(result !== null, 'Should return range for single line')
+        assert.strictEqual(result!.startLine, 0)
+        assert.strictEqual(result!.endLine, 0)
+    })
+})

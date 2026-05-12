@@ -5,10 +5,10 @@
 
 // ── 1. SHARED TYPES ───────────────────────────────────────────
 export type LanguageRules = {
-    lineComments: string[]
-    blockComments: { start: string; end: string }[]
+    lineComments    : string[]
+    blockComments   : { start: string; end: string }[]
     stringDelimiters: string[]
-    alignChars: string[]
+    alignChars      : string[]
 }
 
 export type LineBlock = { startLine: number; lines: string[] }
@@ -130,7 +130,7 @@ export type Decorator = (ns: NS) => void
 
 /**
  * Main FSM - a_FSM_Main
- * States: block_Find → lines_Sanitize → chars_Scan → map_Normalize → lines_Align → result_Emit
+ * States                     : block_Find → lines_Sanitize → chars_Scan → map_Normalize → lines_Align → result_Emit
  */
 export function a_FSM_Main(ctx: FSMContext): FSMResult {
     const stateCtx: FSMStateContext = {
@@ -307,23 +307,44 @@ export function map_BuildRaw(a_MaskedLines: string[], a_AlignChars: string[]): A
 }
 
 export function map_Normalize(a_RawMap: AlignToken[][]): AlignColumn[] {
-    if(a_RawMap.length === 0 || a_RawMap[0].length === 0) { return [] }
+    if(a_RawMap.length === 0) { return [] }
+
+    // Use max column count so that lines with more tokens can still be aligned
+    // Lines with fewer tokens simply skip those columns in lines_Align
+    const i_ColCount = Math.max(...a_RawMap.map(a_Row => a_Row.length))
+    if(i_ColCount === 0) { return [] }
 
     const a_Columns: AlignColumn[] = []
-    const i_ColCount = Math.min(...a_RawMap.map(a_Row => a_Row.length))
 
     outer: for(let i_Col = 0; i_Col < i_ColCount; i_Col++) {
-        const s_Char = a_RawMap[0][i_Col].s_Char
-
-        for(let i_Row = 1; i_Row < a_RawMap.length; i_Row++) {
-            if(a_RawMap[i_Row][i_Col].s_Char !== s_Char) {
-                break outer
+        // Find the first row that has a token at this column to determine the expected char
+        let s_Char: string | null = null
+        let i_FirstRow = -1
+        for(let i_Row = 0; i_Row < a_RawMap.length; i_Row++) {
+            if(a_RawMap[i_Row][i_Col]) {
+                s_Char = a_RawMap[i_Row][i_Col].s_Char
+                i_FirstRow = i_Row
+                break
             }
         }
+        // If no row has a token at this column, skip it
+        if(s_Char === null) { continue }
+
+        // Check that all rows that have a token at this column use the same character
+        let b_Mismatch = false
+        for(let i_Row = i_FirstRow + 1; i_Row < a_RawMap.length; i_Row++) {
+            if(a_RawMap[i_Row][i_Col] && a_RawMap[i_Row][i_Col].s_Char !== s_Char) {
+                b_Mismatch = true
+                break
+            }
+        }
+        if(b_Mismatch) { continue }
 
         let i_MaxPos = 0
         for(const a_Row of a_RawMap) {
-            i_MaxPos = Math.max(i_MaxPos, a_Row[i_Col].i_Pos)
+            if(a_Row[i_Col]) {
+                i_MaxPos = Math.max(i_MaxPos, a_Row[i_Col].i_Pos)
+            }
         }
 
         a_Columns.push({ s_Char, i_MaxPos })
@@ -432,7 +453,8 @@ export function pipeline_Build(
         let s_State = PipelineState.Idle
 
         mainLoop: while(true) {
-            s_State = fn_ExecutePipelineState(s_State, ns, fn_ConfigLoad, fn_LanguageDetect, fn_BlockFind, fn_LinesParse, fn_AlignmentApply, fn_TextReplace, fn_Rwd)
+            s_State = fn_ExecutePipelineState(s_State, ns,
+                fn_ConfigLoad, fn_LanguageDetect, fn_BlockFind, fn_LinesParse, fn_AlignmentApply, fn_TextReplace, fn_Rwd)
             if(s_State === PipelineState.Done || s_State === PipelineState.Error) { break }
         }
     }

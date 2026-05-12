@@ -9,9 +9,9 @@ import {
     type LanguageRules,
     type LineBlock,
     type ParsedLine,
-    type Marker    ,
-    type Result    ,
-    type NS        ,
+    type Marker,
+    type Result,
+    type NS,
     type NSData,
     DEFAULT_CONFIG,
     DEFAULT_LANGUAGE_RULES,
@@ -34,7 +34,7 @@ import {
 } from './fsm_Main'
 
 // ── 2. RESULT HELPERS (re-export) ──────────────────────────────
-const ok = <T,>(v: T): Result<T> => ({ ok: true, value: v })
+const ok  = <T,>(v: T): Result<T> => ({ ok: true, value: v })
 const err = <E,>(e: E): Result<never, E> => ({ ok: false, error: e })
 
 // ── 3. CONFIG ──────────────────────────────────────────────────
@@ -55,7 +55,7 @@ function detectLanguageRulesFromEditor(o_Editor: vscode.TextEditor): LanguageRul
 
 // ── 5. LOGGING DECORATORS (no VS Code API) ────────────────────
 const timers = new Map<string, number>()
-const line = (ch: string): string => ch.repeat(50)
+const line   = (ch: string): string => ch.repeat(50)
 
 /** Starts timing for a function and logs the start. */
 function decor_Start(name: string): void {
@@ -109,7 +109,9 @@ function a_Chain(ns: NS): void { pipelineFSM(ns) }
 
 /** Loads VS Code configuration and applies to namespace. */
 function config_Load_Decor(ns: NS): void {
+
     if(ns.config.b_Debug) { ns.data.languageRules = DEFAULT_LANGUAGE_RULES; return }
+
     try {
         const vsConfig = vscode.workspace.getConfiguration('codeAlign')
         const alignChars = vsConfig.get<string[]>('alignChars', ns.config.defaultAlignChars)
@@ -148,6 +150,7 @@ function lines_Parse_Decor(ns: NS): void {
         const o_Rules = ns.data.languageRules
         if(!o_Rules) { ns_SetError(ns, 'No language rules'); return }
         ns.data.parsedLines = ns.data.blocks.map(o_Block => o_Block.lines.map(s_Raw => line_Parse(s_Raw, o_Rules)))
+        vscode.window.showInformationMessage(`[DEBUG] lines_Parse_Decor: Parsed ${ns.data.parsedLines.length} blocks`)
         ns.result = ok(ns.data.parsedLines)
     } catch(e) { ns_SetError(ns, (e as Error).message) }
 }
@@ -163,12 +166,12 @@ function alignment_Apply_Decor(ns: NS): void {
         let totalChanges = 0
         ns.data.alignedLines.forEach((block, i) => {
             block.forEach((line, j) => {
-                if (line !== ns.data.parsedLines[i][j].raw) {
+                if(line !== ns.data.parsedLines[i][j].raw) {
                     totalChanges++
                 }
             })
         })
-        console.log(`[DEBUG] Alignment applied: ${totalChanges} lines changed`)
+        vscode.window.showInformationMessage(`[DEBUG] Alignment applied: ${totalChanges} lines changed`)
         ns.result = ok(ns.data.alignedLines)
     } catch(e) { ns_SetError(ns, (e as Error).message) }
 }
@@ -201,11 +204,7 @@ enum BlockSearchState {
     Error = 'Error',
 }
 
-enum SelectionAnalysisState {
-    CheckingEmpty = 'CheckingEmpty',
-    AutoSearchIndent = 'AutoSearchIndent',
-    UsingSelection = 'UsingSelection',
-}
+
 
 type BlockSearchContext = {
     editor: vscode.TextEditor
@@ -219,36 +218,27 @@ type BlockSearchContext = {
     rawLines: string[]
 }
 
-/**
- * Analyzes the selection to determine the block boundaries.
+/** Analyzes the selection to determine the block boundaries.
  * @param ctx - Block search context
  * @returns Start and end line numbers                                                                                , or null if no valid block
  */
 function analyzeSelection(ctx: BlockSearchContext): { startLine: number; endLine: number } | null {
-    const lastLineIdx = ctx.doc.lineCount - 1
-
-    // Check if selection covers entire file (from line 0 to last line)
-    const isFullSelection = !ctx.selection.isEmpty &&
-        ctx.selection.start.line === 0 &&
-        ctx.selection.start.character === 0 &&
-        ctx.selection.end.line === lastLineIdx
-
-    if(isFullSelection) {
-        return { startLine: 0, endLine: lastLineIdx }
-    }
-
-    let s_State = SelectionAnalysisState.CheckingEmpty
-    while(true) {
-        switch(s_State) {
-            case SelectionAnalysisState.CheckingEmpty:
-                s_State = ctx.selection.isEmpty ? SelectionAnalysisState.AutoSearchIndent : SelectionAnalysisState.UsingSelection; break
-            case SelectionAnalysisState.AutoSearchIndent:
-                return fn_AutoSearchIndent(ctx)
-            case SelectionAnalysisState.UsingSelection:
-                return { startLine: ctx.selection.start.line, endLine: ctx.selection.end.line }
-            default: fn_Unreachable(s_State as never)
+    if(!ctx.selection.isEmpty) {
+        // If the selection covers the entire document, treat it as no selection so
+        // that block detection respects indentation (same behavior as pressing Alt+A
+        // without a selection).
+        const docLineCount = ctx.doc.lineCount;
+        const selStart = ctx.selection.start.line;
+        const selEnd = ctx.selection.end.line;
+        if (selStart === 0 && selEnd === docLineCount - 1) {
+            return fn_AutoSearchIndent(ctx);
         }
+        return {
+            startLine: selStart,
+            endLine: selEnd,
+        };
     }
+    return fn_AutoSearchIndent(ctx);
 }
 
 /** Scans upward from the active line to find block boundary. */
@@ -288,12 +278,9 @@ function scanDown(ctx: BlockSearchContext): number | null {
 }
 
 function fn_GroupBlocks(ns: NS, ctx: BlockSearchContext): void {
-    console.log(`[DEBUG] fn_GroupBlocks: rawLines count=${ctx.rawLines.length}, startLine=${ctx.startLine}`)
     ns.data.blocks = blocks_Find(ctx.rawLines, ctx.startLine, ctx.rules, ns.config.maxBlockSize)
-    console.log(`[DEBUG] fn_GroupBlocks result: ${ns.data.blocks.length} blocks`)
     if(ns.data.blocks.length === 0) {
-        console.log(`[DEBUG] WARNING: No blocks found! Creating fallback block.`)
-        ns.data.blocks = [{ startLine: 0, lines: ctx.rawLines }]
+        ns.data.blocks = [{ startLine: ctx.startLine, lines: ctx.rawLines }]
     }
 }
 
@@ -327,7 +314,9 @@ function blockSearchFSM(ns: NS): void {
             case BlockSearchState.AnalyzingSelection: {
                 const res = analyzeSelection(ctx)
                 if(!res) { s_State = BlockSearchState.Error; break }
-                ctx.startLine = res.startLine; ctx.endLine = res.endLine
+                // Clamp endLine to avoid out-of-range when whole file is selected
+                ctx.startLine = res.startLine;
+                ctx.endLine = Math.min(res.endLine, ctx.doc.lineCount - 1);
                 s_State = BlockSearchState.ExtractingLines; break
             }
             case BlockSearchState.ExtractingLines:
