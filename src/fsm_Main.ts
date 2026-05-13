@@ -37,7 +37,7 @@ export const DEFAULT_CONFIG = {
     skipTemplates: true                    ,
     greedyMatch: true                      ,
     minColumns: 1                          ,
-    maxSpaces: 10                          ,
+    maxSpaces: 40                          ,
     testData: {} as Record<string, unknown>,
 }
 
@@ -321,7 +321,6 @@ export function map_BuildRaw(a_MaskedLines: string[], a_RawLines: string[], a_Al
         return a_Tokens.filter(tok => {
             switch(tok.s_Char) {
                 case ':':
-                    if(fn_IsInsideBraces(s_Raw, tok.i_Pos)) { return false }
                     if(b_InReturnType && fn_IsReturnTypeColon(s_Raw, tok.i_Pos)) {
                         b_InReturnType = false
                         return false
@@ -401,12 +400,11 @@ export function lines_Align(a_OrigLines: string[], a_Columns: AlignColumn[], a_R
 
         for(let i_ColIdx  = 0; i_ColIdx < a_Columns.length; i_ColIdx++) {
             const o_Col   = a_Columns[i_ColIdx]
-            const o_Token = a_RawMap[i_LineIdx][i_ColIdx]
+            const o_Token = a_RawMap[i_LineIdx]?.[i_ColIdx]
 
             if(o_Token && o_Token.s_Char === o_Col.s_Char) {
                 s_Result += s_Line.slice(i_SrcPos, o_Token.i_Pos)
                 const i_Pad = o_Col.i_MaxPos - s_Result.length
-                // Добавляем пробелы только если их количество не превышает maxSpaces
                 if(i_Pad > 0 && i_Pad <= i_MaxSpaces) { s_Result += ' '.repeat(i_Pad) }
                 s_Result += o_Token.s_Char
                 i_SrcPos = o_Token.i_Pos + o_Token.s_Char.length

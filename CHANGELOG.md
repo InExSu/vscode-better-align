@@ -1,3 +1,8 @@
+# v6.16.9 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.16.9)
+
+- fix: Increase maxSpaces from 10 to 40 for better alignment of long keys in object literals
+- fix: Remove overly aggressive filter that blocked all colons inside braces
+
 # v6.16.8 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.16.8)
 
 - refactor: Update fsm_Main.ts
