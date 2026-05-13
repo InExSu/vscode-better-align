@@ -1,3 +1,8 @@
+# v6.16.6 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.16.6)
+
+- fix: Filter out `{` in object literals to prevent misalignment when selecting code with `Alt+A`
+- refactor: Use switch in `map_BuildRaw` for filtering tokens, cleaner than nested ifs
+
 # v6.16.5 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.16.5)
 
 - fix: Filter out `:` in TypeScript function return types to prevent misaligned `:` in return statements

@@ -302,35 +302,56 @@ export function chars_FindGreedy(s_Masked: string, a_AlignChars: string[]): Alig
     return a_Tokens
 }
 
+function fn_IsInsideBraces(raw: string, i_Pos: number): boolean {
+    let i_Depth = 0
+    for(let i = 0; i < i_Pos; i++) {
+        if(raw[i] === '{') { i_Depth++ }
+        if(raw[i] === '}') { i_Depth-- }
+    }
+    return i_Depth > 0
+}
+
+function fn_IsReturnTypeColon(raw: string, i_Pos: number): boolean {
+    let i_Prev = i_Pos - 1
+    while(i_Prev >= 0 && raw[i_Prev] === ' ') { i_Prev-- }
+    const charBefore = i_Prev >= 0 ? raw[i_Prev] : ''
+    if(charBefore !== ')') { return false }
+    const afterColon = raw.slice(i_Pos + 1).trimStart()
+    return afterColon.startsWith('{') || afterColon.startsWith('|') || afterColon.startsWith('=>')
+}
+
 export function map_BuildRaw(a_MaskedLines: string[], a_RawLines: string[], a_AlignChars: string[]): AlignToken[][] {
     return a_MaskedLines.map((s_Masked, i_Line) => {
         const raw = a_RawLines[i_Line]
-        const isFunctionDecl = raw.trimStart().startsWith('function ')
         const tokens = chars_FindGreedy(s_Masked, a_AlignChars)
 
-        if(!isFunctionDecl) { return tokens }
+        const isFunctionDecl = raw.trimStart().startsWith('function ')
+        let b_InReturnType = isFunctionDecl
 
-        let i_ReturnTypeEndPos = -1
         return tokens.filter(tok => {
-            if(tok.s_Char !== ':') { return true }
-            if(i_ReturnTypeEndPos > 0 && tok.i_Pos < i_ReturnTypeEndPos) {
-                return false
+            switch(tok.s_Char) {
+                case ':':
+                    if(fn_IsInsideBraces(raw, tok.i_Pos)) { return false }
+                    if(b_InReturnType && fn_IsReturnTypeColon(raw, tok.i_Pos)) {
+                        b_InReturnType = false
+                        return false
+                    }
+                    return true
+                case '{':
+                    if(tok.i_Pos > 0) {
+                        let i_Prev = tok.i_Pos - 1
+                        while(i_Prev >= 0 && raw[i_Prev] === ' ') { i_Prev-- }
+                        if(i_Prev >= 0 && raw[i_Prev] !== ')' && raw[i_Prev] !== ';') {
+                            b_InReturnType = false
+                        }
+                        if(i_Prev >= 0 && (raw[i_Prev] === '=' || /[a-zA-Z0-9]/.test(raw[i_Prev]))) {
+                            return false
+                        }
+                    }
+                    return true
+                default:
+                    return true
             }
-            if(i_ReturnTypeEndPos < 0) {
-                let i_Prev = tok.i_Pos - 1
-                while(i_Prev >= 0 && raw[i_Prev] === ' ') { i_Prev-- }
-                const charBefore = i_Prev >= 0 ? raw[i_Prev] : ''
-                const afterColon = raw.slice(tok.i_Pos + 1).trimStart()
-                const startsWithType = afterColon.startsWith('{') || afterColon.startsWith('|') || afterColon.startsWith('=>')
-                if(charBefore === ')' && startsWithType) {
-                    i_ReturnTypeEndPos = raw.indexOf('{', tok.i_Pos + 1)
-                    if(i_ReturnTypeEndPos === -1) { i_ReturnTypeEndPos = raw.length }
-                    const secondBrace = raw.indexOf('{', i_ReturnTypeEndPos + 1)
-                    if(secondBrace > i_ReturnTypeEndPos) { i_ReturnTypeEndPos = secondBrace }
-                    return false
-                }
-            }
-            return true
         })
     })
 }

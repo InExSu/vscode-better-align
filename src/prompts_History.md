@@ -194,3 +194,27 @@ function fn_AutoSearchIndent(ctx: BlockSearchContext):   { startLine: number; en
 }
 Вижу, что : уехало слишком в право. А ведь у соседних строк нет символа :.
 Создай простой тест для этого случая. Исправь код. Собери новую версию, установи, запушь коммит.
+
+2026-05-13 09-19-40
+6.16.5
+  function fn_AutoSearchIndent() {
+    let z = 1
+    let pq = { start: 0, end: 0 }
+    return { startLine: 0, endLine: 0 }
+  }
+  если ничего не выделять, курсор внутри кода, вызвал расширение alt+a - код выравнивается правильно:
+    function fn_AutoSearchIndent() {
+    let z  = 1
+    let pq = { start: 0, end: 0 }
+    return { startLine: 0, endLine: 0 }
+  }
+  Убираю выравнивание, выделяю код, вызваю расширение alt+a - код выравнивается НЕ правильно.
+    function fn_AutoSearchIndent() {
+    let z  = 1
+    let pq = { start: 0, end: 0 }
+    return                       { startLine: 0, endLine: 0 }
+  } 
+В строке с return нужно выравнивать по строке которая выше, а не по той которая высоко.
+Почему выравание без выделения правильное, а с выделением НЕ правильное.
+Нужно сделать чтобы они использовали один алгоритм.
+Вместо вложенных if, используй switch машины Шалыто и SRP.
