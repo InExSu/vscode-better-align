@@ -367,8 +367,9 @@ export function lines_Align(a_OrigLines: string[], a_Columns: AlignColumn[], a_R
             if(token && token.s_Char === col.s_Char) {
                 // Append raw text up to the token start
                 s_Result += s_Line.slice(i_SrcPos, token.i_Pos)
-                // Calculate padding based on current result length (i_SrcPos after slice)
-                const i_Pad = col.i_MaxPos - token.i_Pos
+                // Calculate padding from current result length to max position
+                const i_CurrentPos = s_Result.length
+                const i_Pad = col.i_MaxPos - i_CurrentPos
                 if(i_Pad > 0) { s_Result += ' '.repeat(i_Pad) }
                 // Append the alignment character
                 s_Result += token.s_Char

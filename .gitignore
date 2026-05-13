@@ -1,6 +1,7 @@
-out
-dist
-node_modules
+.env
 .vscode-test/
 *.vsix
+dist
+node_modules
+out
 qwen_free_cli/credentials.json
