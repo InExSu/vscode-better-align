@@ -1,3 +1,7 @@
+# v6.16.5 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.16.5)
+
+- fix: Filter out `:` in TypeScript function return types to prevent misaligned `:` in return statements
+
 # v6.16.4 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.16.4)
 
 - fix: Remove `"type": "module"` from package.json to fix `ReferenceError: require is not defined` — Alt+A now works

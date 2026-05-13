@@ -165,3 +165,32 @@ command 'vscode-better-align-columns.align' not found
 2026-05-13 08-23-25
 Создай файл files_2_ClipBoard.sh - он должен по списку файлов (внутри скрипта) копировать их пути и содержимое в буфер обмена.
 Список файлов: src/extension.ts, src/fsm_Main.ts
+
+2026-05-13 08-44-14
+ок, версия 6.16.4 в основном хорошо выравнивает.
+На таком участке кода
+function fn_AutoSearchIndent(ctx: BlockSearchContext): { startLine: number; endLine: number } | null {
+    ctx.activeLine = ctx.selection.active.line
+    ctx.initialIndent = ctx.doc.lineAt(ctx.activeLine).text.match(/^\s*/)?.[0] ?? ''
+    const up = scanUp(ctx); if(up === null) { return null } ctx.startLine = up
+    const down = scanDown(ctx); if(down === null) { return null } ctx.endLine = down
+    return { startLine: ctx.startLine, endLine: ctx.endLine }
+}
+1 - ничего не выделено, курсор внутри этого кода, вызываю расширение alt+a, код выравнивается.
+function fn_AutoSearchIndent(ctx: BlockSearchContext): { startLine: number; endLine: number } | null {
+    ctx.activeLine    = ctx.selection.active.line
+    ctx.initialIndent = ctx.doc.lineAt(ctx.activeLine).text.match(/^\s*/)?.[0] ?? ''
+    const up          = scanUp(ctx); if(up === null) { return null } ctx.startLine = up
+    const down        = scanDown(ctx); if(down === null) { return null } ctx.endLine = down
+    return { startLine: ctx.startLine, endLine: ctx.endLine }
+} я считаю, что он выравнялся как мне нужно.
+Выделяю весь код, вызываю расширение alt+a, код выравнивается частично хорошо, кроме строки с return.
+function fn_AutoSearchIndent(ctx: BlockSearchContext):   { startLine: number; endLine: number } | null {
+    ctx.activeLine    = ctx.selection.active.line
+    ctx.initialIndent = ctx.doc.lineAt(ctx.activeLine).text.match(/^\s*/)?.[0] ?? ''
+    const up          = scanUp(ctx); if(up     === null) { return null } ctx.startLine = up
+    const down        = scanDown(ctx); if(down === null) { return null } ctx.endLine = down
+    return { startLine                               : ctx.startLine, endLine: ctx.endLine }
+}
+Вижу, что : уехало слишком в право. А ведь у соседних строк нет символа :.
+Создай простой тест для этого случая. Исправь код. Собери новую версию, установи, запушь коммит.
