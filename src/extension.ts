@@ -231,7 +231,7 @@ function analyzeSelection(ctx: BlockSearchContext): { startLine: number; endLine
         const selStart = ctx.selection.start.line
         const selEnd = ctx.selection.end.line
         if(selStart === 0 && selEnd === docLineCount - 1) {
-            return fn_AutoSearchIndent(ctx)
+            return { startLine: 0, endLine: docLineCount - 1 }
         }
         return {
             startLine: selStart,

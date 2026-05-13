@@ -1,3 +1,7 @@
+# v6.16.3 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.16.3)
+
+- fix: Cmd+A (full file selection) now passes whole document to block finder instead of cursor-indent-based subset
+
 # v6.16.2 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.16.2)
 
 - fix: `map_Normalize` no longer skips columns with mixed alignment characters — picks dominant char instead, fixes `=` alignment when `{` is in same block
