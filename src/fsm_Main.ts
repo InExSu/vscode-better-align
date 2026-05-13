@@ -316,38 +316,39 @@ export function map_Normalize(a_RawMap: AlignToken[][]): AlignColumn[] {
 
     const a_Columns: AlignColumn[] = []
 
-    outer: for(let i_Col = 0; i_Col < i_ColCount; i_Col++) {
-        // Find the first row that has a token at this column to determine the expected char
-        let s_Char: string | null = null
-        let i_FirstRow = -1
-        for(let i_Row = 0; i_Row < a_RawMap.length; i_Row++) {
-            if(a_RawMap[i_Row][i_Col]) {
-                s_Char = a_RawMap[i_Row][i_Col].s_Char
-                i_FirstRow = i_Row
-                break
-            }
-        }
-        // If no row has a token at this column, skip it
-        if(s_Char === null) { continue }
-
-        // Check that all rows that have a token at this column use the same character
-        let b_Mismatch = false
-        for(let i_Row = i_FirstRow + 1; i_Row < a_RawMap.length; i_Row++) {
-            if(a_RawMap[i_Row][i_Col] && a_RawMap[i_Row][i_Col].s_Char !== s_Char) {
-                b_Mismatch = true
-                break
-            }
-        }
-        if(b_Mismatch) { continue }
-
-        let i_MaxPos = 0
+    for(let i_Col = 0; i_Col < i_ColCount; i_Col++) {
+        // Count occurrences of each character at this column
+        const charCount = new Map<string, number>()
         for(const a_Row of a_RawMap) {
             if(a_Row[i_Col]) {
+                const s_Char = a_Row[i_Col].s_Char
+                charCount.set(s_Char, (charCount.get(s_Char) ?? 0) + 1)
+            }
+        }
+        if(charCount.size === 0) { continue }
+
+        // Find the most common character
+        let s_DominantChar = ''
+        let i_MaxCount = 0
+        for(const [s_Char, count] of charCount) {
+            if(count > i_MaxCount) {
+                i_MaxCount = count
+                s_DominantChar = s_Char
+            }
+        }
+
+        // Only align if at least 2 rows share this character
+        if(i_MaxCount < 2) { continue }
+
+        // Find max position among rows with the dominant character
+        let i_MaxPos = 0
+        for(const a_Row of a_RawMap) {
+            if(a_Row[i_Col] && a_Row[i_Col].s_Char === s_DominantChar) {
                 i_MaxPos = Math.max(i_MaxPos, a_Row[i_Col].i_Pos)
             }
         }
 
-        a_Columns.push({ s_Char, i_MaxPos })
+        a_Columns.push({ s_Char: s_DominantChar, i_MaxPos })
     }
 
     return a_Columns

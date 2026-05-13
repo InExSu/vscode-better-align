@@ -22,8 +22,8 @@
 			"type": "extensionHost",
 			"request": "launch",
 			"args": [
-				"${workspaceFolder}/src/test/data",
-				"${workspaceFolder}/src/test/data/testcase.txt",
+				,
+				,
 				"--extensionDevelopmentPath=${workspaceFolder}",
 				"--extensionTestsPath=${workspaceFolder}/out/test/suite/index"
 			],
@@ -42,7 +42,7 @@
 				"ts-mocha",
 				"-p",
 				"tsconfig.json",
-				"src/test/test.align.test.ts",
+				"test/align.test.ts",
 				"--timeout",
 				"30000",
 				"--inspect-brk"
@@ -64,7 +64,7 @@
 			"args": [
 				"-p",
 				"tsconfig.json",
-				"src/test/test.align.test.ts",
+				"test/align.test.ts",
 				"--timeout",
 				"30000"
 			],

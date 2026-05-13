@@ -1,3 +1,9 @@
+# v6.16.2 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.16.2)
+
+- fix: `map_Normalize` no longer skips columns with mixed alignment characters — picks dominant char instead, fixes `=` alignment when `{` is in same block
+- test: Simplified test suite to single integration test with blank-line preservation
+- chore: Moved tests from `src/test/` to `test/`
+
 # v6.15.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.15.0)
 
 - fix: Full file selection (Cmd+A) now properly aligns code by using standard block splitting

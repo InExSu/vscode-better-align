@@ -4,4 +4,7 @@
 dist
 node_modules
 out
+server.log
 qwen_free_cli/credentials.json
+.kilo/
+test/code_Aligned.ts

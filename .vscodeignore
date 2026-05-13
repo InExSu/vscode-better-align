@@ -6,8 +6,10 @@ src/**
 .gitignore
 .github/**
 .yarnrc
-webpack.config.js
-webpack.web.config.js
+.env
+.venv/**
+webpack.config.cjs
+webpack.web.config.cjs
 vsc-extension-quickstart.md
 **/tsconfig.json
 **/.eslintrc.json

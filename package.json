@@ -3,7 +3,7 @@
   "type": "module",
   "displayName": "Better Align Columns",
   "description": "Better vertical alignment with/without selection in any language for any characters or words.",
-  "version": "6.16.1",
+  "version": "6.16.2",
   "publisher": "inexsu",
   "license": "SEE LICENSE IN LICENSE",
   "author": {
@@ -159,13 +159,13 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
-    "compile": "webpack && npm run compile-web",
-    "watch": "webpack --watch",
-    "compile-web": "webpack --config webpack.web.config.js",
-    "package": "webpack --mode production --devtool hidden-source-map && npm run compile-web",
+    "compile": "webpack --config webpack.config.cjs && npm run compile-web",
+    "watch": "webpack --config webpack.config.cjs --watch",
+    "compile-web": "webpack --config webpack.web.config.cjs",
+    "package": "webpack --config webpack.config.cjs --mode production --devtool hidden-source-map && npm run compile-web",
     "pretest": "tsc -p ./ && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "ts-mocha -p tsconfig.json \"src/test/**/*.test.ts\""
+    "test": "ts-mocha -p tsconfig.test.json \"test/**/*.test.ts\""
   },
   "devDependencies": {
     "@mermaid-js/mermaid-cli": "^11.14.0",

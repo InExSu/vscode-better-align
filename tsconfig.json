@@ -9,13 +9,12 @@
 		"strictPropertyInitialization": false,
 		"sourceMap": true,
 			"strict": true,
-			"rootDir": "src",
+			"rootDir": ".",
 			"outDir": "out"
 	},
 	"include": [
-		"src/**/*.ts"
+		"src/**/*.ts",
+		"test/**/*.ts"
 	],
-	"exclude": [
-		"src/test"
-	]
+	"exclude": []
 }

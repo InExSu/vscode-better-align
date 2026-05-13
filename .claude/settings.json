@@ -1,28 +1,32 @@
 {
   "permissions": {
     "allow": [
-      "Write(./*.vsix)"                                                                  ,
-      "Read(./*.vsix)"                                                                   ,
-      "Write(out/**)"                                                                    ,
-      "Read(out/**)"                                                                     ,
-      "Bash(npm test *)"                                                                 ,
-      "Bash(npm run *)"                                                                  ,
-      "Bash(npx vsce *)"                                                                 ,
-      "Bash(code *)"                                                                     ,
-      "Read(/Users/michaelpopov/Documents/GitHub/_Different/vscode-better-align/src/**)" ,
-      "Edit(/Users/michaelpopov/Documents/GitHub/_Different/vscode-better-align/src/**)" ,
+      "Bash(code *)",
+      "Bash(grep *)",
+      "Bash(npm run *)",
+      "Bash(npm test *)",
+      "Bash(npx vsce *)",
+      "Edit(/Users/michaelpopov/Documents/GitHub/_Different/vscode-better-align/src/**)",
+      "Read(./*.vsix)",
+      "Read(/Users/michaelpopov/Documents/GitHub/_Different/vscode-better-align/src/**)",
+      "Read(out/**)",
+      "Write(./*.vsix)",
       "Write(/Users/michaelpopov/Documents/GitHub/_Different/vscode-better-align/src/**)",
-      "Write(/Users/michaelpopov/Documents/GitHub/_Different/vscode-better-align/src/test/**)"
+      "Write(out/**)"
     ]
   },
   "hooks": {
     "PostToolUse": [
       {
         "matcher": "src/**/*.{ts,js}",
-        "hooks": [{"type": "command", "command": "npm run lint && npm run test"}]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npm run lint && npm run test"
+          }
+        ]
       }
     ]
   },
-  // "model": "sonnet"
   "model": "kimi-k2.6"
 }
