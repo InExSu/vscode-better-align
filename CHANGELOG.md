@@ -1,3 +1,7 @@
+# v6.16.8 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.16.8)
+
+- refactor: Update fsm_Main.ts
+
 # v6.16.7 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.16.7)
 
 - refactor: Code refactoring in extension.ts and fsm_Main.ts
