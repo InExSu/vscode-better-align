@@ -6,12 +6,14 @@ src/**
 .gitignore
 .github/**
 .yarnrc
-.env
 .venv/**
-webpack.config.cjs
-webpack.web.config.cjs
+.kilo/**
+server.log
+webpack.config.js
+webpack.web.config.js
 vsc-extension-quickstart.md
 **/tsconfig.json
 **/.eslintrc.json
 **/*.map
 **/*.ts
+.env

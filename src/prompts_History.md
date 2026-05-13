@@ -72,4 +72,96 @@ AI Prompt_This.md
 
 - Не меняй `code_4_Test.ts`
 
-2026-05-12 19-09-16
+2026-05-13 07-13-30
+Удали src/test и упоминания о нём в проекте.
+В test оставь один тест
+describe('Align code_4_Test.ts', () => {
+    it('should align code_4_Test.ts and save to code_Aligned.ts', () => {
+        const sourcePath = path.resolve(__dirname, 'code_4_Test.ts');
+        const sourceCode = fs.readFileSync(sourcePath, 'utf-8');
+        const lines = sourceCode.split('\n');
+
+        const rules = languageRules_Detect('typescript', DEFAULT_CONFIG.defaultAlignChars);
+        const blocks = blocks_Find(lines, 0, rules, DEFAULT_CONFIG.maxBlockSize);
+
+        const alignedBlocks: string[][] = [];
+        for (const block of blocks) {
+            const parsedLines = block.lines.map(s_Raw => line_Parse(s_Raw, rules));
+            const alignedLines = block_Align(parsedLines, DEFAULT_CONFIG.maxSpaces);
+            alignedBlocks.push(alignedLines);
+        }
+
+        const alignedLines: string[] = [];
+        for (const block of alignedBlocks) {
+            alignedLines.push(...block);
+        }
+
+        const outputPath = path.resolve(__dirname, 'code_Aligned.ts');
+        fs.writeFileSync(outputPath, alignedLines.join('\n'), 'utf-8');
+
+        const originalContent = fs.readFileSync(sourcePath, 'utf-8');
+        const alignedContent = fs.readFileSync(outputPath, 'utf-8');
+
+        const filesDiffer = originalContent !== alignedContent;
+        console.log(`Files differ: ${filesDiffer}`);
+        if (!filesDiffer) {
+            console.log('Original:');
+            console.log(originalContent);
+            console.log('Aligned:');
+            console.log(alignedContent);
+        }
+        assert.ok(filesDiffer, 'code_Aligned.ts must differ from code_4_Test.ts - alignment did not work');
+    });
+});
+
+2026-05-13 07-27-05
+В файл test/code_4_Test.ts Добавь код, содержащий признаки выравнивания из этого списка
+    defaultAlignChars: ['===', '!==', '<=>', '=>', '->', '==', '!=', '>=', '<=', '+=', '-=', '*=', '/=', '%=', '**=', ':', '{', '=', ','],
+Этот файл используется в test/align.test.ts
+
+2026-05-13 07-40-14
+test/align.test.ts показал что код расширения не выравнивает по символу =.
+Создай тест для этого случая и исправь логику работы.
+
+2026-05-13 07-47-22
+Нельзя изменять файл test/code_4_Test.ts - его редактирую только я.
+test/align.test.ts нужно переделать describe('Align code_4_Test.ts', () => { он должен лишь проверять что файлы test/code_4_Test.ts и test/code_Aligned.ts разные.
+
+2026-05-13 07-49-41
+Где-то проблемы с выравниванием. 
+test/align.test.ts describe('Align code_4_Test.ts', () => { 
+    показывает, что в test/code_Aligned.ts 8 стоок, а в test/code_4_Test.ts 9 строк.
+src/extension.ts не должен удалять строки.
+Встрой в describe('Align code_4_Test.ts', () => { проверку на одинаковое колво строк с test/code_4_Test.ts    
+
+2026-05-13 07-56-23
+ок, строки теперь не удаляются.
+Проверил поведение расширения в редакторе кода на таком коде:
+{
+  let x = 1
+  let longName = 2
+  let veryLong = 3
+
+  if(x === 1) { }
+  if(longName === 2) { }
+  if(x === 1) { }
+}
+
+1 - ничего не выделено, курсор внутри кода, вызываю расширение через alt+a - код выравнивается по столбцам.
+2 - Убираю выравнивание в коде, выделяю участок кода:
+  let x = 1
+  let longName = 2
+  let veryLong = 3
+вызываю расширение через alt+a - код выравнивается по столбцам.
+3 - Убираю выравнивание в коде, выделяю весь код cmd+a. 
+вызываю расширение через alt+a - код НЕ выравнивается по столбцам.
+
+Создай план действий по улучшению логики работы расширения и сохрани в файл src/extension_Plan.md
+
+2026-05-13 08-07-35
+В редакторе кода вызываю расширение через alt+a получаю 
+command 'vscode-better-align-columns.align' not found
+
+2026-05-13 08-23-25
+Создай файл files_2_ClipBoard.sh - он должен по списку файлов (внутри скрипта) копировать их пути и содержимое в буфер обмена.
+Список файлов: src/extension.ts, src/fsm_Main.ts
