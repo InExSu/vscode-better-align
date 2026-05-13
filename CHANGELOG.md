@@ -1,3 +1,8 @@
+# v6.16.4 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.16.4)
+
+- fix: Remove `"type": "module"` from package.json to fix `ReferenceError: require is not defined` — Alt+A now works
+- chore: Rename webpack configs `.cjs` → `.js`, update ignore/scripts
+
 # v6.16.3 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.16.3)
 
 - fix: Cmd+A (full file selection) now passes whole document to block finder instead of cursor-indent-based subset
