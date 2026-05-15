@@ -9,7 +9,7 @@
 export type Pattern = string
 
 export type PatternMatch = {
-    pos: number
+    pos    : number
     pattern: string
 }
 
@@ -19,19 +19,19 @@ export type SepMatch = {
 }
 
 export type Segment = {
-    key: string
-    val: string
-    sep: string
+    key  : string
+    val  : string
+    sep  : string
     after: string
 }
 
 export type LineSegment = {
-    key: string
+    key   : string
     anchor: string
-    val: string
-    sep: string
-    after: string
-    tail: string
+    val   : string
+    sep   : string
+    after : string
+    tail  : string
 }
 
 export type Widths = {
@@ -41,21 +41,21 @@ export type Widths = {
 
 export type LineDecomposed = {
     indent: string
-    body: string
+    body  : string
 }
 
 export type DepthState = {
-    braceDepth: number
-    parenDepth: number
+    braceDepth  : number
+    parenDepth  : number
     bracketDepth: number
-    angleDepth: number
+    angleDepth  : number
 }
 
 export type LanguageRules = {
     lineComments: string[]
     blockComments: { start: string; end: string }[]
     stringDelimiters: string[]
-    alignChars: string[]
+    alignChars      : string[]
 }
 
 // ── 2. CONFIG ─────────────────────────────────────────────────
@@ -63,39 +63,39 @@ export type LanguageRules = {
 export const DEFAULT_CONFIG = {
 
     defaultAlignChars: [
-        '===',
-        '!==',
-        '<=>',
-        '=>',
-        '->',
-        '==',
-        '!=',
-        '>=',
-        '<=',
-        '+=',
-        '-=',
-        '*=',
-        '/=',
-        '%=',
-        '**=',
-        ':',
-        '=',
-        ',',
-    ],
+        '===', 
+        '!==', 
+        '<=>', 
+        '=>' , 
+        '->' , 
+        '==' , 
+        '!=' , 
+        '>=' , 
+        '<=' , 
+        '+=' , 
+        '-=' , 
+        '*=' , 
+        '/=' , 
+        '%=' , 
+        '**=', 
+        ':'  , 
+        '='  , 
+        ','  , 
+    ]    , 
 
     defaultSeps: [
-        '; ',
-        ', ',
-    ],
+        '; ', 
+        ', ', 
+    ]   , 
 }
 
 // ── 3. LANGUAGE RULES ─────────────────────────────────────────
 
 export const DEFAULT_LANGUAGE_RULES: LanguageRules = {
-    lineComments: ['//'],
-    blockComments: [{ start: '/*', end: '*/' }],
-    stringDelimiters: ['"', "'", '`'],
-    alignChars: DEFAULT_CONFIG.defaultAlignChars,
+    lineComments    : ['//']                          , 
+    blockComments   : [{ start: '/*'                  , end: '*/' }], 
+    stringDelimiters: ['"'                            , "'", '`'], 
+    alignChars      : DEFAULT_CONFIG.defaultAlignChars, 
 }
 
 export function languageRules_Detect(
@@ -120,16 +120,16 @@ export function line_Decompose(
     while(
         i < line.length &&
         (
-            line[i] === ' ' ||
-            line[i] === '\t'
+            line[i]=== ' ' ||
+            line[i]=== '\t'  
         )
     ) {
         i++
     }
 
     return {
-        indent: line.slice(0, i),
-        body: line.slice(i),
+        indent: line.slice(0 , i), 
+        body  : line.slice(i), 
     }
 }
 
@@ -138,10 +138,10 @@ export function line_Decompose(
 function depth_Create(): DepthState {
 
     return {
-        braceDepth: 0,
-        parenDepth: 0,
-        bracketDepth: 0,
-        angleDepth: 0,
+        braceDepth  : 0, 
+        parenDepth  : 0, 
+        bracketDepth: 0, 
+        angleDepth  : 0, 
     }
 }
 
@@ -150,9 +150,9 @@ function depth_IsTopLevel(
 ): boolean {
 
     return (
-        d.parenDepth === 0 &&
-        d.bracketDepth === 0 &&
-        d.angleDepth === 0
+        d.parenDepth  === 0 &&
+        d.bracketDepth=== 0 &&
+        d.angleDepth  === 0   
     )
 }
 
@@ -220,24 +220,23 @@ function mask_StringsAndComments(
         if(inString !== null) {
 
             if(ch === '\\') {
-                result += '\0\0'
-                i += 2
+                result+= '\0\0'
+                i     += 2     
                 continue
             }
 
             result += '\0'
 
-            if(ch === inString)
-                {inString = null}
+            if(ch === inString) { inString = null }
 
             i++
             continue
         }
 
         if(
-            ch === '"' ||
-            ch === '\'' ||
-            ch === '`'
+            ch=== '"' || 
+            ch=== '\'' ||
+            ch=== '`'    
         ) {
             inString = ch
             result += '\0'
@@ -264,23 +263,23 @@ function mask_StringsAndComments(
 // ── 7. PATTERN MATCHING ───────────────────────────────────────
 
 function pattern_MatchAt(
-    line: string,
-    pos: number,
+    line: string, 
+    pos : number, 
     patterns: Pattern[]
 ): string | null {
 
     for(const p of patterns) {
 
-        if(line.startsWith(p, pos))
-            {return p}
+        if(line.startsWith(p, pos)) { return p }
     }
 
     return null
 }
 
 export function patterns_Find(
-    line: string,
-    patterns: Pattern[]
+    line        : string,
+    patterns    : Pattern[],
+    initialDepth?: DepthState
 ): PatternMatch[] {
 
     const masked = mask_StringsAndComments(line)
@@ -288,9 +287,13 @@ export function patterns_Find(
     const sorted = [...patterns]
         .sort((a, b) => b.length - a.length)
 
-    const result: PatternMatch[] = []
+    const depth = initialDepth || depth_Create()
 
-    const depth = depth_Create()
+    if(line.includes('_langId')) {
+        console.log('patterns_Find line:', line, 'masked:', masked, 'depth_parenDepth:', depth.parenDepth)
+    }
+
+    const result: PatternMatch[] = []
 
     let i = 0
 
@@ -298,18 +301,18 @@ export function patterns_Find(
 
         const matched =
             pattern_MatchAt(
-                masked,
-                i,
+                masked, 
+                i     , 
                 sorted
             )
 
-        if(
-            matched !== null &&
-            depth_IsTopLevel(depth)
-        ) {
+        if(matched !== null) {
+
+            const isInsideParens = depth.parenDepth > 0
 
             if(
                 matched === ':' &&
+                !isInsideParens &&
                 i > 0 &&
                 masked[i - 1] === ')'
             ) {
@@ -318,13 +321,18 @@ export function patterns_Find(
                 continue
             }
 
+            if(!depth_IsTopLevel(depth) && !isInsideParens) {
+                depth_Advance(depth, masked[i])
+                i++
+                continue
+            }
+
             result.push({
-                pos: i,
-                pattern: matched,
+                pos    : i      , 
+                pattern: matched, 
             })
 
-            for(const ch of matched)
-                {depth_Advance(depth, ch)}
+            for(const ch of matched) { depth_Advance(depth, ch) }
 
             i += matched.length
             continue
@@ -350,8 +358,8 @@ export function patterns_ToKey(
 // ── 8. SEPARATORS ─────────────────────────────────────────────
 
 function sep_Find(
-    s: string,
-    from: number,
+    s   : string, 
+    from: number, 
     seps: string[]
 ): SepMatch | null {
 
@@ -370,8 +378,8 @@ function sep_Find(
         ) {
 
             best = {
-                sep,
-                idx,
+                sep, 
+                idx, 
             }
         }
     }
@@ -382,9 +390,9 @@ function sep_Find(
 // ── 9. SEGMENT PARSING ────────────────────────────────────────
 
 function segment_Parse(
-    line: string,
-    from: number,
-    to: number,
+    line: string, 
+    from: number, 
+    to  : number, 
     seps: string[]
 ): Segment {
 
@@ -399,10 +407,10 @@ function segment_Parse(
     if(found === null) {
 
         return {
-            key: '',
-            val: raw,
-            sep: '',
-            after: '',
+            key  : '' , 
+            val  : raw, 
+            sep  : '' , 
+            after: '' , 
         }
     }
 
@@ -425,9 +433,9 @@ function segment_Parse(
 }
 
 function segments_OfLine(
-    line: string,
-    pats: PatternMatch[],
-    count: number,
+    line : string        , 
+    pats : PatternMatch[], 
+    count: number        , 
     seps: string[]
 ): LineSegment[] {
 
@@ -457,21 +465,21 @@ function segments_OfLine(
 
         const seg =
             segment_Parse(
-                line,
-                endPrev,
-                nextPos,
+                line   , 
+                endPrev, 
+                nextPos, 
                 seps
             )
 
         endPrev = nextPos
 
         result.push({
-            key,
-            anchor,
-            val: seg.val,
-            sep: seg.sep,
-            after: seg.after,
-            tail: '',
+            key   , 
+            anchor, 
+            val  : seg.val  , 
+            sep  : seg.sep  , 
+            after: seg.after, 
+            tail : ''       , 
         })
     }
 
@@ -487,9 +495,9 @@ function segments_OfLine(
 // ── 10. WIDTHS ────────────────────────────────────────────────
 
 function widths_Measure(
-    lines: LineDecomposed[],
-    patterns_PerLine: PatternMatch[][],
-    count: number,
+    lines           : LineDecomposed[], 
+    patterns_PerLine: PatternMatch[][], 
+    count           : number          , 
     seps: string[]
 ): Widths {
 
@@ -503,9 +511,9 @@ function widths_Measure(
 
         const segs =
             segments_OfLine(
-                lines[r].body,
-                patterns_PerLine[r],
-                count,
+                lines[r].body      , 
+                patterns_PerLine[r], 
+                count              , 
                 seps
             )
 
@@ -526,17 +534,17 @@ function widths_Measure(
     }
 
     return {
-        widths_Key,
-        widths_Val,
+        widths_Key, 
+        widths_Val, 
     }
 }
 
 // ── 11. RENDER ────────────────────────────────────────────────
 
 function segment_Render(
-    seg: LineSegment,
-    width_Key: number,
-    width_Val: number,
+    seg      : LineSegment, 
+    width_Key: number     , 
+    width_Val: number     , 
     is_Last: boolean
 ): string {
 
@@ -555,28 +563,28 @@ function segment_Render(
 }
 
 function line_Render(
-    line: string,
-    pats: PatternMatch[],
-    count: number,
-    widths_Key: number[],
-    widths_Val: number[],
+    line      : string        , 
+    pats      : PatternMatch[], 
+    count     : number        , 
+    widths_Key: number[]      , 
+    widths_Val: number[]      , 
     seps: string[]
 ): string {
 
     const segs =
         segments_OfLine(
-            line,
-            pats,
-            count,
+            line , 
+            pats , 
+            count, 
             seps
         )
 
     return segs
         .map((seg, j) =>
             segment_Render(
-                seg,
-                widths_Key[j],
-                widths_Val[j],
+                seg          , 
+                widths_Key[j], 
+                widths_Val[j], 
                 j === count - 1
             )
         )
@@ -586,83 +594,139 @@ function line_Render(
 // ── 12. BLOCK PROCESSING ──────────────────────────────────────
 
 function block_Process(
-    indices: number[],
-    lines_All: string[],
-    patterns: Pattern[],
+    indices  : number[] , 
+    lines_All: string[] , 
+    patterns : Pattern[], 
     seps: string[]
 ): string[] {
 
     const lines =
         indices.map(i => lines_All[i])
 
-    if(indices.length === 1)
-        {return lines}
+    if(indices.length === 1) { return lines }
 
     const decomposed =
         lines.map(line_Decompose)
 
+    let depth = depth_Create()
+
+    if(lines[0].includes('languageRules')) {
+        console.log('decomposed:', decomposed.map(d => d.body))
+    }
+
     const patterns_PerLine =
-        decomposed.map(
-            d => patterns_Find(d.body, patterns)
-        )
+        decomposed.map(d => {
+            const pats = patterns_Find(d.body, patterns, depth)
 
-    const count =
-        patterns_PerLine[0].length
+            if(d.body.includes('_langId')) {
+                console.log('_langId pats:', pats.map(p => p.pattern))
+            }
 
-    if(count === 0)
-        {return lines}
+            for(let i = 0; i < d.body.length; i++) {
+                depth_Advance(depth, d.body[i])
+            }
+
+            return pats
+        })
+
+    const hasPats = patterns_PerLine.some(p => p.length > 0)
+    if(!hasPats) { return lines }
+
+    const linesWithPats: number[] = []
+    const patsWithPats: PatternMatch[][] = []
+
+    patterns_PerLine.forEach((pats, i) => {
+        if(pats.length > 0) {
+            linesWithPats.push(i)
+            patsWithPats.push(pats)
+        }
+    })
+
+    const patCounts = patsWithPats.map(p => p.length)
+    const count = Math.min(...patCounts)
+
+    if(lines[0].includes('languageRules')) {
+        console.log('patCounts:', patCounts, 'min count:', count)
+    }
+
+    if(count === 0) { return lines }
+
+    const patsTruncated = patsWithPats.map(p => p.slice(0, count))
+
+    if(lines[0].includes('languageRules')) {
+        console.log('count:', count, 'lineIndices:', linesWithPats)
+    }
+
+    if(count === 0) { return lines }
+
+    const linesWithPatsBodies = linesWithPats.map(i => decomposed[i])
+    const lineBodies = linesWithPatsBodies.map(l => l.body)
+
+    if(lines[0].includes('languageRules')) {
+        console.log('lineBodies:', lineBodies)
+        console.log('patsWithPats:', patsWithPats.map(p => p.map(x => x.pattern)))
+    }
 
     const {
         widths_Key,
         widths_Val,
     } =
         widths_Measure(
-            decomposed,
-            patterns_PerLine,
+            linesWithPatsBodies,
+            patsWithPats,
             count,
             seps
         )
 
-    return decomposed.map((line, r) => {
+    const result = [...lines]
+
+    patsWithPats.forEach((pats, idx) => {
+        const origIdx = linesWithPats[idx]
+        const line = decomposed[origIdx]
 
         const rendered =
             line_Render(
                 line.body,
-                patterns_PerLine[r],
+                pats,
                 count,
                 widths_Key,
                 widths_Val,
                 seps
             )
 
-        return line.indent + rendered
+        result[origIdx] = line.indent + rendered
     })
+
+    return result
 }
 
 // ── 13. BLOCK SPLITTING ───────────────────────────────────────
 
 type BlockState = {
-    blocks: number[][]
-    block_Current: number[]
-    key_Current: string | null
+
+    blocks         : number[][]   
+    block_Current : number[]     
+    key_Current   : string | null
+    prevParenDepth: number       
 }
 
 function blockState_FlushCurrent(
     state: BlockState
 ): BlockState {
 
-    if(state.block_Current.length === 0)
-        {return state}
+    if(state.block_Current.length === 0) { return state }
 
-    return {
+return {
         blocks: [
-            ...state.blocks,
-            state.block_Current,
-        ],
+            ...state.blocks    , 
+            state.block_Current, 
+        ]                  , 
 
-        block_Current: [],
+        block_Current : [],
 
-        key_Current: null,
+        key_Current   : null,
+
+        prevParenDepth: state.prevParenDepth,
     }
 }
 
@@ -674,12 +738,17 @@ function blockState_OnEmpty(
 }
 
 function blockState_OnLine(
-    state: BlockState,
-    i: number,
-    key: string
+    state      : BlockState, 
+    i          : number    , 
+    key        : string    ,
+    parenDepth : number
 ): BlockState {
 
-    if(key === state.key_Current) {
+    const shouldMerge =
+        (key === state.key_Current) ||
+        (state.prevParenDepth > 0)
+
+    if(shouldMerge) {
 
         return {
             ...state,
@@ -688,6 +757,8 @@ function blockState_OnLine(
                 ...state.block_Current,
                 i,
             ],
+
+            prevParenDepth: parenDepth,
         }
     }
 
@@ -700,6 +771,8 @@ function blockState_OnLine(
         block_Current: [i],
 
         key_Current: key,
+
+        prevParenDepth: parenDepth,
     }
 }
 
@@ -710,9 +783,10 @@ function blocks_Split(
 
     let state: BlockState = {
 
-        blocks: [],
-        block_Current: [],
-        key_Current: null,
+        blocks         : []  , 
+        block_Current : []  , 
+        key_Current   : null, 
+        prevParenDepth: 0   , 
     }
 
     for(let i = 0; i < lines_All.length; i++) {
@@ -736,12 +810,28 @@ function blocks_Split(
                 )
             )
 
+        const lineParenDepth =
+            (decomposed.body.match(/\(/g) || []).length -
+            (decomposed.body.match(/\)/g) || []).length
+
+        const cumulativeParenDepth =
+            state.prevParenDepth + lineParenDepth
+
+        if(decomposed.body.includes('languageRules') || decomposed.body.includes('_langId')) {
+            console.log('DEBUG:', decomposed.body.substring(0,30), 'depth=', cumulativeParenDepth, 'prevParenDepth=', state.prevParenDepth, 'key=', key)
+        }
+
         state =
             blockState_OnLine(
-                state,
-                i,
-                key
+                state   , 
+                i       , 
+                key     ,
+                cumulativeParenDepth
             )
+
+        if(decomposed.body.includes('languageRules')) {
+            console.log('DEBUG after:', 'prevParenDepth=', state.prevParenDepth)
+        }
     }
 
     return blockState_FlushCurrent(state)
@@ -751,8 +841,8 @@ function blocks_Split(
 // ── 14. ENTRY POINT ───────────────────────────────────────────
 
 export function text_AlignByBlocks(
-    input: string,
-    patterns: Pattern[],
+    input   : string   , 
+    patterns: Pattern[], 
     seps: string[] =
         DEFAULT_CONFIG.defaultSeps
 ): string {
@@ -773,9 +863,9 @@ export function text_AlignByBlocks(
 
         const aligned =
             block_Process(
-                block,
-                lines_All,
-                patterns,
+                block    , 
+                lines_All, 
+                patterns , 
                 seps
             )
 

@@ -388,3 +388,19 @@ function blocks_Split(
 И нужно делать выравнинвание внутри ().
 Исправь как математик.
 Дай новый код целиком.
+
+2026-05-15 13-33-10
+Сейчас код
+export function languageRules_Detect(
+    _langId: string,
+    defaultAlignChars: string[]
+): LanguageRules {
+не выравнивается.
+А нужно выравнивать так
+export function languageRules_Detect(
+    _langId          : string,
+    defaultAlignChars: string[]
+): LanguageRules {  
+Нужно чтобы код выравнивал внутри ().
+Создай тест для этого случая.
+Исправь код как математик.  

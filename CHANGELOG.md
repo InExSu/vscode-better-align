@@ -1,3 +1,8 @@
+# v6.18.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.18.0)
+
+- feat: Align function parameters inside parentheses
+- fix: Do not align return type colon with parameter colons
+
 # v6.17.4 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.17.4)
 
 - fix: Do not align return type colon with parameter colons (mathematical fix: skip ":" after ")")
