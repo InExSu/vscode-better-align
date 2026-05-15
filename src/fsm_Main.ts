@@ -308,6 +308,16 @@ export function patterns_Find(
             depth_IsTopLevel(depth)
         ) {
 
+            if(
+                matched === ':' &&
+                i > 0 &&
+                masked[i - 1] === ')'
+            ) {
+                depth_Advance(depth, masked[i])
+                i++
+                continue
+            }
+
             result.push({
                 pos: i,
                 pattern: matched,

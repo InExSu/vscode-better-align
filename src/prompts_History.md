@@ -346,3 +346,45 @@ import {
     text_AlignByBlocks
 } from './fsm_Main'
 Исправь код как математик
+
+2026-05-15 12-32-42
+Сейчас код 
+function blocks_Split(
+    lines_All: string[],
+    patterns: Pattern[]
+): number[][] {
+Выравниевается в 
+function blocks_Split(
+    lines_All: string[],
+    patterns: Pattern[]
+): number[][] {
+
+Но этот код 
+function blocks_Split(
+    lines_All: string[],
+    patterns: Pattern[]
+): number[][] {
+
+    let state: BlockState = {
+        blocks: [],
+        block_Current: [],
+        key_Current: null,
+    }
+Выравнивается в 
+function blocks_Split(
+    lines_All: string[],
+    patterns: Pattern[]   
+)       : number[][] {
+
+    let state: BlockState = {
+        blocks       : []  , 
+        block_Current: []  , 
+        key_Current  : null, 
+    }
+Зачем в строке         
+)       : number[][] {
+появлились пробелы между ) и :
+?
+И нужно делать выравнинвание внутри ().
+Исправь как математик.
+Дай новый код целиком.

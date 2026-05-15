@@ -1,3 +1,7 @@
+# v6.17.4 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.17.4)
+
+- fix: Do not align return type colon with parameter colons (mathematical fix: skip ":" after ")")
+
 # v6.17.3 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.17.3)
 
 - refactor: Alignment engine now preserves indentation and ignores content within strings and comments.

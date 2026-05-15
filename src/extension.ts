@@ -4,9 +4,9 @@
 
 import * as vscode from 'vscode'
 import {
-    type LanguageRules,
-    DEFAULT_CONFIG,
-    languageRules_Detect,
+    type LanguageRules  , 
+    DEFAULT_CONFIG      , 
+    languageRules_Detect, 
     text_AlignByBlocks
 } from './fsm_Main'
 
@@ -18,19 +18,19 @@ const CONFIG = {
 // ── BLOCK FINDING ───────────────────────────────────────────
 
 type BlockSearchContext = {
-    editor: vscode.TextEditor
-    doc: vscode.TextDocument
-    selection: vscode.Selection
-    initialIndent: string
-    activeLine: number
+    editor       : vscode.TextEditor  
+    doc          : vscode.TextDocument
+    selection    : vscode.Selection   
+    initialIndent: string             
+    activeLine   : number             
 }
 
 function fn_AutoSearchIndent(ctx: BlockSearchContext): { startLine: number; endLine: number } | null {
-    ctx.activeLine = ctx.selection.active.line
-    ctx.initialIndent = ctx.doc.lineAt(ctx.activeLine).text.match(/^\s*/)?.[0] ?? ''
+    ctx.activeLine   = ctx.selection.active.line                                   
+    ctx.initialIndent= ctx.doc.lineAt(ctx.activeLine).text.match(/^\s*/)?.[0] ?? ''
 
-    const i_Up = scanUp(ctx)
-    const i_Down = scanDown(ctx)
+    const i_Up  = scanUp(ctx)  
+    const i_Down= scanDown(ctx)
 
     if(i_Up === null || i_Down === null) { return null }
 
@@ -49,8 +49,8 @@ function scanUp(ctx: BlockSearchContext): number | null {
 }
 
 function scanDown(ctx: BlockSearchContext): number | null {
-    let i_Line = ctx.activeLine
-    const i_Last = ctx.doc.lineCount - 1
+    let i_Line  = ctx.activeLine       
+    const i_Last= ctx.doc.lineCount - 1
     while(i_Line < i_Last) {
         const o_Next = ctx.doc.lineAt(i_Line + 1)
         if(o_Next.isEmptyOrWhitespace) { break }
@@ -63,10 +63,10 @@ function scanDown(ctx: BlockSearchContext): number | null {
 function findBlockRange(editor: vscode.TextEditor): vscode.Range | null {
     const ctx: BlockSearchContext = {
         editor,
-        doc: editor.document,
-        selection: editor.selection,
-        initialIndent: '',
-        activeLine: 0,
+        doc          : editor.document , 
+        selection    : editor.selection, 
+        initialIndent: ''              , 
+        activeLine   : 0               , 
     }
 
     if(ctx.selection.isEmpty) {
@@ -91,8 +91,8 @@ function runAlign(): void {
     }
 
     try {
-        const o_VsConfig = vscode.workspace.getConfiguration('betterAlignColumns')
-        const config = {
+        const o_VsConfig= vscode.workspace.getConfiguration('betterAlignColumns')
+        const config    = {                                                      
             ...CONFIG,
             defaultAlignChars: o_VsConfig.get<string[]>('defaultAlignChars', CONFIG.defaultAlignChars),
             // other configs can be loaded here if needed by fsm_Main
@@ -112,8 +112,8 @@ function runAlign(): void {
         const textToAlign = editor.document.getText(rangeToAlign)
 
         const alignedText = text_AlignByBlocks(
-            textToAlign,
-            rules.alignChars,
+            textToAlign     , 
+            rules.alignChars, 
             CONFIG.defaultSeps
         )
 
