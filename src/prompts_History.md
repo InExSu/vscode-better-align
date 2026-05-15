@@ -33,7 +33,7 @@ src/extension.ts
 src/fsm_Main.ts
 AGENTS.md
 AI Prompt_General.md
-AI Prompt_This.md
+AI Prompt math 2 TS.md
 И создай файлы настроек скиллов для этого проекта для claude code cli
 
 2026-05-12 13:37:18
@@ -267,3 +267,21 @@ function fn_AutoSearchIndent(ctx: BlockSearchContext):   { startLine: number; en
     preserveComments: test1('preserveComments', ''),
   }
 Не выравнивается ни по : ни по запятым внутри круглых скобок.
+
+2026-05-13 15-02-41
+Сейчас код
+  type Token =
+    | { kd: 'code'; t: string }
+    | { kind: 'string'; text: string }
+Выравнивается так:
+  type Token =
+    | { kd  : 'code'; t     : string }
+    | { kind: 'string'; text: string }
+Сделай чтобы выравнивался так:
+  type Token =
+    | { kd  : 'code';   t   : string }
+    | { kind: 'string'; text: string }
+Чтобы ключи выравнивались и не было лишних пробелов слева от :    
+
+2026-05-15 11-13-16
+Переделай алгоритм работы в src/fsm_Main.ts в соответствии с AI Prompt math 2 TS.md

@@ -105,11 +105,11 @@ function config_Load_Decor(ns: NS): void {
         ns.config = {
             ...ns.config,
             defaultAlignChars: o_VsConfig.get<string[]>('alignChars', ns.config.defaultAlignChars),
-            maxBlockSize     : o_VsConfig.get('maxBlockSize', ns.config.maxBlockSize),
-            preserveComments : o_VsConfig.get('preserveComments', ns.config.preserveComments),
-            preserveStrings  : o_VsConfig.get('preserveStrings', ns.config.preserveStrings),
-            maxSpaces        : o_VsConfig.get('maxSpaces', ns.config.maxSpaces),
-            greedyMatch      : o_VsConfig.get('greedyMatch', ns.config.greedyMatch),
+            maxBlockSize     : o_VsConfig.get('maxBlockSize'        , ns.config.maxBlockSize)     ,
+            preserveComments : o_VsConfig.get('preserveComments'    , ns.config.preserveComments) ,
+            preserveStrings  : o_VsConfig.get('preserveStrings'     , ns.config.preserveStrings)  ,
+            maxSpaces        : o_VsConfig.get('maxSpaces'           , ns.config.maxSpaces)        ,
+            greedyMatch      : o_VsConfig.get('greedyMatch'         , ns.config.greedyMatch)      ,
         }
         ns.result = ok(ns.config)
     } catch(e) { ns_SetError(ns, (e as Error).message) }

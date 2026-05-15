@@ -1,36 +1,25 @@
 # FSM Documentation
 
-## ScannerState (A2 - line_Parse)
+## FSMState (a_FSM_Main — главная машина выравнивания)
 ```mermaid
 graph LR
-    CodeReading --> StringDouble
-    CodeReading --> StringSingle
-    CodeReading --> TemplateBacktick
-    CodeReading --> BlockComment
-    CodeReading --> CommentDone
+    blocks_Split --> blocks_Process
+    blocks_Process --> result_Emit
 ```
 
-## GroupingState (A3 - blocks_Find)
+Состояния:
+- `blocks_Split` — разбивка строк на блоки по вектору признаков (§2.1)
+- `blocks_Process` — выравнивание каждого блока (§2.3)
+- `result_Emit` — выход
+
+## GroupingState (legacy — blocks_Find по отступу)
 ```mermaid
 graph LR
     WaitingForStart --> Accumulating
     Accumulating --> WaitingForStart
 ```
 
-## PropagationState (A4 - positions_Propagate)
-```mermaid
-graph LR
-    FindingSeries --> Accumulating
-    Accumulating --> FindingSeries
-```
-
-## PositionMapState (positionMap_Build)
-```mermaid
-graph LR
-    Collect --> ProcessSymbols
-    ProcessSymbols --> Propagate
-    Propagate --> Done
-```
+Заменён на `blocks_Split` (группировка по вектору признаков P(f), а не по отступу).
 
 ## PipelineState (pipeline_Build)
 ```mermaid
@@ -50,7 +39,7 @@ graph LR
     Align --> Error
 ```
 
-## BlockSearchState (extension.ts - blockSearchFSM)
+## BlockSearchState (extension.ts — blockSearchFSM)
 ```mermaid
 graph LR
     WaitingForData --> ValidatingContext

@@ -1,3 +1,10 @@
+# v6.17.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.17.0)
+
+- refactor: Rewrite alignment engine to use pattern-vector-based block splitting (`blocks_Split`) instead of indent-based grouping (`blocks_Find`)
+- feat: New main FSM `a_FSM_Main` with states `blocks_Split → blocks_Process → result_Emit`
+- test: Rewrite all tests to use new API (`text_AlignByBlocks`)
+- docs: Update FSM documentation — remove deleted states, add new FSM diagrams
+
 # v6.16.9 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.16.9)
 
 - fix: Increase maxSpaces from 10 to 40 for better alignment of long keys in object literals
@@ -61,7 +68,7 @@
 
 # v6.9.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.9.0)
 
-- refactor: Rewrite fsm_Main.ts per AI Prompt_This.md
+- refactor: Rewrite fsm_Main.ts per AI Prompt math 2 TS.md
 - refactor: Add a_FSM_Main main FSM with states block_Find → lines_Sanitize → chars_Scan → map_Normalize → lines_Align → result_Emit
 - refactor: Add pure functions: lines_Sanitize, chars_FindGreedy, map_BuildRaw, map_Normalize, lines_Align
 

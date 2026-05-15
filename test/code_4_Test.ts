@@ -27,7 +27,7 @@
   }
 
   type Token =
-    | { kind: 'code'; text: string }
+    | { kd: 'code'; t: string }
     | { kind: 'string'; text: string }
 
 }
