@@ -12,8 +12,10 @@
     return { startLine: 0, endLine: 0 }
   }
 
-  function test1(s1: string, s2: string): string {
-    return s1 + s2
+  function test1(
+    str1: string,
+    s2: string): string {
+    return str1 + s2
   }
 
   let t1 = {

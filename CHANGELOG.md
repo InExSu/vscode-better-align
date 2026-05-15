@@ -1,3 +1,7 @@
+# v6.18.1 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.18.1)
+
+- fix: Align operators with one space after variable (e.g., `if(x === 1)` → `if(x === 1)` with proper spacing)
+
 # v6.18.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.18.0)
 
 - feat: Align function parameters inside parentheses

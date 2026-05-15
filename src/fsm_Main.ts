@@ -542,15 +542,18 @@ function widths_Measure(
 // ── 11. RENDER ────────────────────────────────────────────────
 
 function segment_Render(
-    seg      : LineSegment, 
-    width_Key: number     , 
-    width_Val: number     , 
-    is_Last: boolean
+    seg      : LineSegment,
+    width_Key: number     ,
+    width_Val: number     ,
+    is_Last: boolean      ,
+    singlePat: boolean = false
 ): string {
+
+    const keyPad = singlePat ? width_Key + 1 : width_Key
 
     const rendered =
 
-        seg.key.padEnd(width_Key) +
+        seg.key.padEnd(keyPad) +
         seg.anchor +
         ' ' +
         seg.val.padEnd(width_Val) +
@@ -563,29 +566,31 @@ function segment_Render(
 }
 
 function line_Render(
-    line      : string        , 
-    pats      : PatternMatch[], 
-    count     : number        , 
-    widths_Key: number[]      , 
-    widths_Val: number[]      , 
-    seps: string[]
+    line      : string        ,
+    pats      : PatternMatch[],
+    count     : number        ,
+    widths_Key: number[]      ,
+    widths_Val: number[]      ,
+    seps      : string[]      ,
+    singlePat : boolean = false
 ): string {
 
     const segs =
         segments_OfLine(
-            line , 
-            pats , 
-            count, 
+            line ,
+            pats ,
+            count,
             seps
         )
 
     return segs
         .map((seg, j) =>
             segment_Render(
-                seg          , 
-                widths_Key[j], 
-                widths_Val[j], 
-                j === count - 1
+                seg          ,
+                widths_Key[j],
+                widths_Val[j],
+                j === count - 1,
+                singlePat
             )
         )
         .join('')
@@ -644,9 +649,12 @@ function block_Process(
 
     const patCounts = patsWithPats.map(p => p.length)
     const count = Math.min(...patCounts)
+    const allSingle = patCounts.every(c => c === 1)
+    const hasMultiCharPat = patsWithPats.some(p => p[0].pattern.length > 1)
+    const singlePat = allSingle && hasMultiCharPat
 
     if(lines[0].includes('languageRules')) {
-        console.log('patCounts:', patCounts, 'min count:', count)
+        console.log('patCounts:', patCounts, 'min count:', count, 'singlePat:', singlePat)
     }
 
     if(count === 0) { return lines }
@@ -691,7 +699,8 @@ function block_Process(
                 count,
                 widths_Key,
                 widths_Val,
-                seps
+                seps,
+                singlePat
             )
 
         result[origIdx] = line.indent + rendered
