@@ -420,3 +420,23 @@ export function languageRules_Detect(
   if(longName === 2) { }
   if(x        === 1) { }
 Между переменной и признаком должен быть один пробел.  
+
+2026-05-15 16-04-56
+v6.18.1
+Код 
+  function fn_AutoSearchIndent() {
+    let z = 1
+    let pq = { start: 0, end: 0 }
+    return { startLine: 0, endLine: 0 }
+  }
+Выравнивается в 
+  function fn_AutoSearchIndent() {
+    let z = 1
+    let pq = { start: 0, end: 0 }
+    return { startLine: 0, endLine: 0 }
+  }
+То есть строки 2 и 3 не выравниваются по =.
+Сделай тест.
+Исправь алгоритм как математик.    
+Существующие тесты должны быть зелеными.
+Собери новую версию vsix, установи в vs code, запусти gh.sh 

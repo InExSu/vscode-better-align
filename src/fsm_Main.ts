@@ -289,10 +289,6 @@ export function patterns_Find(
 
     const depth = initialDepth || depth_Create()
 
-    if(line.includes('_langId')) {
-        console.log('patterns_Find line:', line, 'masked:', masked, 'depth_parenDepth:', depth.parenDepth)
-    }
-
     const result: PatternMatch[] = []
 
     let i = 0
@@ -615,17 +611,9 @@ function block_Process(
 
     let depth = depth_Create()
 
-    if(lines[0].includes('languageRules')) {
-        console.log('decomposed:', decomposed.map(d => d.body))
-    }
-
     const patterns_PerLine =
         decomposed.map(d => {
             const pats = patterns_Find(d.body, patterns, depth)
-
-            if(d.body.includes('_langId')) {
-                console.log('_langId pats:', pats.map(p => p.pattern))
-            }
 
             for(let i = 0; i < d.body.length; i++) {
                 depth_Advance(depth, d.body[i])
@@ -635,7 +623,9 @@ function block_Process(
         })
 
     const hasPats = patterns_PerLine.some(p => p.length > 0)
-    if(!hasPats) { return lines }
+    if(!hasPats) {
+        return lines
+    }
 
     const linesWithPats: number[] = []
     const patsWithPats: PatternMatch[][] = []
@@ -653,27 +643,13 @@ function block_Process(
     const hasMultiCharPat = patsWithPats.some(p => p[0].pattern.length > 1)
     const singlePat = allSingle && hasMultiCharPat
 
-    if(lines[0].includes('languageRules')) {
-        console.log('patCounts:', patCounts, 'min count:', count, 'singlePat:', singlePat)
-    }
-
     if(count === 0) { return lines }
 
     const patsTruncated = patsWithPats.map(p => p.slice(0, count))
 
-    if(lines[0].includes('languageRules')) {
-        console.log('count:', count, 'lineIndices:', linesWithPats)
-    }
-
     if(count === 0) { return lines }
 
     const linesWithPatsBodies = linesWithPats.map(i => decomposed[i])
-    const lineBodies = linesWithPatsBodies.map(l => l.body)
-
-    if(lines[0].includes('languageRules')) {
-        console.log('lineBodies:', lineBodies)
-        console.log('patsWithPats:', patsWithPats.map(p => p.map(x => x.pattern)))
-    }
 
     const {
         widths_Key,
@@ -746,6 +722,14 @@ function blockState_OnEmpty(
     return blockState_FlushCurrent(state)
 }
 
+function commonPrefix(a: string, b: string): string {
+    let i = 0
+    while(i < a.length && i < b.length && a[i] === b[i]) {
+        i++
+    }
+    return a.slice(0, i)
+}
+
 function blockState_OnLine(
     state      : BlockState, 
     i          : number    , 
@@ -753,8 +737,11 @@ function blockState_OnLine(
     parenDepth : number
 ): BlockState {
 
+    const prefix = commonPrefix(key, state.key_Current || '')
+    const hasCommonPrefix = prefix.length > 0
+
     const shouldMerge =
-        (key === state.key_Current) ||
+        hasCommonPrefix ||
         (state.prevParenDepth > 0)
 
     if(shouldMerge) {
@@ -819,16 +806,14 @@ function blocks_Split(
                 )
             )
 
+        
+
         const lineParenDepth =
             (decomposed.body.match(/\(/g) || []).length -
             (decomposed.body.match(/\)/g) || []).length
 
         const cumulativeParenDepth =
             state.prevParenDepth + lineParenDepth
-
-        if(decomposed.body.includes('languageRules') || decomposed.body.includes('_langId')) {
-            console.log('DEBUG:', decomposed.body.substring(0,30), 'depth=', cumulativeParenDepth, 'prevParenDepth=', state.prevParenDepth, 'key=', key)
-        }
 
         state =
             blockState_OnLine(
@@ -837,10 +822,6 @@ function blocks_Split(
                 key     ,
                 cumulativeParenDepth
             )
-
-        if(decomposed.body.includes('languageRules')) {
-            console.log('DEBUG after:', 'prevParenDepth=', state.prevParenDepth)
-        }
     }
 
     return blockState_FlushCurrent(state)
