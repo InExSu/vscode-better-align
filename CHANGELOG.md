@@ -1,3 +1,8 @@
+# v6.17.2 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.17.2)
+
+- refactor: Overhaul alignment engine with a new FSM-based architecture
+- docs: Update FSM documentation
+
 # v6.17.1 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.17.1)
 
 - style: Auto-format fsm_Main.ts — align type annotations and variable declarations for readability

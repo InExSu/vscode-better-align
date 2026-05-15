@@ -1,281 +1,441 @@
-**Условие**, которое меняет логику: выравнивание не глобальное по всем строкам, а локальное по блокам строк с одинаковым вектором признаков.
+# TS Structural Alignment Engine
 
-## 1. Словесное описание
+Реализуй deterministic idempotent structural code alignment engine на TypeScript.
 
-Программист визуально разбивает код на блоки — непрерывные последовательности строк с одинаковой последовательностью якорей.
+Архитектура:
+- pure functions
+- hierarchical FSM
+- no hidden mutable state
+- no recursive formatting passes
+- no regex-based alignment
+- guard clauses instead of nested if/else
+- one responsibility per function
+- deterministic output
+- mathematically idempotent
 
-Внутри блока он смотрит на последовательность признаков в каждой строке (например, `:`, `=`, `{` и т.д.).
+══════════════════════════════════════════════════════════════════
+1. ОСНОВНАЯ ИДЕЯ
+══════════════════════════════════════════════════════════════════
 
-Блок заканчивается как только очередная строка имеет **другой** вектор признаков — она завершает текущий блок, сама образует блок длины 1 (не выравнивается), и начинается новый блок. Пустые строки также разрывают блок.
+Выравнивание НЕ глобальное.
 
-Сегмент между якорями `p_j` и `p_{j+1}` содержит **и значение предыдущей пары, и ключ следующей** — они выравниваются **независимо**: сначала значение (до разделителя из списка `seps`, например `'; '` или `', '`), потом ключ (от разделителя до следующего якоря).
+Код разбивается на ЛОКАЛЬНЫЕ БЛОКИ строк.
 
-Всё после последнего якоря остаётся как было.
+Блок = максимальная непрерывная последовательность строк,
+имеющих одинаковый вектор признаков.
 
-## 2. Математическая формулировка
+Выравнивание выполняется ТОЛЬКО внутри блока.
 
-### 2.1. Блоки
+Пустые строки разрывают блок.
 
-Пусть $s$ — входная строка, $\text{split}(s) = (f_1, \dots, f_m)$ — разбиение по `\n`.
+Строка с отличным вектором признаков:
+- завершает текущий блок
+- сама образует singleton block
+- singleton block НЕ выравнивается
 
-Блок $B$ — максимальный подсписок $(f_a, \dots, f_b)$ такой, что:
-- $\forall k \in [a,b]$, $f_k$ не пуста
-- $\forall k \in [a,b]$, $P(f_k) = P(f_a)$ — векторы признаков совпадают полностью
+Алгоритм обязан быть:
 
-Строка с отличным вектором признаков образует блок длины 1.
+F(F(x)) = F(x)
 
-### 2.2. Признаки строки
+То есть строго идемпотентным.
 
-Для строки $f$ определим вектор признаков:
-$$P(f) = (p_1, p_2, \dots, p_{L(f)})$$
-где $L(f)$ — число найденных признаков (жадный поиск слева направо, непересекающиеся вхождения из алфавита $\mathcal{P}$).
+Повторный запуск не должен:
+- добавлять пробелы
+- смещать колонки
+- изменять spacing
+- изменять tail
+- изменять alignment widths
 
-### 2.3. Выравнивание в блоке
+══════════════════════════════════════════════════════════════════
+2. ПРИЗНАКИ СТРОКИ
+══════════════════════════════════════════════════════════════════
 
-Поскольку все строки блока имеют одинаковый вектор признаков, $\text{common}(B) = L(f_a)$.
+Пусть:
 
-Для каждого якоря $j \in [1..L(f_a)]$ вычисляются две ширины независимо:
+P = alphabet of alignment anchors
 
-$$W^\text{key}_j = \max_r |\text{key}^{(r)}_j|, \quad W^\text{val}_j = \max_r |\text{val}^{(r)}_j|$$
+Например:
 
-где:
-- $\text{key}^{(r)}_j$ — фрагмент строки $r$ от конца предыдущего якоря до начала якоря $j$, trimEnd
-- $\text{val}^{(r)}_j$ — фрагмент от конца якоря $j$ до первого вхождения любого разделителя из $\text{seps}$ (или до следующего якоря, если разделителя нет), trimEnd
+[
+  '===',
+  '!==',
+  '<=>',
+  '=>',
+  '->',
+  '==',
+  '!=',
+  '>=',
+  '<=',
+  '+=',
+  '-=',
+  '*=',
+  '/=',
+  '%=',
+  '**=',
+  ':',
+  '=',
+  ',',
+]
 
-Рендер каждого сегмента:
-$$\text{padEnd}(\text{key}_j,\ W^\text{key}_j) + p_j + \text{`` ''} + \text{padEnd}(\text{val}_j,\ W^\text{val}_j) + \text{sep}_j$$
+Для строки f:
 
-где $\text{sep}_j$ — найденный разделитель если он был, иначе пусто.
+V(f) = ordered vector of matched anchors
 
-## 3. Реализация на TypeScript
+Жадный поиск:
+- left-to-right
+- longest-match-first
+- non-overlapping
 
-Код организован как иерархия машин состояний. Каждая функция — одна ответственность, без вложенных `if/else`, ветвление только через ранний возврат (`guard clauses`).
+Пример:
 
-```typescript
-type Pattern = string;
-type PatternMatch = { pos: number; pattern: string };
-type SepMatch = { sep: string; idx: number };
-type Segment = { key: string; val: string; sep: string; after: string };
+line:
+a: b = c
 
-// ── Примитивы ────────────────────────────────────────────────────────────────
+V(line):
+[':', '=']
 
-function pattern_MatchAt(line: string, pos: number, patterns: Pattern[]): string | null {
-  for (const p of patterns)
-    if (line.startsWith(p, pos)) return p;
-  return null;
+Ключ блока:
+
+K(f) = serialize(V(f))
+
+Например:
+
+[':', '=']
+→ ":\0="
+
+══════════════════════════════════════════════════════════════════
+3. DEPTH TRACKING
+══════════════════════════════════════════════════════════════════
+
+Alignment anchors разрешены ТОЛЬКО на structural top-level.
+
+Нельзя выравнивать anchors внутри:
+
+- ()
+- []
+- <>
+- nested type literals
+- nested object literals
+- generic parameter lists
+
+Нужен structural depth tracker:
+
+{
+  braceDepth,
+  parenDepth,
+  bracketDepth,
+  angleDepth
 }
 
-function patterns_Find(line: string, patterns: Pattern[]): PatternMatch[] {
-  const result: PatternMatch[] = [];
-  let i = 0;
-  while (i < line.length) {
-    const matched = pattern_MatchAt(line, i, patterns);
-    if (matched) { result.push({ pos: i, pattern: matched }); i += matched.length; }
-    else i++;
-  }
-  return result;
+Anchor считается valid iff:
+
+parenDepth   == 0
+bracketDepth == 0
+angleDepth   == 0
+
+ВАЖНО:
+
+braceDepth НЕ запрещает alignment.
+
+Иначе невозможно выравнивание object fields:
+
+{
+  a: number
+  bb: string
 }
 
-function patterns_ToKey(pats: PatternMatch[]): string {
-  return pats.map(p => p.pattern).join('\0');
+Но nested braces должны работать:
+
+{
+  x: { a: 1; bb: 2 }
 }
 
-function sep_Find(s: string, from: number, seps: string[]): SepMatch | null {
-  let best: SepMatch | null = null;
-  for (const sep of seps) {
-    const idx = s.indexOf(sep, from);
-    if (idx !== -1 && (best === null || idx < best.idx)) best = { sep, idx };
-  }
-  return best;
+Здесь:
+- x: выравнивается
+- a: и bb: НЕ выравниваются
+
+══════════════════════════════════════════════════════════════════
+4. BLOCK SPLITTING
+══════════════════════════════════════════════════════════════════
+
+Input:
+
+f1
+f2
+f3
+...
+
+FSM:
+
+WaitingForBlock
+AccumulatingBlock
+
+Rules:
+
+empty line:
+- flush current block
+
+same vector:
+- append to current block
+
+different vector:
+- flush current block
+- start singleton/new block
+
+Singleton blocks:
+- preserved exactly as-is
+
+══════════════════════════════════════════════════════════════════
+5. КАНОНИЧЕСКАЯ МОДЕЛЬ
+══════════════════════════════════════════════════════════════════
+
+Главный принцип:
+
+Alignment НЕ может зависеть
+от spacing предыдущего прохода.
+
+Нельзя использовать:
+- текущие колонки
+- текущие пробелы
+- positions from previously aligned text
+
+Иначе возникает drift.
+
+Поэтому перед измерением widths
+каждый segment canonicalized.
+
+══════════════════════════════════════════════════════════════════
+6. SEGMENT MODEL
+══════════════════════════════════════════════════════════════════
+
+Для anchor_j:
+
+segment_j consists of:
+
+[key_j][anchor_j][value_j][sep_j][after_j]
+
+Где:
+
+key_j:
+- text between previous anchor and current anchor
+- trim()
+- canonicalized
+
+value_j:
+- text after anchor_j
+- until first separator from seps
+- OR until next anchor
+- trim()
+
+sep_j:
+- separator itself
+- preserved
+
+after_j:
+- everything after separator
+- trim()
+
+tail:
+- everything after last anchor
+- preserved EXACTLY
+
+══════════════════════════════════════════════════════════════════
+7. WIDTH MEASUREMENT
+══════════════════════════════════════════════════════════════════
+
+For every column j independently:
+
+W_key[j] =
+max length(key_j)
+
+W_val[j] =
+max length(value_j)
+
+Measured ONLY from canonicalized segments.
+
+NOT from rendered spacing.
+
+══════════════════════════════════════════════════════════════════
+8. CANONICAL RENDERING
+══════════════════════════════════════════════════════════════════
+
+Render rule:
+
+padEnd(key_j, W_key[j])
++ anchor_j
++ ' '
++ padEnd(value_j, W_val[j])
++ sep_j
++ after_j
+
+Important:
+
+Exactly ONE space after anchor.
+
+Never preserve previous alignment spacing.
+
+Spacing before anchor determined ONLY by padEnd.
+
+Therefore rendering is canonical.
+
+══════════════════════════════════════════════════════════════════
+9. IDEMPOTENCE
+══════════════════════════════════════════════════════════════════
+
+The algorithm MUST satisfy:
+
+Align(Align(x)) == Align(x)
+
+for ALL valid inputs.
+
+This is mandatory.
+
+Implementation MUST NOT:
+- accumulate spaces
+- shift anchors
+- widen columns on repeated execution
+
+══════════════════════════════════════════════════════════════════
+10. STRINGS AND COMMENTS
+══════════════════════════════════════════════════════════════════
+
+Anchors inside:
+- strings
+- template literals
+- comments
+
+must be ignored.
+
+Need masking/sanitization phase.
+
+Masked regions:
+- preserve length
+- replaced with sentinel chars
+
+This guarantees stable positions.
+
+══════════════════════════════════════════════════════════════════
+11. FSM ARCHITECTURE
+══════════════════════════════════════════════════════════════════
+
+Required FSM hierarchy:
+
+MAIN FSM
+
+blocks_Split
+→ blocks_Process
+→ result_Emit
+
+BLOCK FSM
+
+measure_Widths
+→ render_Lines
+
+PIPELINE FSM
+
+Idle
+→ LoadConfig
+→ DetectLanguage
+→ FindBlocks
+→ ParseLines
+→ Align
+→ ReplaceText
+→ Done
+
+══════════════════════════════════════════════════════════════════
+12. FUNCTIONAL REQUIREMENTS
+══════════════════════════════════════════════════════════════════
+
+Every function:
+- pure
+- deterministic
+- single responsibility
+
+No hidden side effects.
+
+No mutation of input arrays.
+
+No regex-only parsing.
+
+No nested formatting passes.
+
+No AST parser.
+
+Use lightweight structural scanning.
+
+══════════════════════════════════════════════════════════════════
+13. REQUIRED TESTS
+══════════════════════════════════════════════════════════════════
+
+Must include tests for:
+
+1. idempotence
+
+2. nested object literals
+
+3. generic parameters
+
+4. comments
+
+5. strings
+
+6. singleton blocks
+
+7. empty line block splitting
+
+8. multiple alignment columns
+
+9. separators
+
+10. mixed anchors
+
+══════════════════════════════════════════════════════════════════
+14. REQUIRED EXAMPLE
+══════════════════════════════════════════════════════════════════
+
+INPUT:
+
+export type LanguageRules = {
+    lineComments: string[]
+    blockComments: { start: string; end: string }[]
+    stringDelimiters: string[]
+    alignChars: string[]
 }
 
-// ── Разбор сегмента ──────────────────────────────────────────────────────────
+OUTPUT:
 
-function segment_Parse(line: string, from: number, to: number, seps: string[]): Segment {
-  const raw = line.slice(from, to);
-  const found = sep_Find(raw, 0, seps);
-  if (!found) return { key: '', val: raw.trimEnd(), sep: '', after: '' };
-  return {
-    key:   '',
-    val:   raw.slice(0, found.idx).trimEnd(),
-    sep:   found.sep,
-    after: raw.slice(found.idx + found.sep.length),
-  };
+export type LanguageRules = {
+    lineComments    : string[]
+    blockComments   : { start: string; end: string }[]
+    stringDelimiters: string[]
+    alignChars      : string[]
 }
 
-function segments_OfLine(
-  line: string,
-  pats: PatternMatch[],
-  count: number,
-  seps: string[]
-): { key: string; anchor: string; val: string; sep: string; after: string; tail: string }[] {
-  const result = [];
-  let end_Prev = 0;
-  for (let j = 0; j < count; j++) {
-    const pat = pats[j];
-    const key = line.slice(end_Prev, pat.pos).trimEnd();
-    const anchor = pat.pattern;
-    end_Prev = pat.pos + pat.pattern.length;
-    const pos_Next = j + 1 < count ? pats[j + 1].pos : line.length;
-    const seg = segment_Parse(line, end_Prev, pos_Next, seps);
-    end_Prev = pos_Next;
-    result.push({ key, anchor, val: seg.val, sep: seg.sep, after: seg.after, tail: '' });
-  }
-  if (result.length > 0) result[result.length - 1].tail = line.slice(end_Prev);
-  return result;
-}
+Repeated alignment MUST produce identical output.
 
-// ── Измерение ширин ──────────────────────────────────────────────────────────
+══════════════════════════════════════════════════════════════════
+15. IMPLEMENTATION STYLE
+══════════════════════════════════════════════════════════════════
 
-function widths_Measure(
-  lines: string[],
-  patterns_PerLine: PatternMatch[][],
-  count: number,
-  seps: string[]
-): { widths_Key: number[]; widths_Val: number[] } {
-  const widths_Key = new Array(count).fill(0);
-  const widths_Val = new Array(count).fill(0);
-  for (let r = 0; r < lines.length; r++) {
-    const segs = segments_OfLine(lines[r], patterns_PerLine[r], count, seps);
-    for (let j = 0; j < count; j++) {
-      widths_Key[j] = Math.max(widths_Key[j], segs[j].key.length);
-      widths_Val[j] = Math.max(widths_Val[j], segs[j].val.length);
-    }
-  }
-  return { widths_Key, widths_Val };
-}
+TypeScript only.
 
-// ── Рендер ───────────────────────────────────────────────────────────────────
+No external dependencies.
 
-function segment_Render(
-  seg: { key: string; anchor: string; val: string; sep: string; after: string; tail: string },
-  width_Key: number,
-  width_Val: number,
-  is_Last: boolean
-): string {
-  const rendered = seg.key.padEnd(width_Key) + seg.anchor + ' '
-                 + seg.val.padEnd(width_Val) + seg.sep + seg.after;
-  return is_Last ? rendered + seg.tail : rendered;
-}
+Strong typing required.
 
-function line_Render(
-  line: string,
-  pats: PatternMatch[],
-  count: number,
-  widths_Key: number[],
-  widths_Val: number[],
-  seps: string[]
-): string {
-  const segs = segments_OfLine(line, pats, count, seps);
-  return segs
-    .map((seg, j) => segment_Render(seg, widths_Key[j], widths_Val[j], j === count - 1))
-    .join('');
-}
+Prefer:
 
-// ── Блок ─────────────────────────────────────────────────────────────────────
+type aliases
+readonly data
+small composable functions
+explicit state machines
 
-function block_Process(
-  indices: number[],
-  lines_All: string[],
-  patterns: Pattern[],
-  seps: string[]
-): string[] {
-  const lines = indices.map(i => lines_All[i]);
-  if (indices.length === 1) return lines;
+Avoid:
+- giant functions
+- implicit state
+- formatting heuristics
+- unstable spacing logic
 
-  const patterns_PerLine = lines.map(l => patterns_Find(l, patterns));
-  const count = patterns_PerLine[0].length;
-  if (count === 0) return lines;
-
-  const { widths_Key, widths_Val } = widths_Measure(lines, patterns_PerLine, count, seps);
-  return lines.map((line, r) =>
-    line_Render(line, patterns_PerLine[r], count, widths_Key, widths_Val, seps)
-  );
-}
-
-// ── Разбиение на блоки ───────────────────────────────────────────────────────
-
-type BlockState = { blocks: number[][]; block_Current: number[]; key_Current: string | null };
-
-function blockState_FlushCurrent(state: BlockState): BlockState {
-  if (state.block_Current.length === 0) return state;
-  return { blocks: [...state.blocks, state.block_Current], block_Current: [], key_Current: null };
-}
-
-function blockState_OnEmpty(state: BlockState): BlockState {
-  return blockState_FlushCurrent(state);
-}
-
-function blockState_OnLine(state: BlockState, i: number, key: string): BlockState {
-  if (key === state.key_Current)
-    return { ...state, block_Current: [...state.block_Current, i] };
-  const flushed = blockState_FlushCurrent(state);
-  return { ...flushed, block_Current: [i], key_Current: key };
-}
-
-function blocks_Split(lines_All: string[], patterns: Pattern[]): number[][] {
-  let state: BlockState = { blocks: [], block_Current: [], key_Current: null };
-  for (let i = 0; i < lines_All.length; i++) {
-    if (lines_All[i].trim() === '') { state = blockState_OnEmpty(state); continue; }
-    const key = patterns_ToKey(patterns_Find(lines_All[i], patterns));
-    state = blockState_OnLine(state, i, key);
-  }
-  return blockState_FlushCurrent(state).blocks;
-}
-
-// ── Точка входа ──────────────────────────────────────────────────────────────
-
-function text_AlignByBlocks(
-  input: string,
-  patterns: Pattern[],
-  seps: string[] = ['; ', ', ']
-): string {
-  const lines_All = input.split('\n');
-  const blocks = blocks_Split(lines_All, patterns);
-  const lines_Result = [...lines_All];
-  for (const block of blocks) {
-    const aligned = block_Process(block, lines_All, patterns, seps);
-    for (let idx = 0; idx < block.length; idx++)
-      lines_Result[block[idx]] = aligned[idx];
-  }
-  return lines_Result.join('\n');
-}
-```
-
-## 4. Примеры работы
-
-**Пример 1 — запятые как разделитель:**
-```
-let zz = 1, qz = 2
-let z = 1, q = 2
-f1()
-let zz = 1, qz = 2
-let z = 1, q = 2
-```
-Блоки: `[0,1]`, `[2]`, `[3,4]`. Признаки: `['=']`, seps: `[', ']`.
-```
-let zz = 1, qz = 2
-let z  = 1, q  = 2
-f1()
-let zz = 1, qz = 2
-let z  = 1, q  = 2
-```
-
-**Пример 2 — точка с запятой:**
-```
-| { kd: 'code'; t: string }
-| { kind: 'string'; text: string }
-```
-Признаки: `[': ']`, seps: `['; ']`.
-```
-| { kd  : 'code';   t   : string }
-| { kind: 'string'; text: string }
-```
-
-## Итог
-
-| Уровень | Форма |
-|---|---|
-| Человек | «Блок — строки с одинаковым набором якорей; значение и следующий ключ выравниваются независимо» |
-| Математик | $P(f_k) = P(f_a)\ \forall k \in B$; два массива $W^\text{key}_j$, $W^\text{val}_j$ для каждого столбца $j$ |
-| Программист | `blocks_Split` — автомат по строкам; `block_Process` — измерение + рендер; каждая функция — одна ответственность |
+Output:
+FULL WORKING CODE ONLY.
+NO EXPLANATION.
