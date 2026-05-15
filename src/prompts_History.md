@@ -509,3 +509,30 @@ export const DEFAULT_LANGUAGE_RULES: LanguageRules = {
 Существующие тесты должны быть зелеными.
 Собери новую версию vsix, установи vsix в vs code, запусти gh.sh 
 
+2026-05-15 21-53-55
+v6.18.4
+Переделай тест в  test/object_literal_with_braces.test.ts
+alignedContent должна явно сравниваться с образцом выровненного кода:
+`export const DEFAULT_LANGUAGE_RULES: LanguageRules = {
+  lineComments:     ['//'],
+  blockComments:    [],
+  stringDelimiters: [],
+  alignChars:       []
+}`
+На основании теста, Исправь алгоритм как математик.    
+Существующие тесты должны быть зелеными.
+Собери новую версию vsix, установи vsix в vs code, запусти gh.sh 
+
+2026-05-15 22-06-19
+v6.18.5
+Переделай в тестах 
+test/empty_lines_block.test.ts
+test/engine.test.ts
+test/function_params_align.test.ts
+test/if_condition_align.test.ts
+test/let_assignment_align.test.ts
+test/object_literal_align.test.ts
+test/object_literal_colon_align.test.ts
+test/return_type_align.test.ts
+Непрямые сравнения на явные сравнения с образцом выделенного кода.
+Если тест становится красным - остановись и поясни. Жди моей команды.

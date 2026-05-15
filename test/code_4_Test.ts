@@ -8,8 +8,6 @@ export const DEFAULT_LANGUAGE_RULES: LanguageRules = {
 }
 
 {
-
-
   let x = 1
   let longName = 2
 
