@@ -1,3 +1,7 @@
+# v6.17.1 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.17.1)
+
+- style: Auto-format fsm_Main.ts — align type annotations and variable declarations for readability
+
 # v6.17.0 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.17.0)
 
 - refactor: Rewrite alignment engine to use pattern-vector-based block splitting (`blocks_Split`) instead of indent-based grouping (`blocks_Find`)

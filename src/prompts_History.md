@@ -285,3 +285,39 @@ function fn_AutoSearchIndent(ctx: BlockSearchContext):   { startLine: number; en
 
 2026-05-15 11-13-16
 Переделай алгоритм работы в src/fsm_Main.ts в соответствии с AI Prompt math 2 TS.md
+
+2026-05-15 11-34-48
+увы Код 
+
+```typescript
+export type LanguageRules = {
+    lineComments: string[]
+    blockComments: { start: string; end: string }[]
+    stringDelimiters: string[]
+    alignChars: string[]
+}
+выровнялся в
+export type LanguageRules = {
+    lineComments: string[]
+    blockComments: { start: string; end: string }[]
+    stringDelimiters:  string[]
+    alignChars      :  string[]
+}
+а если ещё раз выровнять то в 
+export type LanguageRules = {
+    lineComments: string[]
+    blockComments: { start: string; end: string }[]
+    stringDelimiters:   string[]
+    alignChars      :   string[]
+}
+при каждом следующем выравниивании добавляются непрошенные пробелы
+а я ожидал что выравнивание будет
+таким 
+export type LanguageRules = {
+    lineComments    : string[]
+    blockComments   : { start: string; end: string }[]
+    stringDelimiters: string[]
+    alignChars      : string[]
+}
+
+исправь алгоритм как математик
