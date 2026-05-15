@@ -1,3 +1,8 @@
+# v6.17.3 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.17.3)
+
+- refactor: Alignment engine now preserves indentation and ignores content within strings and comments.
+- test: Added a dedicated test suite for the alignment engine, covering indentation, idempotency, and string/comment masking.
+
 # v6.17.2 [#](https://github.com/InExSu/vscode-better-align-columns/releases/tag/v6.17.2)
 
 - refactor: Overhaul alignment engine with a new FSM-based architecture

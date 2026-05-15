@@ -1,9 +1,55 @@
 // ============================================================
 // fsm_Main.ts
-// Idempotent alignment FSM with structural depth tracking
+// Deterministic structural alignment engine
+// Idempotent: F(F(x)) = F(x)
 // ============================================================
 
-// ── 1. SHARED TYPES ───────────────────────────────────────────
+// ── 1. TYPES ──────────────────────────────────────────────────
+
+export type Pattern = string
+
+export type PatternMatch = {
+    pos: number
+    pattern: string
+}
+
+export type SepMatch = {
+    sep: string
+    idx: number
+}
+
+export type Segment = {
+    key: string
+    val: string
+    sep: string
+    after: string
+}
+
+export type LineSegment = {
+    key: string
+    anchor: string
+    val: string
+    sep: string
+    after: string
+    tail: string
+}
+
+export type Widths = {
+    widths_Key: number[]
+    widths_Val: number[]
+}
+
+export type LineDecomposed = {
+    indent: string
+    body: string
+}
+
+export type DepthState = {
+    braceDepth: number
+    parenDepth: number
+    bracketDepth: number
+    angleDepth: number
+}
 
 export type LanguageRules = {
     lineComments: string[]
@@ -12,46 +58,9 @@ export type LanguageRules = {
     alignChars: string[]
 }
 
-export type LineBlock = {
-    startLine: number
-    lines: string[]
-}
-
-export type ParsedLine = {
-    raw: string
-    tokens: Token[]
-    markers: Marker[]
-    originalMarkers?: Marker[]
-}
-
-export type Token =
-    | { kind: 'code'; text: string }
-    | { kind: 'string'; text: string }
-    | { kind: 'comment'; text: string }
-
-export type Marker = {
-    symbol: string
-    startCol: number
-}
-
-export type Result<T, E = string> =
-    | { ok: true; value: T }
-    | { ok: false; error: E }
-
-export const ok = <T,>(v: T): Result<T> => ({
-    ok: true,
-    value: v,
-})
-
-export const err = <E,>(e: E): Result<never, E> => ({
-    ok: false,
-    error: e,
-})
-
 // ── 2. CONFIG ─────────────────────────────────────────────────
 
 export const DEFAULT_CONFIG = {
-    b_Debug: false,
 
     defaultAlignChars: [
         '===',
@@ -70,7 +79,6 @@ export const DEFAULT_CONFIG = {
         '%=',
         '**=',
         ':',
-        '{',
         '=',
         ',',
     ],
@@ -79,17 +87,6 @@ export const DEFAULT_CONFIG = {
         '; ',
         ', ',
     ],
-
-    maxBlockSize: 500,
-    preserveComments: true,
-    preserveStrings: true,
-    alignMultilineBlocks: false,
-    skipTemplates: true,
-    greedyMatch: true,
-    minColumns: 1,
-    maxSpaces: 40,
-
-    testData: {} as Record<string, unknown>,
 }
 
 // ── 3. LANGUAGE RULES ─────────────────────────────────────────
@@ -101,789 +98,683 @@ export const DEFAULT_LANGUAGE_RULES: LanguageRules = {
     alignChars: DEFAULT_CONFIG.defaultAlignChars,
 }
 
-export const LANGUAGE_RULES: Record<string, LanguageRules> = {
-    typescript: {
-        lineComments: ['//'],
-        blockComments: [{ start: '/*', end: '*/' }],
-        stringDelimiters: ['"', "'", '`'],
-        alignChars: DEFAULT_CONFIG.defaultAlignChars,
-    },
-
-    javascript: {
-        lineComments: ['//'],
-        blockComments: [{ start: '/*', end: '*/' }],
-        stringDelimiters: ['"', "'", '`'],
-        alignChars: DEFAULT_CONFIG.defaultAlignChars,
-    },
-
-    python: {
-        lineComments: ['#'],
-        blockComments: [],
-        stringDelimiters: ['"', "'"],
-        alignChars: DEFAULT_CONFIG.defaultAlignChars,
-    },
-
-    rust: {
-        lineComments: ['//'],
-        blockComments: [{ start: '/*', end: '*/' }],
-        stringDelimiters: ['"'],
-        alignChars: DEFAULT_CONFIG.defaultAlignChars,
-    },
-
-    go: {
-        lineComments: ['//'],
-        blockComments: [{ start: '/*', end: '*/' }],
-        stringDelimiters: ['"', '`'],
-        alignChars: DEFAULT_CONFIG.defaultAlignChars,
-    },
-
-    lua: {
-        lineComments: ['--'],
-        blockComments: [{ start: '--[[', end: ']]' }],
-        stringDelimiters: ['"', "'"],
-        alignChars: DEFAULT_CONFIG.defaultAlignChars,
-    },
-
-    sql: {
-        lineComments: ['--'],
-        blockComments: [{ start: '/*', end: '*/' }],
-        stringDelimiters: ['"', "'"],
-        alignChars: DEFAULT_CONFIG.defaultAlignChars,
-    },
-}
-
 export function languageRules_Detect(
-    s_LangId: string,
-    a_DefaultAlignChars: string[]
+    _langId: string,
+    defaultAlignChars: string[]
 ): LanguageRules {
 
-    return LANGUAGE_RULES[s_LangId]
-        ? {
-            ...LANGUAGE_RULES[s_LangId],
-            alignChars: a_DefaultAlignChars,
-        }
-        : {
-            ...DEFAULT_LANGUAGE_RULES,
-            alignChars: a_DefaultAlignChars,
-        }
+    return {
+        ...DEFAULT_LANGUAGE_RULES,
+        alignChars: defaultAlignChars,
+    }
 }
 
-// ── 4. INTERNAL TYPES ─────────────────────────────────────────
+// ── 4. LINE DECOMPOSITION ─────────────────────────────────────
 
-type PatternMatch = {
-    i_Pos: number
-    s_Pattern: string
-}
+export function line_Decompose(
+    line: string
+): LineDecomposed {
 
-type SepMatch = {
-    s_Sep: string
-    i_Idx: number
-}
+    let i = 0
 
-type SegmentParsed = {
-    s_Val: string
-    s_Sep: string
-    s_After: string
-}
+    while(
+        i < line.length &&
+        (
+            line[i] === ' ' ||
+            line[i] === '\t'
+        )
+    ) {
+        i++
+    }
 
-type LineSegment = {
-    s_Key: string
-    s_Anchor: string
-    s_Val: string
-    s_Sep: string
-    s_After: string
-    s_Tail: string
-}
-
-type WidthsResult = {
-    a_WidthsKey: number[]
-    a_WidthsVal: number[]
-}
-
-type BlockSplitState = {
-    a_Blocks: number[][]
-    a_BlockCurrent: number[]
-    s_KeyCurrent: string | null
-}
-
-type DepthState = {
-    i_BraceDepth: number
-    i_ParenDepth: number
-    i_BracketDepth: number
-    i_AngleDepth: number
-}
-
-type FSMStateContext = {
-    a_LinesAll: string[]
-    a_AlignChars: string[]
-    a_Seps: string[]
-    a_Blocks: number[][]
-    a_LinesResult: string[]
-    b_Changed: boolean
+    return {
+        indent: line.slice(0, i),
+        body: line.slice(i),
+    }
 }
 
 // ── 5. DEPTH TRACKING ─────────────────────────────────────────
 
-function depthState_Create(): DepthState {
+function depth_Create(): DepthState {
+
     return {
-        i_BraceDepth: 0,
-        i_ParenDepth: 0,
-        i_BracketDepth: 0,
-        i_AngleDepth: 0,
+        braceDepth: 0,
+        parenDepth: 0,
+        bracketDepth: 0,
+        angleDepth: 0,
     }
 }
 
-function depthState_IsTopLevel(o_Ds: DepthState): boolean {
+function depth_IsTopLevel(
+    d: DepthState
+): boolean {
+
     return (
-        o_Ds.i_ParenDepth === 0 &&
-        o_Ds.i_BracketDepth === 0 &&
-        o_Ds.i_AngleDepth === 0
+        d.parenDepth === 0 &&
+        d.bracketDepth === 0 &&
+        d.angleDepth === 0
     )
 }
 
-function depthState_Advance(
-    o_Ds: DepthState,
+function depth_Advance(
+    d: DepthState,
     ch: string
 ): void {
 
     switch(ch) {
 
         case '{':
-            o_Ds.i_BraceDepth++
-            break
+            d.braceDepth++
+            return
 
         case '}':
-            o_Ds.i_BraceDepth = Math.max(0, o_Ds.i_BraceDepth - 1)
-            break
+            d.braceDepth =
+                Math.max(0, d.braceDepth - 1)
+            return
 
         case '(':
-            o_Ds.i_ParenDepth++
-            break
+            d.parenDepth++
+            return
 
         case ')':
-            o_Ds.i_ParenDepth = Math.max(0, o_Ds.i_ParenDepth - 1)
-            break
+            d.parenDepth =
+                Math.max(0, d.parenDepth - 1)
+            return
 
         case '[':
-            o_Ds.i_BracketDepth++
-            break
+            d.bracketDepth++
+            return
 
         case ']':
-            o_Ds.i_BracketDepth = Math.max(0, o_Ds.i_BracketDepth - 1)
-            break
+            d.bracketDepth =
+                Math.max(0, d.bracketDepth - 1)
+            return
 
         case '<':
-            o_Ds.i_AngleDepth++
-            break
+            d.angleDepth++
+            return
 
         case '>':
-            o_Ds.i_AngleDepth = Math.max(0, o_Ds.i_AngleDepth - 1)
-            break
+            d.angleDepth =
+                Math.max(0, d.angleDepth - 1)
+            return
     }
 }
 
-// ── 6. PATTERN MATCHING ───────────────────────────────────────
+// ── 6. MASKING ────────────────────────────────────────────────
+
+function mask_StringsAndComments(
+    line: string
+): string {
+
+    let result = ''
+
+    let i = 0
+
+    let inString: string | null = null
+
+    while(i < line.length) {
+
+        const ch = line[i]
+
+        if(inString !== null) {
+
+            if(ch === '\\') {
+                result += '\0\0'
+                i += 2
+                continue
+            }
+
+            result += '\0'
+
+            if(ch === inString)
+                {inString = null}
+
+            i++
+            continue
+        }
+
+        if(
+            ch === '"' ||
+            ch === '\'' ||
+            ch === '`'
+        ) {
+            inString = ch
+            result += '\0'
+            i++
+            continue
+        }
+
+        if(
+            line.startsWith('//', i)
+        ) {
+            result += '\0'.repeat(
+                line.length - i
+            )
+            break
+        }
+
+        result += ch
+        i++
+    }
+
+    return result
+}
+
+// ── 7. PATTERN MATCHING ───────────────────────────────────────
 
 function pattern_MatchAt(
-    s_Line: string,
-    i_Pos: number,
-    a_Patterns: string[]
+    line: string,
+    pos: number,
+    patterns: Pattern[]
 ): string | null {
 
-    for(const s_Pat of a_Patterns) {
-        if(s_Line.startsWith(s_Pat, i_Pos)) {
-            return s_Pat
-        }
+    for(const p of patterns) {
+
+        if(line.startsWith(p, pos))
+            {return p}
     }
 
     return null
 }
 
-/**
- * Top-level only pattern matching.
- * Ignores nested type literals / arrays / generics.
- */
-
-function patternMatches_Find(
-    s_Line: string,
-    a_Patterns: string[]
+export function patterns_Find(
+    line: string,
+    patterns: Pattern[]
 ): PatternMatch[] {
 
-    const a_Sorted = [...a_Patterns]
+    const masked = mask_StringsAndComments(line)
+
+    const sorted = [...patterns]
         .sort((a, b) => b.length - a.length)
 
-    const a_Result: PatternMatch[] = []
+    const result: PatternMatch[] = []
 
-    const o_Depth = depthState_Create()
+    const depth = depth_Create()
 
     let i = 0
 
-    while(i < s_Line.length) {
+    while(i < masked.length) {
 
-        const s_Match = pattern_MatchAt(
-            s_Line,
-            i,
-            a_Sorted
-        )
+        const matched =
+            pattern_MatchAt(
+                masked,
+                i,
+                sorted
+            )
 
         if(
-            s_Match &&
-            depthState_IsTopLevel(o_Depth)
+            matched !== null &&
+            depth_IsTopLevel(depth)
         ) {
 
-            a_Result.push({
-                i_Pos: i,
-                s_Pattern: s_Match,
+            result.push({
+                pos: i,
+                pattern: matched,
             })
 
-            for(const ch of s_Match) {
-                depthState_Advance(o_Depth, ch)
-            }
+            for(const ch of matched)
+                {depth_Advance(depth, ch)}
 
-            i += s_Match.length
+            i += matched.length
             continue
         }
 
-        depthState_Advance(o_Depth, s_Line[i])
+        depth_Advance(depth, masked[i])
 
         i++
     }
 
-    return a_Result
+    return result
 }
 
-function patternMatches_ToKey(
-    a_Pats: PatternMatch[]
+export function patterns_ToKey(
+    pats: PatternMatch[]
 ): string {
 
-    return a_Pats
-        .map(o_P => o_P.s_Pattern)
+    return pats
+        .map(p => p.pattern)
         .join('\0')
 }
 
-// ── 7. SEPARATOR SEARCH ───────────────────────────────────────
+// ── 8. SEPARATORS ─────────────────────────────────────────────
 
 function sep_Find(
-    s_Str: string,
-    i_From: number,
-    a_Seps: string[]
+    s: string,
+    from: number,
+    seps: string[]
 ): SepMatch | null {
 
-    let o_Best: SepMatch | null = null
+    let best: SepMatch | null = null
 
-    for(const s_Sep of a_Seps) {
+    for(const sep of seps) {
 
-        const i_Idx = s_Str.indexOf(
-            s_Sep,
-            i_From
-        )
+        const idx = s.indexOf(sep, from)
 
         if(
-            i_Idx !== -1 &&
+            idx !== -1 &&
             (
-                o_Best === null ||
-                i_Idx < o_Best.i_Idx
+                best === null ||
+                idx < best.idx
             )
         ) {
-            o_Best = {
-                s_Sep,
-                i_Idx,
+
+            best = {
+                sep,
+                idx,
             }
         }
     }
 
-    return o_Best
+    return best
 }
 
-// ── 8. SEGMENT PARSING ────────────────────────────────────────
+// ── 9. SEGMENT PARSING ────────────────────────────────────────
 
 function segment_Parse(
-    s_Line: string,
-    i_From: number,
-    i_To: number,
-    a_Seps: string[]
-): SegmentParsed {
+    line: string,
+    from: number,
+    to: number,
+    seps: string[]
+): Segment {
 
-    const s_Raw = s_Line
-        .slice(i_From, i_To)
-        .trim()
+    const raw =
+        line
+            .slice(from, to)
+            .trim()
 
-    const o_Found = sep_Find(
-        s_Raw,
-        0,
-        a_Seps
-    )
+    const found =
+        sep_Find(raw, 0, seps)
 
-    if(!o_Found) {
+    if(found === null) {
+
         return {
-            s_Val: s_Raw.trim(),
-            s_Sep: '',
-            s_After: '',
+            key: '',
+            val: raw,
+            sep: '',
+            after: '',
         }
     }
 
     return {
-        s_Val: s_Raw
-            .slice(0, o_Found.i_Idx)
-            .trim(),
 
-        s_Sep: o_Found.s_Sep,
+        key: '',
 
-        s_After: s_Raw
-            .slice(o_Found.i_Idx + o_Found.s_Sep.length)
-            .trim(),
+        val:
+            raw
+                .slice(0, found.idx)
+                .trim(),
+
+        sep: found.sep,
+
+        after:
+            raw
+                .slice(found.idx + found.sep.length)
+                .trim(),
     }
 }
 
 function segments_OfLine(
-    s_Line: string,
-    a_Pats: PatternMatch[],
-    i_Count: number,
-    a_Seps: string[]
+    line: string,
+    pats: PatternMatch[],
+    count: number,
+    seps: string[]
 ): LineSegment[] {
 
-    const a_Result: LineSegment[] = []
+    const result: LineSegment[] = []
 
-    let i_EndPrev = 0
+    let endPrev = 0
 
-    for(let j = 0; j < i_Count; j++) {
+    for(let j = 0; j < count; j++) {
 
-        const o_Pat = a_Pats[j]
+        const pat = pats[j]
 
-        const s_Key = s_Line
-            .slice(i_EndPrev, o_Pat.i_Pos)
-            .trim()
+        const key =
+            line
+                .slice(endPrev, pat.pos)
+                .trim()
 
-        const s_Anchor = o_Pat.s_Pattern
+        const anchor = pat.pattern
 
-        i_EndPrev =
-            o_Pat.i_Pos +
-            o_Pat.s_Pattern.length
+        endPrev =
+            pat.pos +
+            pat.pattern.length
 
-        const i_PosNext =
-            j + 1 < i_Count
-                ? a_Pats[j + 1].i_Pos
-                : s_Line.length
+        const nextPos =
+            j + 1 < count
+                ? pats[j + 1].pos
+                : line.length
 
-        const o_Seg = segment_Parse(
-            s_Line,
-            i_EndPrev,
-            i_PosNext,
-            a_Seps
-        )
+        const seg =
+            segment_Parse(
+                line,
+                endPrev,
+                nextPos,
+                seps
+            )
 
-        i_EndPrev = i_PosNext
+        endPrev = nextPos
 
-        a_Result.push({
-            s_Key,
-            s_Anchor,
-            s_Val: o_Seg.s_Val,
-            s_Sep: o_Seg.s_Sep,
-            s_After: o_Seg.s_After,
-            s_Tail: '',
+        result.push({
+            key,
+            anchor,
+            val: seg.val,
+            sep: seg.sep,
+            after: seg.after,
+            tail: '',
         })
     }
 
-    if(a_Result.length > 0) {
-        a_Result[a_Result.length - 1].s_Tail =
-            s_Line
-                .slice(i_EndPrev)
-                .trimEnd()
+    if(result.length > 0) {
+
+        result[result.length - 1].tail =
+            line.slice(endPrev)
     }
 
-    return a_Result
+    return result
 }
 
-// ── 9. WIDTH MEASUREMENT ──────────────────────────────────────
+// ── 10. WIDTHS ────────────────────────────────────────────────
 
 function widths_Measure(
-    a_Lines: string[],
-    a_PatternsPerLine: PatternMatch[][],
-    i_Count: number,
-    a_Seps: string[]
-): WidthsResult {
+    lines: LineDecomposed[],
+    patterns_PerLine: PatternMatch[][],
+    count: number,
+    seps: string[]
+): Widths {
 
-    const a_WidthsKey =
-        new Array<number>(i_Count).fill(0)
+    const widths_Key =
+        new Array(count).fill(0)
 
-    const a_WidthsVal =
-        new Array<number>(i_Count).fill(0)
+    const widths_Val =
+        new Array(count).fill(0)
 
-    for(let r = 0; r < a_Lines.length; r++) {
+    for(let r = 0; r < lines.length; r++) {
 
-        const a_Segs = segments_OfLine(
-            a_Lines[r],
-            a_PatternsPerLine[r],
-            i_Count,
-            a_Seps
-        )
-
-        for(let j = 0; j < i_Count; j++) {
-
-            a_WidthsKey[j] = Math.max(
-                a_WidthsKey[j],
-                a_Segs[j].s_Key.length
+        const segs =
+            segments_OfLine(
+                lines[r].body,
+                patterns_PerLine[r],
+                count,
+                seps
             )
 
-            a_WidthsVal[j] = Math.max(
-                a_WidthsVal[j],
-                a_Segs[j].s_Val.length
-            )
+        for(let j = 0; j < count; j++) {
+
+            widths_Key[j] =
+                Math.max(
+                    widths_Key[j],
+                    segs[j].key.length
+                )
+
+            widths_Val[j] =
+                Math.max(
+                    widths_Val[j],
+                    segs[j].val.length
+                )
         }
     }
 
     return {
-        a_WidthsKey,
-        a_WidthsVal,
+        widths_Key,
+        widths_Val,
     }
 }
 
-// ── 10. RENDER ────────────────────────────────────────────────
+// ── 11. RENDER ────────────────────────────────────────────────
 
 function segment_Render(
-    o_Seg: LineSegment,
-    i_WKey: number,
-    i_WVal: number,
-    b_IsLast: boolean
+    seg: LineSegment,
+    width_Key: number,
+    width_Val: number,
+    is_Last: boolean
 ): string {
 
-    const s_Key =
-        o_Seg.s_Key.padEnd(i_WKey)
+    const rendered =
 
-    const s_Val =
-        o_Seg.s_Val.length > 0
-            ? ' ' + o_Seg.s_Val.padEnd(i_WVal)
-            : ''
+        seg.key.padEnd(width_Key) +
+        seg.anchor +
+        ' ' +
+        seg.val.padEnd(width_Val) +
+        seg.sep +
+        seg.after
 
-    const s_Sep =
-        o_Seg.s_Sep.length > 0
-            ? o_Seg.s_Sep
-            : ''
-
-    const s_After =
-        o_Seg.s_After.length > 0
-            ? o_Seg.s_After
-            : ''
-
-    const s_Rendered =
-        s_Key +
-        o_Seg.s_Anchor +
-        s_Val +
-        s_Sep +
-        s_After
-
-    return b_IsLast
-        ? s_Rendered + o_Seg.s_Tail
-        : s_Rendered
+    return is_Last
+        ? rendered + seg.tail
+        : rendered
 }
 
 function line_Render(
-    s_Line: string,
-    a_Pats: PatternMatch[],
-    i_Count: number,
-    a_WidthsKey: number[],
-    a_WidthsVal: number[],
-    a_Seps: string[]
+    line: string,
+    pats: PatternMatch[],
+    count: number,
+    widths_Key: number[],
+    widths_Val: number[],
+    seps: string[]
 ): string {
 
-    const a_Segs = segments_OfLine(
-        s_Line,
-        a_Pats,
-        i_Count,
-        a_Seps
-    )
+    const segs =
+        segments_OfLine(
+            line,
+            pats,
+            count,
+            seps
+        )
 
-    return a_Segs
-        .map((o_Seg, j) =>
+    return segs
+        .map((seg, j) =>
             segment_Render(
-                o_Seg,
-                a_WidthsKey[j],
-                a_WidthsVal[j],
-                j === i_Count - 1
+                seg,
+                widths_Key[j],
+                widths_Val[j],
+                j === count - 1
             )
         )
         .join('')
 }
 
-// ── 11. BLOCK PROCESSING ──────────────────────────────────────
+// ── 12. BLOCK PROCESSING ──────────────────────────────────────
 
 function block_Process(
-    a_Indices: number[],
-    a_LinesAll: string[],
-    a_Patterns: string[],
-    a_Seps: string[]
+    indices: number[],
+    lines_All: string[],
+    patterns: Pattern[],
+    seps: string[]
 ): string[] {
 
-    const a_Lines =
-        a_Indices.map(i => a_LinesAll[i])
+    const lines =
+        indices.map(i => lines_All[i])
 
-    if(a_Indices.length === 1) {
-        return a_Lines
-    }
+    if(indices.length === 1)
+        {return lines}
 
-    const a_PatternsPerLine =
-        a_Lines.map(s_L =>
-            patternMatches_Find(
-                s_L,
-                a_Patterns
-            )
+    const decomposed =
+        lines.map(line_Decompose)
+
+    const patterns_PerLine =
+        decomposed.map(
+            d => patterns_Find(d.body, patterns)
         )
 
-    const i_Count =
-        a_PatternsPerLine[0].length
+    const count =
+        patterns_PerLine[0].length
 
-    if(i_Count === 0) {
-        return a_Lines
-    }
+    if(count === 0)
+        {return lines}
 
     const {
-        a_WidthsKey,
-        a_WidthsVal,
-    } = widths_Measure(
-        a_Lines,
-        a_PatternsPerLine,
-        i_Count,
-        a_Seps
-    )
-
-    return a_Lines.map((s_Line, r) =>
-        line_Render(
-            s_Line,
-            a_PatternsPerLine[r],
-            i_Count,
-            a_WidthsKey,
-            a_WidthsVal,
-            a_Seps
+        widths_Key,
+        widths_Val,
+    } =
+        widths_Measure(
+            decomposed,
+            patterns_PerLine,
+            count,
+            seps
         )
-    )
-}
 
-// ── 12. BLOCK SPLITTING ───────────────────────────────────────
+    return decomposed.map((line, r) => {
 
-function blocks_Split(
-    a_LinesAll: string[],
-    a_Patterns: string[]
-): number[][] {
-
-    let o_State: BlockSplitState = {
-        a_Blocks: [],
-        a_BlockCurrent: [],
-        s_KeyCurrent: null,
-    }
-
-    for(let i = 0; i < a_LinesAll.length; i++) {
-
-        if(a_LinesAll[i].trim() === '') {
-            o_State = blockSplitState_OnEmpty(o_State)
-            continue
-        }
-
-        const s_Key = patternMatches_ToKey(
-            patternMatches_Find(
-                a_LinesAll[i],
-                a_Patterns
+        const rendered =
+            line_Render(
+                line.body,
+                patterns_PerLine[r],
+                count,
+                widths_Key,
+                widths_Val,
+                seps
             )
-        )
 
-        o_State = blockSplitState_OnLine(
-            o_State,
-            i,
-            s_Key
-        )
-    }
-
-    return blockSplitState_Flush(o_State)
-        .a_Blocks
+        return line.indent + rendered
+    })
 }
 
-function blockSplitState_Flush(
-    o_State: BlockSplitState
-): BlockSplitState {
+// ── 13. BLOCK SPLITTING ───────────────────────────────────────
 
-    if(o_State.a_BlockCurrent.length === 0) {
-        return o_State
-    }
+type BlockState = {
+    blocks: number[][]
+    block_Current: number[]
+    key_Current: string | null
+}
+
+function blockState_FlushCurrent(
+    state: BlockState
+): BlockState {
+
+    if(state.block_Current.length === 0)
+        {return state}
 
     return {
-        a_Blocks: [
-            ...o_State.a_Blocks,
-            o_State.a_BlockCurrent,
+        blocks: [
+            ...state.blocks,
+            state.block_Current,
         ],
 
-        a_BlockCurrent: [],
-        s_KeyCurrent: null,
+        block_Current: [],
+
+        key_Current: null,
     }
 }
 
-function blockSplitState_OnEmpty(
-    o_State: BlockSplitState
-): BlockSplitState {
+function blockState_OnEmpty(
+    state: BlockState
+): BlockState {
 
-    return blockSplitState_Flush(o_State)
+    return blockState_FlushCurrent(state)
 }
 
-function blockSplitState_OnLine(
-    o_State: BlockSplitState,
+function blockState_OnLine(
+    state: BlockState,
     i: number,
-    s_Key: string
-): BlockSplitState {
+    key: string
+): BlockState {
 
-    if(s_Key === o_State.s_KeyCurrent) {
+    if(key === state.key_Current) {
 
         return {
-            ...o_State,
-            a_BlockCurrent: [
-                ...o_State.a_BlockCurrent,
+            ...state,
+
+            block_Current: [
+                ...state.block_Current,
                 i,
             ],
         }
     }
 
-    const o_Flushed =
-        blockSplitState_Flush(o_State)
+    const flushed =
+        blockState_FlushCurrent(state)
 
     return {
-        ...o_Flushed,
-        a_BlockCurrent: [i],
-        s_KeyCurrent: s_Key,
+        ...flushed,
+
+        block_Current: [i],
+
+        key_Current: key,
     }
 }
 
-// ── 13. MAIN FSM ──────────────────────────────────────────────
+function blocks_Split(
+    lines_All: string[],
+    patterns: Pattern[]
+): number[][] {
 
-export interface FSMContext {
-    lines: string[]
-    alignChars: string[]
-    seps: string[]
-    preserveStrings: boolean
-    preserveComments: boolean
-    maxSpaces: number
-}
+    let state: BlockState = {
 
-export interface FSMResult {
-    alignedLines: string[]
-    changesApplied: boolean
-}
-
-export type FSMState =
-    | 'blocks_Split'
-    | 'blocks_Process'
-    | 'result_Emit'
-
-export function a_FSM_Main(
-    o_Ctx: FSMContext
-): FSMResult {
-
-    const o_Sc: FSMStateContext = {
-        a_LinesAll: o_Ctx.lines,
-        a_AlignChars: o_Ctx.alignChars,
-        a_Seps: o_Ctx.seps,
-        a_Blocks: [],
-        a_LinesResult: [...o_Ctx.lines],
-        b_Changed: false,
+        blocks: [],
+        block_Current: [],
+        key_Current: null,
     }
 
-    let s_State: FSMState = 'blocks_Split'
+    for(let i = 0; i < lines_All.length; i++) {
 
-    outerLoop: while(true) {
+        if(lines_All[i].trim() === '') {
 
-        switch(s_State) {
+            state =
+                blockState_OnEmpty(state)
 
-            case 'blocks_Split':
-                o_Sc.a_Blocks = blocks_Split(
-                    o_Sc.a_LinesAll,
-                    o_Sc.a_AlignChars
-                )
-
-                s_State = 'blocks_Process'
-                break
-
-            case 'blocks_Process':
-
-                for(const a_Block of o_Sc.a_Blocks) {
-
-                    const a_Aligned = block_Process(
-                        a_Block,
-                        o_Sc.a_LinesAll,
-                        o_Sc.a_AlignChars,
-                        o_Sc.a_Seps
-                    )
-
-                    for(let i = 0; i < a_Block.length; i++) {
-
-                        if(
-                            o_Sc.a_LinesResult[a_Block[i]]
-                            !==
-                            a_Aligned[i]
-                        ) {
-
-                            o_Sc.a_LinesResult[a_Block[i]] =
-                                a_Aligned[i]
-
-                            o_Sc.b_Changed = true
-                        }
-                    }
-                }
-
-                s_State = 'result_Emit'
-                break
-
-            case 'result_Emit':
-                break outerLoop
-
-            default:
-                fn_Unreachable(s_State as never)
+            continue
         }
+
+        const decomposed =
+            line_Decompose(lines_All[i])
+
+        const key =
+            patterns_ToKey(
+                patterns_Find(
+                    decomposed.body,
+                    patterns
+                )
+            )
+
+        state =
+            blockState_OnLine(
+                state,
+                i,
+                key
+            )
     }
 
-    return {
-        alignedLines: o_Sc.a_LinesResult,
-        changesApplied: o_Sc.b_Changed,
-    }
-}
-
-function fn_Unreachable(
-    s_State: never
-): never {
-
-    throw new Error(
-        `Unhandled FSM state: ${s_State}`
-    )
+    return blockState_FlushCurrent(state)
+        .blocks
 }
 
 // ── 14. ENTRY POINT ───────────────────────────────────────────
 
 export function text_AlignByBlocks(
-    s_Input: string,
-    a_Patterns: string[],
-    a_Seps: string[] =
+    input: string,
+    patterns: Pattern[],
+    seps: string[] =
         DEFAULT_CONFIG.defaultSeps
 ): string {
 
-    const a_LinesAll =
-        s_Input.split('\n')
+    const lines_All =
+        input.split('\n')
 
-    const a_Blocks = blocks_Split(
-        a_LinesAll,
-        a_Patterns
-    )
-
-    const a_LinesResult = [...a_LinesAll]
-
-    for(const a_Block of a_Blocks) {
-
-        const a_Aligned = block_Process(
-            a_Block,
-            a_LinesAll,
-            a_Patterns,
-            a_Seps
+    const blocks =
+        blocks_Split(
+            lines_All,
+            patterns
         )
 
-        for(let i = 0; i < a_Block.length; i++) {
-            a_LinesResult[a_Block[i]] =
-                a_Aligned[i]
+    const lines_Result =
+        [...lines_All]
+
+    for(const block of blocks) {
+
+        const aligned =
+            block_Process(
+                block,
+                lines_All,
+                patterns,
+                seps
+            )
+
+        for(let idx = 0; idx < block.length; idx++) {
+
+            lines_Result[block[idx]] =
+                aligned[idx]
         }
     }
 
-    return a_LinesResult.join('\n')
+    return lines_Result.join('\n')
 }
