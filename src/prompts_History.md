@@ -322,3 +322,27 @@ export type LanguageRules = {
 
 Создай тест для этого случая.
 исправь алгоритм как математик.
+
+2026-05-15 12-14-25
+Код 
+import {
+    type LanguageRules,
+    DEFAULT_CONFIG,
+    languageRules_Detect,
+    text_AlignByBlocks
+} from './fsm_Main'
+выровнялся в 
+import {
+type LanguageRules  ,
+DEFAULT_CONFIG      ,
+languageRules_Detect,
+    text_AlignByBlocks
+} from './fsm_Main'
+а нужно в
+import {
+    type LanguageRules  ,
+    DEFAULT_CONFIG      ,
+    languageRules_Detect,
+    text_AlignByBlocks
+} from './fsm_Main'
+Исправь код как математик
