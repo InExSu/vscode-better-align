@@ -91,11 +91,11 @@ export const DEFAULT_CONFIG = {
 
 // ── 3. LANGUAGE RULES ─────────────────────────────────────────
 
-export const DEFAULT_LANGUAGE_RULES: LanguageRules                   = {
-    lineComments                       : ['//']                          ,  
-    blockComments                      : [{ start: '/*'                  , end: '*/' }],  
-    stringDelimiters                   : ['"'                            , "'", '`'],  
-    alignChars                         : DEFAULT_CONFIG.defaultAlignChars,  
+export const DEFAULT_LANGUAGE_RULES: LanguageRules = {
+    lineComments    : ['//']                          , 
+    blockComments   : [{ start: '/*'                  , end: '*/' }], 
+    stringDelimiters: ['"'                            , "'", '`'], 
+    alignChars      : DEFAULT_CONFIG.defaultAlignChars, 
 }
 
 export function languageRules_Detect(
@@ -203,58 +203,134 @@ function depth_Advance(
 
 // ── 6. MASKING ────────────────────────────────────────────────
 
+// function mask_StringsAndComments(
+//     line: string
+// ): string {
+
+//     let result = ''
+
+//     let i = 0
+
+//     let inString: string | null = null
+
+//     while(i < line.length) {
+
+//         const ch = line[i]
+
+//         if(inString !== null) {
+
+//             if(ch === '\\') {
+//                 result += '\0\0'
+//                 i      += 2     
+//                 continue
+//             }
+
+//             result += '\0'
+
+//             if(ch === inString) { inString = null }
+
+//             i++
+//             continue
+//         }
+
+//         if(
+//             ch === '"' || 
+//             ch === '\'' ||
+//             ch === '`'    
+//         ) {
+//             inString = ch
+//             result += '\0'
+//             i++
+//             continue
+//         }
+
+//         if(
+//             line.startsWith('//', i)
+//         ) {
+//             result += '\0'.repeat(
+//                 line.length - i
+//             )
+//             break
+//         }
+
+//         result += ch
+//         i++
+//     }
+
+//     return result
+// }
+
 function mask_StringsAndComments(
     line: string
 ): string {
 
-    let result = ''
+    enum State {
+        Normal = 0,
+        InString, 
+        InEscape, 
+    }
 
+    let result= ''          
+    let state = State.Normal
+    let quoteChar: string | null = null
     let i = 0
 
-    let inString: string | null = null
-
     while(i < line.length) {
-
         const ch = line[i]
 
-        if(inString !== null) {
+        switch(state) {
+            case State.Normal:
+                // Комментарий?
+                if(line.startsWith('//', i)) {
+                    result += '\0'.repeat(line.length - i)
+                    return result
+                }
 
-            if(ch === '\\') {
-                result += '\0\0'
-                i      += 2     
-                continue
-            }
+                // Обычный символ или начало строки?
+                switch(ch) {
+                    case '"' : 
+                    case '\'': 
+                    case '`' : 
+                        state    = State.InString
+                        quoteChar= ch            
+                        result += '\0'
+                        i++
+                        break
+                    default:
+                        result += ch
+                        i++
+                        break
+                }
+                break
 
-            result += '\0'
+            case State.InString:
+                switch(ch) {
+                    case '\\':
+                        state = State.InEscape
+                        result += '\0\0'
+                        i      += 2     
+                        break
+                    default:
+                        switch(ch === quoteChar) {
+                            case true:
+                                state    = State.Normal
+                                quoteChar= null        
+                                result += '\0'
+                                i++
+                                break
+                            case false:
+                                result += '\0'
+                                i++
+                                break
+                        }
+                        break
+                }
+                break
 
-            if(ch === inString) { inString = null }
-
-            i++
-            continue
+            case State.InEscape:
+                state = State.InString
+                break
         }
-
-        if(
-            ch === '"' || 
-            ch === '\'' ||
-            ch === '`'    
-        ) {
-            inString = ch
-            result += '\0'
-            i++
-            continue
-        }
-
-        if(
-            line.startsWith('//', i)
-        ) {
-            result += '\0'.repeat(
-                line.length - i
-            )
-            break
-        }
-
-        result += ch
-        i++
     }
 
     return result
@@ -341,6 +417,7 @@ export function patterns_Find(
 
     return result
 }
+
 
 export function patterns_ToKey(
     pats: PatternMatch[]
@@ -734,11 +811,11 @@ function commonPrefix(a: string, b: string): string {
 }
 
 function blockState_OnLine(
-    state      : BlockState,
-    i          : number    ,
-    key        : string    ,
-    parenDepth : number    ,
-    braceDepth : number    
+    state     : BlockState,
+    i         : number,    
+    key       : string,    
+    parenDepth: number,    
+    braceDepth: number     
 ): BlockState {
 
     const prefix = commonPrefix(key, state.key_Current || '')
@@ -759,7 +836,7 @@ function blockState_OnLine(
     const currentHasColonOnly = key.includes(':') && !key.includes('=')
     const isTopLevel = parenDepth === 0 && (state.prevParenDepth || 0) === 0
 
-    
+
 
     const shouldSplitFromAssignment = prevHasEqualsAssignment && currentHasColonOnly && isTopLevel
 
@@ -856,10 +933,10 @@ function blocks_Split(
 
         state =
             blockState_OnLine(
-                state            ,
-                i                ,
-                key              ,
-                cumulativeParenDepth,
+                state               , 
+                i                   , 
+                key                 , 
+                cumulativeParenDepth, 
                 cumulativeBraceDepth
             )
     }
