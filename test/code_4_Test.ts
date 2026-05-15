@@ -1,4 +1,15 @@
+import { LanguageRules } from "../src/fsm_Main"
+
+export const DEFAULT_LANGUAGE_RULES: LanguageRules = {
+  lineComments: ['//'],
+  blockComments: [],
+  stringDelimiters: [],
+  alignChars: []
+}
+
 {
+
+
   let x = 1
   let longName = 2
 

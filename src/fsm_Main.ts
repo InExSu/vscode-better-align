@@ -263,10 +263,10 @@ function mask_StringsAndComments(
 // ── 7. PATTERN MATCHING ───────────────────────────────────────
 
 function pattern_MatchAt(
-    line    : string,        
-    pos     : number,        
-    patterns: Pattern[]      
-)       : string | null {
+    line: string,
+    pos: number,
+    patterns: Pattern[]
+): string | null {
 
     for(const p of patterns) {
 
@@ -742,8 +742,13 @@ function blockState_OnLine(
 
     const parenDepthDecreased = parenDepth < state.prevParenDepth
 
+    const firstAnchorOf = (k: string) => k.split('\0')[0] || ''
+    const currentFirst = firstAnchorOf(key)
+    const prevFirst = firstAnchorOf(state.key_Current || '')
+    const firstAnchorsMatch = currentFirst === prevFirst && currentFirst !== ''
+
     const shouldMerge =
-        hasCommonPrefix &&
+        firstAnchorsMatch &&
         !parenDepthDecreased &&
         (state.prevParenDepth > 0 || parenDepth >= 0)
 

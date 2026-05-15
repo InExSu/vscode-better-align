@@ -476,3 +476,36 @@ function pattern_MatchAt(
 Исправь алгоритм как математик.    
 Существующие тесты должны быть зелеными.
 Собери новую версию vsix, установи vsix в vs code, запусти gh.sh 
+
+
+2026-05-15 19-41-33
+v6.18.3
+Код обрамлён пустыми строками
+export const DEFAULT_LANGUAGE_RULES: LanguageRules = {
+  lineComments: ['//'],
+  blockComments: [],
+  stringDelimiters: [],
+  alignChars: []
+}
+Ничего не выделено, курсор на строке 1 или 6  - вызываю расширение alt+a - ничего не выравнивается, правильно.
+Ничего не выделено, курсор на строке 2-5  - вызываю расширение alt+a - выравнивается правильно:
+export const DEFAULT_LANGUAGE_RULES: LanguageRules = {
+  lineComments    : ['//'],
+  blockComments   : [],    
+  stringDelimiters: [],    
+  alignChars      : []     
+}
+
+Выделяю весь код в файле,вызываю расширение alt+a, выравнивается так:
+export const DEFAULT_LANGUAGE_RULES: LanguageRules = {
+  lineComments                       : ['//'],          
+  blockComments                      : [],              
+  stringDelimiters                   : [],              
+  alignChars                         : []               
+}
+Зачем лишние пробелы перед : ?
+Создай тест для данного случая.
+Исправь алгоритм как математик.    
+Существующие тесты должны быть зелеными.
+Собери новую версию vsix, установи vsix в vs code, запусти gh.sh 
+
