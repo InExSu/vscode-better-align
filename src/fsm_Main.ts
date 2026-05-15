@@ -819,7 +819,6 @@ function blockState_OnLine(
 ): BlockState {
 
     const prefix = commonPrefix(key, state.key_Current || '')
-    const hasCommonPrefix = prefix.length > 0
 
     const parenDepthDecreased = parenDepth < state.prevParenDepth
 
