@@ -6,17 +6,13 @@ const sourceCode = `export function languageRules_Detect(
     defaultAlignChars: string[]
 ): LanguageRules {`
 
+const expectedOutput = "export function languageRules_Detect(\n    _langId          : string, \n    defaultAlignChars: string[]\n): LanguageRules {"
+
 describe('Align function params', () => {
     it('should align colons inside function params', () => {
         const alignedContent = text_AlignByBlocks(sourceCode, DEFAULT_CONFIG.defaultAlignChars)
-        const lines = alignedContent.split('\n')
 
-        const colonPositions = lines
-            .filter(l => l.includes(':'))
-            .map(l => l.indexOf(':'))
-
-        assert.ok(colonPositions.length >= 2, 'Should have at least 2 lines with colons')
-        assert.strictEqual(colonPositions[0], colonPositions[1],
-            `Colons should be aligned. Got positions: ${colonPositions.join(', ')}. Lines: ${lines.filter(l => l.includes(':')).join('\n')}`)
+        assert.strictEqual(alignedContent, expectedOutput,
+            `Output does not match expected.\nGot:\n${alignedContent}\nExpected:\n${expectedOutput}`)
     })
 })

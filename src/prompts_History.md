@@ -534,5 +534,27 @@ test/let_assignment_align.test.ts
 test/object_literal_align.test.ts
 test/object_literal_colon_align.test.ts
 test/return_type_align.test.ts
-Непрямые сравнения на явные сравнения с образцом выделенного кода.
+Непрямые сравнения на прямые сравнения с образцом выделенного кода.
 Если тест становится красным - остановись и поясни. Жди моей команды.
+
+2026-05-15 23-04-39
+В файлах тестов
+test/empty_lines_block.test.ts
+test/engine.test.ts
+test/function_params_align.test.ts
+test/if_condition_align.test.ts
+test/let_assignment_align.test.ts
+test/object_literal_align.test.ts
+test/object_literal_colon_align.test.ts
+test/return_type_align.test.ts
+
+Такие строки я могу визуально быстро проверить
+const sourceCode = `function pattern_MatchAt(
+    line: string,
+    pos: number,
+    patterns: Pattern[]
+): string | null {`
+
+а такие строки я не могу визуально контролировать
+const expectedOutput = "function pattern_MatchAt(\n    line    : string,  \n    pos     : number,  \n    patterns: Pattern[]\n): string | null {"
+переделай их в ``.

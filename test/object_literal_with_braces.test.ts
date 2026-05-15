@@ -2,13 +2,18 @@ import * as assert from 'assert'
 import { text_AlignByBlocks, DEFAULT_CONFIG } from '../src/fsm_Main'
 
 const sourceCode = `export const DEFAULT_LANGUAGE_RULES: LanguageRules = {
-  lineComments: ['//'],
-  blockComments: [],
-  stringDelimiters: [],
-  alignChars: []
+  lineComments    : ['//'],
+  blockComments   : [],    
+  stringDelimiters: [],    
+  alignChars      : []     
 }`
 
-const expectedOutput = "export const DEFAULT_LANGUAGE_RULES: LanguageRules = {\n  lineComments    : ['//'],\n  blockComments   : [],    \n  stringDelimiters: [],    \n  alignChars      : []     \n}"
+const expectedOutput = `export const DEFAULT_LANGUAGE_RULES: LanguageRules = {
+  lineComments    : ['//'],
+  blockComments   : [],    
+  stringDelimiters: [],    
+  alignChars      : []     
+}`
 
 describe('Align object literal with braces', () => {
     it('should align object properties correctly', () => {
